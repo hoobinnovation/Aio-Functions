@@ -1,0 +1,78 @@
+import { v4 as uuidv4 } from 'uuid';
+import { EntityManager } from 'typeorm';
+import { ActionContext } from '../../core/protocol';
+import { Cart } from '../../entities/Cart';
+import { CartItem } from '../../entities/CartItem';
+import { ProductVariant } from '../../entities/ProductVariant';
+import { Coupon } from '../../entities/Coupon';
+import { DeliveryZone } from '../../entities/DeliveryZone';
+import { ShippingMethod } from '../../entities/ShippingMethod';
+import { NotificationToken } from '../../entities/NotificationToken';
+import { Notification } from '../../entities/Notification';
+import { LoyaltyTransaction } from '../../entities/LoyaltyTransaction';
+import { LoyaltySetting } from '../../entities/LoyaltySetting';
+import { WalletAccount } from '../../entities/WalletAccount';
+import { WalletTransaction } from '../../entities/WalletTransaction';
+import { MarketingAttributionEvent } from '../../entities/MarketingAttributionEvent';
+import { AlertsPref } from '../../entities/AlertsPref';
+import { AlertsSubscription } from '../../entities/AlertsSubscription';
+import { Product } from '../../entities/Product';
+import { PostPurchaseFlow } from '../../entities/PostPurchaseFlow';
+import { SupportTicket } from '../../entities/SupportTicket';
+import { SupportMessage } from '../../entities/SupportMessage';
+import { UserSetting } from '../../entities/UserSetting';
+import { LegalDoc } from '../../entities/LegalDoc';
+import { AppError } from '../../core/errors';
+
+function hav(lat1:number,lng1:number,lat2:number,lng2:number){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+async function cart(ctx:ActionContext){let c=await ctx.db.getRepository(Cart).findOneBy({uid:ctx.uid!,storeId:ctx.storeId!});if(!c){await ctx.db.transaction(async(tx:EntityManager)=>{c=tx.getRepository(Cart).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,couponCode:null});await tx.getRepository(Cart).save(c);});}return c!;}
+async function cartView(ctx:ActionContext){const c=await cart(ctx);const items=await ctx.db.getRepository(CartItem).find({where:{cartId:c.id}});return {cart:c,items};}
+
+export async function cartGet(ctx:ActionContext){return cartView(ctx);}
+export async function cartAddItem(ctx:ActionContext,p:any){const c=await cart(ctx);const v=await ctx.db.getRepository(ProductVariant).findOneBy({id:p.variantId,status:'active'});if(!v) throw new AppError('NOT_FOUND','Variant not found');if(v.stockQty<p.qty) throw new AppError('OUT_OF_STOCK','Not enough stock');await ctx.db.transaction(async(tx:EntityManager)=>{const e=await tx.getRepository(CartItem).findOneBy({cartId:c.id,variantId:p.variantId});if(e) await tx.getRepository(CartItem).update({id:e.id},{qty:e.qty+p.qty}); else await tx.getRepository(CartItem).save(tx.getRepository(CartItem).create({id:uuidv4(),cartId:c.id,productId:p.productId,variantId:p.variantId,qty:p.qty,unitPriceCents:v.priceCents}));});return cartView(ctx);} 
+export async function cartUpdateQty(ctx:ActionContext,p:any){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{const it=await tx.getRepository(CartItem).findOneBy({id:p.itemId,cartId:c.id});if(!it) throw new AppError('NOT_FOUND','Item not found');const v=it.variantId?await tx.getRepository(ProductVariant).findOneBy({id:it.variantId}):null;if(v && v.stockQty<p.qty) throw new AppError('OUT_OF_STOCK','Not enough stock');await tx.getRepository(CartItem).update({id:it.id},{qty:p.qty});});return cartView(ctx);} 
+export async function cartRemoveItem(ctx:ActionContext,p:any){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(CartItem).delete({id:p.itemId,cartId:c.id});});return cartView(ctx);} 
+export async function cartClear(ctx:ActionContext){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(CartItem).delete({cartId:c.id});await tx.getRepository(Cart).update({id:c.id},{couponCode:null});});return cartView(ctx);} 
+
+export async function cartApplyCoupon(ctx:ActionContext,p:any){const c=await cart(ctx);const cp=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:p.code,status:'active'});if(!cp) throw new AppError('NOT_FOUND','Coupon not found');const now=new Date();if((cp.startsAt&&now<cp.startsAt)||(cp.endsAt&&now>cp.endsAt)) throw new AppError('COUPON_INVALID','Coupon outside valid window');const used=await ctx.db.query('SELECT COUNT(*) c FROM wallet_transactions WHERE uid=? AND note LIKE ?', [ctx.uid!, `%coupon:${cp.code}%`]);if(Number(used[0]?.c||0)>=cp.perUserLimit) throw new AppError('COUPON_LIMIT','Per-user limit reached');await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:cp.code});});return cartView(ctx);} 
+export async function cartRemoveCoupon(ctx:ActionContext){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:null});});return cartView(ctx);} 
+
+export async function shippingListMethods(ctx:ActionContext){return {methods:await ctx.db.getRepository(ShippingMethod).find({where:{storeId:ctx.storeId!,status:'active'}})};} 
+export async function shippingQuoteDelivery(ctx:ActionContext,p:any){const zones=await ctx.db.getRepository(DeliveryZone).find({where:{storeId:ctx.storeId!,status:'active'}});if(!zones.length) throw new AppError('NOT_FOUND','No zones');let best=zones[0];let dist=Infinity;for(const z of zones){const d=hav(Number(z.lat),Number(z.lng),p.lat,p.lng);if(d<dist){dist=d;best=z;}}return {zone:best,distanceKm:dist,priceCents:Number(best.priceCents)};} 
+
+function computeTotals(items:CartItem[], coupon:Coupon|null){const sub=items.reduce((a,i)=>a+Number(i.unitPriceCents)*i.qty,0);let discount=0;if(coupon){discount=coupon.discountType==='percent'?Math.floor(sub*Number(coupon.discountValue)/100):Math.min(sub,Number(coupon.discountValue));}const total=sub-discount;const cashback=Math.floor(total*0.02);return {subtotalCents:sub,discountCents:discount,totalCents:total,cashbackPreviewCents:cashback};}
+export async function checkoutPreview(ctx:ActionContext){const v=await cartView(ctx);let coupon:null|Coupon=null;if(v.cart.couponCode) coupon=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:v.cart.couponCode,status:'active'});return {cart:v,...computeTotals(v.items,coupon)};} 
+
+export async function notificationsRegisterToken(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const ex=await tx.getRepository(NotificationToken).findOneBy({uid:ctx.uid!,token:p.token});if(!ex) await tx.getRepository(NotificationToken).save(tx.getRepository(NotificationToken).create({id:uuidv4(),uid:ctx.uid!,token:p.token,platform:p.platform??null}));});return {registered:true};}
+export async function notificationsList(ctx:ActionContext){return {notifications:await ctx.db.getRepository(Notification).find({where:{uid:ctx.uid!},order:{createdAt:'DESC' as any}})};}
+export async function notificationsMarkRead(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Notification).update({id:p.id,uid:ctx.uid!},{isRead:true});});return {updated:true};}
+export async function notificationsMarkAllRead(ctx:ActionContext){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Notification).update({uid:ctx.uid!},{isRead:true});});return {updated:true};}
+export async function notificationsDelete(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Notification).delete({id:p.id,uid:ctx.uid!});});return {deleted:true};}
+
+export async function loyaltyGetDashboard(ctx:ActionContext){const rows=await ctx.db.getRepository(LoyaltyTransaction).find({where:{uid:ctx.uid!,storeId:ctx.storeId!}});const points=rows.reduce((a:number,r:LoyaltyTransaction)=>a+r.pointsDelta,0);return {points,transactionsCount:rows.length};}
+export async function loyaltyListTransactions(ctx:ActionContext){return {transactions:await ctx.db.getRepository(LoyaltyTransaction).find({where:{uid:ctx.uid!,storeId:ctx.storeId!},order:{createdAt:'DESC' as any}})};}
+export async function loyaltyRedeem(ctx:ActionContext,p:any){const setting=await ctx.db.getRepository(LoyaltySetting).findOneBy({storeId:ctx.storeId!});if(!setting) throw new AppError('NOT_FOUND','Loyalty settings missing');const rows=await ctx.db.getRepository(LoyaltyTransaction).find({where:{uid:ctx.uid!,storeId:ctx.storeId!}});const balance=rows.reduce((a:number,r:LoyaltyTransaction)=>a+r.pointsDelta,0);if(balance<p.points) throw new AppError('INSUFFICIENT_POINTS','Not enough points');const cents=Math.floor(p.points/setting.redeemStepPoints)*Number(setting.redeemStepValueCents);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(LoyaltyTransaction).save(tx.getRepository(LoyaltyTransaction).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,pointsDelta:-p.points,type:'redeem'}));let wa=await tx.getRepository(WalletAccount).findOneBy({uid:ctx.uid!});if(!wa){wa=tx.getRepository(WalletAccount).create({uid:ctx.uid!,balanceCents:'0'});await tx.getRepository(WalletAccount).save(wa);}await tx.getRepository(WalletAccount).update({uid:ctx.uid!},{balanceCents:String(Number(wa.balanceCents)+cents)});await tx.getRepository(WalletTransaction).save(tx.getRepository(WalletTransaction).create({id:uuidv4(),uid:ctx.uid!,amountCents:String(cents),type:'credit',note:'loyalty redeem'}));});return walletGet(ctx);} 
+
+export async function walletGet(ctx:ActionContext){let a=await ctx.db.getRepository(WalletAccount).findOneBy({uid:ctx.uid!});if(!a){a=ctx.db.getRepository(WalletAccount).create({uid:ctx.uid!,balanceCents:'0'});}return {wallet:a};}
+export async function walletHistory(ctx:ActionContext){return {transactions:await ctx.db.getRepository(WalletTransaction).find({where:{uid:ctx.uid!},order:{createdAt:'DESC' as any}})};}
+
+export async function marketingCapture(ctx:ActionContext,p:any){const dedupe=p.dedupeKey??null;if(dedupe){const e=await ctx.db.getRepository(MarketingAttributionEvent).findOneBy({uid:ctx.uid!,dedupeKey:dedupe});if(e) return {event:e,idempotent:true};}
+const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(MarketingAttributionEvent).save(tx.getRepository(MarketingAttributionEvent).create({id,uid:ctx.uid!,storeId:ctx.storeId??null,source:p.source??null,campaign:p.campaign??null,medium:p.medium??null,term:p.term??null,content:p.content??null,dedupeKey:dedupe}));});return {event:await ctx.db.getRepository(MarketingAttributionEvent).findOneByOrFail({id}),idempotent:false};}
+
+export async function alertsGetPrefs(ctx:ActionContext){let p=await ctx.db.getRepository(AlertsPref).findOneBy({uid:ctx.uid!});if(!p)p=ctx.db.getRepository(AlertsPref).create({uid:ctx.uid!,backInStock:true,priceDrop:true});return {prefs:p};}
+export async function alertsUpdatePrefs(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(AlertsPref).upsert({uid:ctx.uid!,backInStock:!!p.backInStock,priceDrop:!!p.priceDrop},['uid']);});return alertsGetPrefs(ctx);} 
+export async function alertsSubscribeBackInStock(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const ex=await tx.getRepository(AlertsSubscription).findOneBy({uid:ctx.uid!,productId:p.productId,type:'back_in_stock'});if(!ex) await tx.getRepository(AlertsSubscription).save(tx.getRepository(AlertsSubscription).create({id:uuidv4(),uid:ctx.uid!,productId:p.productId,type:'back_in_stock'}));});return {subscribed:true};}
+
+export async function recoGetSimilar(ctx:ActionContext,p:any){const prod=await ctx.db.getRepository(Product).findOneBy({id:p.productId});if(!prod) return {products:[]};const rows=await ctx.db.getRepository(Product).find({where:{categoryId:prod.categoryId,storeId:prod.storeId,status:'active'},take:10,order:{updatedAt:'DESC' as any}});return {products:rows.filter((r: Product)=>r.id!==p.productId)};}
+export async function recoGetCartUpsell(ctx:ActionContext){const v=await cartView(ctx);const ids=v.items.map((i: CartItem)=>i.productId);if(!ids.length) return {products:[]};const rows=await ctx.db.query(`SELECT * FROM products WHERE storeId=? AND status='active' AND id NOT IN (${ids.map(()=>'?').join(',')}) ORDER BY updatedAt DESC LIMIT 10`,[ctx.storeId!,...ids]);return {products:rows};}
+export async function postPurchaseGetNudges(ctx:ActionContext){const flows=await ctx.db.getRepository(PostPurchaseFlow).find({where:{storeId:ctx.storeId!,status:'active'}});return {nudges:flows.slice(0,5)};}
+
+export async function supportCreateTicket(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(SupportTicket).save(tx.getRepository(SupportTicket).create({id,uid:ctx.uid!,storeId:ctx.storeId??null,subject:p.subject,status:'open'}));await tx.getRepository(SupportMessage).save(tx.getRepository(SupportMessage).create({id:uuidv4(),ticketId:id,senderUid:ctx.uid!,message:p.message,mediaAssetId:p.mediaAssetId??null}));});return supportGetTicket(ctx,{ticketId:id});}
+export async function supportListTickets(ctx:ActionContext){return {tickets:await ctx.db.getRepository(SupportTicket).find({where:{uid:ctx.uid!},order:{updatedAt:'DESC' as any}})};}
+export async function supportGetTicket(ctx:ActionContext,p:any){const t=await ctx.db.getRepository(SupportTicket).findOneBy({id:p.ticketId,uid:ctx.uid!});if(!t) throw new AppError('NOT_FOUND','Ticket not found');const msgs=await ctx.db.getRepository(SupportMessage).find({where:{ticketId:t.id},order:{createdAt:'ASC' as any}});return {ticket:t,messages:msgs};}
+export async function supportAddMessage(ctx:ActionContext,p:any){const t=await ctx.db.getRepository(SupportTicket).findOneBy({id:p.ticketId,uid:ctx.uid!});if(!t) throw new AppError('NOT_FOUND','Ticket not found');if(t.status==='closed') throw new AppError('VALIDATION_ERROR','Ticket closed');await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(SupportMessage).save(tx.getRepository(SupportMessage).create({id:uuidv4(),ticketId:t.id,senderUid:ctx.uid!,message:p.message,mediaAssetId:p.mediaAssetId??null}));});return supportGetTicket(ctx,{ticketId:t.id});}
+export async function supportCloseTicket(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(SupportTicket).update({id:p.ticketId,uid:ctx.uid!},{status:'closed'});if(!r.affected) throw new AppError('NOT_FOUND','Ticket not found');});return {closed:true};}
+
+export async function settingsGet(ctx:ActionContext){let s=await ctx.db.getRepository(UserSetting).findOneBy({uid:ctx.uid!});if(!s)s=ctx.db.getRepository(UserSetting).create({uid:ctx.uid!,config:{}});return {settings:s};}
+export async function settingsUpdate(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(UserSetting).upsert({uid:ctx.uid!,config:p.config||{}},['uid']);});return settingsGet(ctx);} 
+export async function legalGetDocs(ctx:ActionContext,p:any){const docs=await ctx.db.getRepository(LegalDoc).find({where:{storeId:ctx.storeId!,status:'active',docType:p.docType||undefined}});return {docs};}

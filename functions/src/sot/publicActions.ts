@@ -1,0 +1,15 @@
+export const PUBLIC_ACTIONS_SOT = [
+  'publicHealthPing',
+  'publicActionsList',
+  'publicCatalogGetHome',
+  'publicCatalogGetCategories',
+  'publicCatalogListProducts',
+  'publicCatalogSearchProducts',
+  'publicCatalogGetFilters',
+  'publicProductGetById',
+  'publicProductGetBySlug',
+  'publicCategoryGetById',
+  'publicCategoryGetBySlug',
+  'publicSeoGetPageMeta',
+  'publicSeoGetLanding',
+] as const;
