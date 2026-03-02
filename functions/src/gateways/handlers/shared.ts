@@ -1,6 +1,7 @@
 import { getDataSource } from '../../db/data-source';
 import { GatewayActionLogEntity } from '../../db/entities/GatewayActionLogEntity';
 import { ACTION_SPEC_BY_NAME, ADMIN_ACTIONS, CLIENT_ACTIONS, PUBLIC_ACTIONS } from '../actionsSpec';
+import { ACTION_SPECS } from '../../specs/actionSpecs';
 import { actionRegistry, ADMIN_REGISTRY, CLIENT_REGISTRY, PUBLIC_REGISTRY } from '../actionRegistry';
 import { adminContracts } from '../contracts/adminContracts';
 import { clientContracts } from '../contracts/clientContracts';
@@ -23,11 +24,14 @@ export const genericActionHandler = (gateway: 'public'|'client'|'admin', action:
   if (action === 'adminActionsList') return { actions: ADMIN_ACTIONS.map((a) => a.name) };
   if (action === 'adminHealthActionsCoverage') {
     const all = [...PUBLIC_ACTIONS, ...CLIENT_ACTIONS, ...ADMIN_ACTIONS].map((a) => a.name);
+    const specKeys = Object.keys(ACTION_SPECS);
     const missingHandlers = all.filter((name) => !actionRegistry[name]?.handler);
+    const missingSpecs = all.filter((name) => !specKeys.includes(name));
+    const extraSpecs = specKeys.filter((name) => !all.includes(name));
     const contractNames = new Set([...Object.keys(publicContracts), ...Object.keys(clientContracts), ...Object.keys(adminContracts)]);
     const missingContracts = all.filter((name) => !contractNames.has(name));
     const forbiddenTokensFound = FORBIDDEN_TOKENS.filter(() => false);
-    return { totalActions: all.length, publicCount: PUBLIC_REGISTRY.size, clientCount: CLIENT_REGISTRY.size, adminCount: ADMIN_REGISTRY.size, missingHandlers, missingContracts, forbiddenTokensFound };
+    return { totalActions: all.length, publicCount: PUBLIC_REGISTRY.size, clientCount: CLIENT_REGISTRY.size, adminCount: ADMIN_REGISTRY.size, missingHandlers, missingContracts, missingSpecs, extraSpecs, forbiddenTokensFound };
   }
 
   const ds = await getDataSource();
