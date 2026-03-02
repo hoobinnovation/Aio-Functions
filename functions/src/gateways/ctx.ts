@@ -21,9 +21,10 @@ export const buildCtx = (request: { data: GatewayRequest; auth?: { uid?: string 
   };
 };
 
-export const ensureAdminCtx = async (ctx: GatewayCtx): Promise<void> => {
+export const ensureAdminCtx = async (ctx: GatewayCtx, requiredRole?: string): Promise<void> => {
   if (!ctx.uid) permissionDenied('Authentication required.');
-  await verifyAdminRole(ctx.uid, ['SUPER_ADMIN', 'STORE_ADMIN', 'SUPPORT', 'MARKETING']);
+  const accepted = requiredRole ? ['SUPER_ADMIN', requiredRole] : ['SUPER_ADMIN', 'STORE_ADMIN', 'SUPPORT', 'MARKETING'];
+  await verifyAdminRole(ctx.uid, accepted);
   if (ctx.storeId) await verifyStoreAccess(ctx.uid, ctx.storeId);
 };
 

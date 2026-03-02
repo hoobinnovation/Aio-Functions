@@ -271,3 +271,8 @@ export const actionRegistry: Record<string, ActionRegistryItem> = {
   'adminReturnsRefundFull': { gateway: 'admin', requiresAuth: true, requiresStore: true, contract: adminContracts['adminReturnsRefundFull'], handler: adminDomainHandlers['adminReturnsRefundFull'] },
   'adminReturnsUpdateStatus': { gateway: 'admin', requiresAuth: true, requiresStore: true, contract: adminContracts['adminReturnsUpdateStatus'], handler: adminDomainHandlers['adminReturnsUpdateStatus'] },
 };
+
+
+export const PUBLIC_REGISTRY = new Map(Object.entries(actionRegistry).filter(([, v]) => v.gateway === 'public'));
+export const CLIENT_REGISTRY = new Map(Object.entries(actionRegistry).filter(([, v]) => v.gateway === 'client'));
+export const ADMIN_REGISTRY = new Map(Object.entries(actionRegistry).filter(([, v]) => v.gateway === 'admin'));

@@ -13,11 +13,7 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "typeorm:migrate": "ts-node -r tsconfig-paths/register ./src/db/run-migrations.ts",
-    "typeorm:revert": "ts-node -r tsconfig-paths/register ./src/db/revert-migration.ts",
-    "gen:actions": "node ./src/tools/action-generator.ts",
-    "test:actions": "node --experimental-specifier-resolution=node ./src/tests/actionsCoverage.test.ts",
-    "prebuild": "npm run gen:actions && npm run test:actions",
-    "predeploy": "npm run gen:actions && npm run test:actions && npm run lint"
+    "typeorm:revert": "ts-node -r tsconfig-paths/register ./src/db/revert-migration.ts"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",

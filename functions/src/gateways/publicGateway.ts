@@ -4,7 +4,7 @@ import { buildCtx, writeGatewayAudit } from './ctx';
 import { mapGatewayError } from './errorMap';
 import { GatewayResponse } from './types';
 
-export const publicGateway = onCall(async (request): Promise<GatewayResponse> => {
+export const public = onCall(async (request): Promise<GatewayResponse> => {
   try {
     const action = String(request.data?.action ?? '');
     const entry = actionRegistry[action];
