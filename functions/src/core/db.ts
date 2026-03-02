@@ -51,6 +51,29 @@ import { SupportMessage } from '../entities/SupportMessage';
 import { UserSetting } from '../entities/UserSetting';
 import { LegalDoc } from '../entities/LegalDoc';
 import { Phase4CommerceMarketing1725000000000 } from '../migrations/1725000000000-Phase4CommerceMarketing';
+import { Order } from '../entities/Order';
+import { OrderItem } from '../entities/OrderItem';
+import { OrderStatusEvent } from '../entities/OrderStatusEvent';
+import { Shipment } from '../entities/Shipment';
+import { TrackingEvent } from '../entities/TrackingEvent';
+import { PaymentSession } from '../entities/PaymentSession';
+import { StorePaymentSetting } from '../entities/StorePaymentSetting';
+import { InsuranceOrder } from '../entities/InsuranceOrder';
+import { InsuranceFile } from '../entities/InsuranceFile';
+import { InsuranceItem } from '../entities/InsuranceItem';
+import { InsuranceStatusEvent } from '../entities/InsuranceStatusEvent';
+import { RiskRule } from '../entities/RiskRule';
+import { RiskFlag } from '../entities/RiskFlag';
+import { Branch } from '../entities/Branch';
+import { Device } from '../entities/Device';
+import { Employee } from '../entities/Employee';
+import { Drawer } from '../entities/Drawer';
+import { DrawerSession } from '../entities/DrawerSession';
+import { LedgerEntry } from '../entities/LedgerEntry';
+import { Return } from '../entities/Return';
+import { ReturnItem } from '../entities/ReturnItem';
+import { Refund } from '../entities/Refund';
+import { Phase5OrdersInsuranceAccounting1726000000000 } from '../migrations/1726000000000-Phase5OrdersInsuranceAccounting';
 
 let db: DataSource | null = null;
 
@@ -116,8 +139,30 @@ export function getDataSource(): DataSource {
       SupportMessage,
       UserSetting,
       LegalDoc,
+      Order,
+      OrderItem,
+      OrderStatusEvent,
+      Shipment,
+      TrackingEvent,
+      PaymentSession,
+      StorePaymentSetting,
+      InsuranceOrder,
+      InsuranceFile,
+      InsuranceItem,
+      InsuranceStatusEvent,
+      RiskRule,
+      RiskFlag,
+      Branch,
+      Device,
+      Employee,
+      Drawer,
+      DrawerSession,
+      LedgerEntry,
+      Return,
+      ReturnItem,
+      Refund,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000],
   });
 
   return db;

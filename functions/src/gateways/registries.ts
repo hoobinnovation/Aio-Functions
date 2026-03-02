@@ -17,6 +17,7 @@ import {
   addressesList, addressesCreate, addressesUpdate, addressesDelete, addressesSetDefault,
   storesList, storesGet, storeContextGetMyStore, storeContextSetMyStore, mediaCreateUploadSpec, mediaFinalizeUpload,
 } from '../actions/client/clientActions';
+import { checkoutCreatePaymentSession, paymentsStatus, paymentsConfirm, ordersList, ordersGet, ordersTracking, ordersInvoiceUrl, ordersReorder, insuranceCreateDraft, insuranceAttachFiles, insuranceSubmit, insuranceGet, insuranceApproveQuote, insuranceRejectQuote, insuranceListMyOrders } from '../actions/client/ordersClientActions';
 import { cartGet, cartAddItem, cartUpdateQty, cartRemoveItem, cartClear, cartApplyCoupon, cartRemoveCoupon, shippingListMethods, shippingQuoteDelivery, checkoutPreview, notificationsRegisterToken, notificationsList, notificationsMarkRead, notificationsMarkAllRead, notificationsDelete, loyaltyGetDashboard, loyaltyListTransactions, loyaltyRedeem, walletGet, walletHistory, marketingCapture, alertsGetPrefs, alertsUpdatePrefs, alertsSubscribeBackInStock, recoGetSimilar, recoGetCartUpsell, postPurchaseGetNudges, supportCreateTicket, supportListTickets, supportGetTicket, supportAddMessage, supportCloseTicket, settingsGet, settingsUpdate, legalGetDocs } from '../actions/client/commerceClientActions';
 import { homeGetLayout, productFavoritesList, productFavoritesToggle, storeFavoritesList, storeFavoritesToggle } from '../actions/client/catalogClientActions';
 import {
@@ -25,6 +26,7 @@ import {
   adminStoreSettingsGet, adminStoreSettingsUpdate, adminCustomersList, adminCustomersGet, adminCustomersUpdate,
   adminCustomersDisable, adminCustomersSearch, adminMediaCreateUploadSpec, adminMediaFinalizeUpload,
 } from '../actions/admin/adminActions';
+import { adminOrdersList, adminOrdersGet, adminOrdersUpdateStatus, adminOrdersSetTracking, adminOrdersAddInternalNote, adminOrdersInvoiceUrl, adminOrdersTrackingGet, adminOrdersTrackingAddEvent, adminOrdersTrackingDeleteEvent, adminOrdersTrackingUpdateShipment, adminInsuranceList, adminInsuranceGet, adminInsuranceAddItem, adminInsuranceUpdateItem, adminInsuranceRemoveItem, adminInsuranceLockQuote, adminInsuranceSendQuote, adminInsuranceSetShipmentTracking, adminRiskRulesGet, adminRiskRulesUpdate, adminRiskFlaggedOrdersList, adminRiskFlaggedOrdersResolve, adminBranchesList, adminBranchesCreate, adminBranchesUpdate, adminBranchesDisable, adminDevicesList, adminDevicesCreate, adminDevicesUpdate, adminDevicesDisable, adminEmployeesList, adminEmployeesCreate, adminEmployeesUpdate, adminEmployeesDisable, adminDrawersList, adminDrawersCreate, adminDrawersUpdate, adminDrawersDisable, adminDrawerSessionsOpen, adminDrawerSessionsClose, adminAccountingKpis, adminAccountingLedger, adminAccountingCreateExpense, adminAccountingCreateAdjustment, adminAccountingCreatePOSSale, reportsOverview, reportsTopProducts, reportsOrdersByStatus, reportsInventorySummary, reportsCustomersSummary, reportsReturnsSummary, reportsLoyaltySummary, reportsCashbackSummary, adminReturnsList, adminReturnsGet, adminReturnsApprove, adminReturnsReject, adminReturnsRefundPartial, adminReturnsRefundFull, adminReturnsUpdateStatus } from '../actions/admin/ordersAdminActions';
 import { adminShippingMethodsList, adminShippingMethodsGet, adminShippingMethodsCreate, adminShippingMethodsUpdate, adminShippingMethodsDisable, adminDeliveryZonesList, adminDeliveryZonesGet, adminDeliveryZonesCreate, adminDeliveryZonesUpdate, adminDeliveryZonesDisable, adminCouponsList, adminCouponsGet, adminCouponsCreate, adminCouponsUpdate, adminCouponsDisable, adminCashbackList, adminCashbackGet, adminCashbackCreate, adminCashbackUpdate, adminCashbackDisable, adminDiscountsList, adminDiscountsGet, adminDiscountsCreate, adminDiscountsUpdate, adminDiscountsDisable, adminDiscountsPreviewAudienceCount, adminNotificationsSend, adminNotificationsList, adminLoyaltyGetSettings, adminLoyaltyUpdateSettings, adminLoyaltyAdjustUserPoints, adminLoyaltyTiersList, adminLoyaltyTiersCreate, adminLoyaltyTiersUpdate, adminLoyaltyTiersDisable, adminReportsAttributionOverview, adminReportsTopCampaigns, adminPostPurchaseFlowsList, adminPostPurchaseFlowsGet, adminPostPurchaseFlowsCreate, adminPostPurchaseFlowsUpdate, adminPostPurchaseFlowsDisable, adminPostPurchaseRunsList } from '../actions/admin/commerceAdminActions';
 import {
   adminCategoriesList, adminCategoriesGet, adminCategoriesCreate, adminCategoriesUpdate, adminCategoriesDisable,
@@ -189,3 +191,79 @@ add(registryAdmin,'adminLandingPagesDisable',adminLandingPagesDisable as ActionH
 add(registryAdmin,'adminSitemapRegenerate',adminSitemapRegenerate as ActionHandler);
 add(registryAdmin,'adminMediaCreateUploadSpec',adminMediaCreateUploadSpec as ActionHandler);
 add(registryAdmin,'adminMediaFinalizeUpload',adminMediaFinalizeUpload as ActionHandler);
+
+add(registryClient,'checkoutCreatePaymentSession',checkoutCreatePaymentSession as ActionHandler);
+add(registryClient,'paymentsStatus',paymentsStatus as ActionHandler);
+add(registryClient,'paymentsConfirm',paymentsConfirm as ActionHandler);
+add(registryClient,'ordersList',ordersList as ActionHandler);
+add(registryClient,'ordersGet',ordersGet as ActionHandler);
+add(registryClient,'ordersTracking',ordersTracking as ActionHandler);
+add(registryClient,'ordersInvoiceUrl',ordersInvoiceUrl as ActionHandler);
+add(registryClient,'ordersReorder',ordersReorder as ActionHandler);
+add(registryClient,'insuranceCreateDraft',insuranceCreateDraft as ActionHandler);
+add(registryClient,'insuranceAttachFiles',insuranceAttachFiles as ActionHandler);
+add(registryClient,'insuranceSubmit',insuranceSubmit as ActionHandler);
+add(registryClient,'insuranceGet',insuranceGet as ActionHandler);
+add(registryClient,'insuranceApproveQuote',insuranceApproveQuote as ActionHandler);
+add(registryClient,'insuranceRejectQuote',insuranceRejectQuote as ActionHandler);
+add(registryClient,'insuranceListMyOrders',insuranceListMyOrders as ActionHandler);
+add(registryAdmin,'adminOrdersList',adminOrdersList as ActionHandler);
+add(registryAdmin,'adminOrdersGet',adminOrdersGet as ActionHandler);
+add(registryAdmin,'adminOrdersUpdateStatus',adminOrdersUpdateStatus as ActionHandler);
+add(registryAdmin,'adminOrdersSetTracking',adminOrdersSetTracking as ActionHandler);
+add(registryAdmin,'adminOrdersAddInternalNote',adminOrdersAddInternalNote as ActionHandler);
+add(registryAdmin,'adminOrdersInvoiceUrl',adminOrdersInvoiceUrl as ActionHandler);
+add(registryAdmin,'adminOrdersTrackingGet',adminOrdersTrackingGet as ActionHandler);
+add(registryAdmin,'adminOrdersTrackingAddEvent',adminOrdersTrackingAddEvent as ActionHandler);
+add(registryAdmin,'adminOrdersTrackingDeleteEvent',adminOrdersTrackingDeleteEvent as ActionHandler);
+add(registryAdmin,'adminOrdersTrackingUpdateShipment',adminOrdersTrackingUpdateShipment as ActionHandler);
+add(registryAdmin,'adminInsuranceList',adminInsuranceList as ActionHandler);
+add(registryAdmin,'adminInsuranceGet',adminInsuranceGet as ActionHandler);
+add(registryAdmin,'adminInsuranceAddItem',adminInsuranceAddItem as ActionHandler);
+add(registryAdmin,'adminInsuranceUpdateItem',adminInsuranceUpdateItem as ActionHandler);
+add(registryAdmin,'adminInsuranceRemoveItem',adminInsuranceRemoveItem as ActionHandler);
+add(registryAdmin,'adminInsuranceLockQuote',adminInsuranceLockQuote as ActionHandler);
+add(registryAdmin,'adminInsuranceSendQuote',adminInsuranceSendQuote as ActionHandler);
+add(registryAdmin,'adminInsuranceSetShipmentTracking',adminInsuranceSetShipmentTracking as ActionHandler);
+add(registryAdmin,'adminRiskRulesGet',adminRiskRulesGet as ActionHandler);
+add(registryAdmin,'adminRiskRulesUpdate',adminRiskRulesUpdate as ActionHandler);
+add(registryAdmin,'adminRiskFlaggedOrdersList',adminRiskFlaggedOrdersList as ActionHandler);
+add(registryAdmin,'adminRiskFlaggedOrdersResolve',adminRiskFlaggedOrdersResolve as ActionHandler);
+add(registryAdmin,'adminBranchesList',adminBranchesList as ActionHandler);
+add(registryAdmin,'adminBranchesCreate',adminBranchesCreate as ActionHandler);
+add(registryAdmin,'adminBranchesUpdate',adminBranchesUpdate as ActionHandler);
+add(registryAdmin,'adminBranchesDisable',adminBranchesDisable as ActionHandler);
+add(registryAdmin,'adminDevicesList',adminDevicesList as ActionHandler);
+add(registryAdmin,'adminDevicesCreate',adminDevicesCreate as ActionHandler);
+add(registryAdmin,'adminDevicesUpdate',adminDevicesUpdate as ActionHandler);
+add(registryAdmin,'adminDevicesDisable',adminDevicesDisable as ActionHandler);
+add(registryAdmin,'adminEmployeesList',adminEmployeesList as ActionHandler);
+add(registryAdmin,'adminEmployeesCreate',adminEmployeesCreate as ActionHandler);
+add(registryAdmin,'adminEmployeesUpdate',adminEmployeesUpdate as ActionHandler);
+add(registryAdmin,'adminEmployeesDisable',adminEmployeesDisable as ActionHandler);
+add(registryAdmin,'adminDrawersList',adminDrawersList as ActionHandler);
+add(registryAdmin,'adminDrawersCreate',adminDrawersCreate as ActionHandler);
+add(registryAdmin,'adminDrawersUpdate',adminDrawersUpdate as ActionHandler);
+add(registryAdmin,'adminDrawersDisable',adminDrawersDisable as ActionHandler);
+add(registryAdmin,'adminDrawerSessionsOpen',adminDrawerSessionsOpen as ActionHandler);
+add(registryAdmin,'adminDrawerSessionsClose',adminDrawerSessionsClose as ActionHandler);
+add(registryAdmin,'adminAccountingKpis',adminAccountingKpis as ActionHandler);
+add(registryAdmin,'adminAccountingLedger',adminAccountingLedger as ActionHandler);
+add(registryAdmin,'adminAccountingCreateExpense',adminAccountingCreateExpense as ActionHandler);
+add(registryAdmin,'adminAccountingCreateAdjustment',adminAccountingCreateAdjustment as ActionHandler);
+add(registryAdmin,'adminAccountingCreatePOSSale',adminAccountingCreatePOSSale as ActionHandler);
+add(registryAdmin,'reportsOverview',reportsOverview as ActionHandler);
+add(registryAdmin,'reportsTopProducts',reportsTopProducts as ActionHandler);
+add(registryAdmin,'reportsOrdersByStatus',reportsOrdersByStatus as ActionHandler);
+add(registryAdmin,'reportsInventorySummary',reportsInventorySummary as ActionHandler);
+add(registryAdmin,'reportsCustomersSummary',reportsCustomersSummary as ActionHandler);
+add(registryAdmin,'reportsReturnsSummary',reportsReturnsSummary as ActionHandler);
+add(registryAdmin,'reportsLoyaltySummary',reportsLoyaltySummary as ActionHandler);
+add(registryAdmin,'reportsCashbackSummary',reportsCashbackSummary as ActionHandler);
+add(registryAdmin,'adminReturnsList',adminReturnsList as ActionHandler);
+add(registryAdmin,'adminReturnsGet',adminReturnsGet as ActionHandler);
+add(registryAdmin,'adminReturnsApprove',adminReturnsApprove as ActionHandler);
+add(registryAdmin,'adminReturnsReject',adminReturnsReject as ActionHandler);
+add(registryAdmin,'adminReturnsRefundPartial',adminReturnsRefundPartial as ActionHandler);
+add(registryAdmin,'adminReturnsRefundFull',adminReturnsRefundFull as ActionHandler);
+add(registryAdmin,'adminReturnsUpdateStatus',adminReturnsUpdateStatus as ActionHandler);
