@@ -1,7 +1,10 @@
 import { ActionHandler } from '../../types';
 import { genericActionHandler } from '../shared';
+import { mediaActionHandlers } from '../../../modules/media/actions';
 
 export const adminMe: ActionHandler = genericActionHandler('admin', 'adminMe');
+export const adminMediaCreateUploadSpec: ActionHandler = mediaActionHandlers.adminMediaCreateUploadSpec;
+export const adminMediaFinalizeUpload: ActionHandler = mediaActionHandlers.adminMediaFinalizeUpload;
 export const adminStoresList: ActionHandler = genericActionHandler('admin', 'adminStoresList');
 export const adminStoresGet: ActionHandler = genericActionHandler('admin', 'adminStoresGet');
 export const adminStoresCreate: ActionHandler = genericActionHandler('admin', 'adminStoresCreate');
@@ -170,6 +173,8 @@ export const adminReturnsUpdateStatus: ActionHandler = genericActionHandler('adm
 
 export const handlers: Record<string, ActionHandler> = {
   adminMe,
+  adminMediaCreateUploadSpec,
+  adminMediaFinalizeUpload,
   adminStoresList,
   adminStoresGet,
   adminStoresCreate,

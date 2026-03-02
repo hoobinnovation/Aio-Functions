@@ -76,4 +76,6 @@ export const clientContracts: Record<string, ActionContract> = {
   settingsGet: { validate: (payload: unknown) => validatePayload(Joi.object({}).unknown(true), payload ?? {}) },
   settingsUpdate: { validate: (payload: unknown) => validatePayload(Joi.object({}).unknown(true), payload ?? {}) },
   legalGetDocs: { validate: (payload: unknown) => validatePayload(Joi.object({}).unknown(true), payload ?? {}) },
+  mediaCreateUploadSpec: { validate: (payload: unknown) => validatePayload(Joi.object({}).unknown(true), payload ?? {}) },
+  mediaFinalizeUpload: { validate: (payload: unknown) => validatePayload(Joi.object({}).unknown(true), payload ?? {}) },
 };

@@ -1,5 +1,6 @@
 import { ActionHandler } from '../../types';
 import { genericActionHandler } from '../shared';
+import { mediaActionHandlers } from '../../../modules/media/actions';
 
 export const authEnsureUserProfile: ActionHandler = genericActionHandler('client', 'authEnsureUserProfile');
 export const profileGet: ActionHandler = genericActionHandler('client', 'profileGet');
@@ -72,6 +73,8 @@ export const supportCloseTicket: ActionHandler = genericActionHandler('client', 
 export const settingsGet: ActionHandler = genericActionHandler('client', 'settingsGet');
 export const settingsUpdate: ActionHandler = genericActionHandler('client', 'settingsUpdate');
 export const legalGetDocs: ActionHandler = genericActionHandler('client', 'legalGetDocs');
+export const mediaCreateUploadSpec: ActionHandler = mediaActionHandlers.mediaCreateUploadSpec;
+export const mediaFinalizeUpload: ActionHandler = mediaActionHandlers.mediaFinalizeUpload;
 
 export const handlers: Record<string, ActionHandler> = {
   authEnsureUserProfile,
@@ -145,4 +148,6 @@ export const handlers: Record<string, ActionHandler> = {
   settingsGet,
   settingsUpdate,
   legalGetDocs,
+  mediaCreateUploadSpec,
+  mediaFinalizeUpload,
 };

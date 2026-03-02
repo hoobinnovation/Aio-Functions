@@ -24,26 +24,32 @@ const contractFile = (gateway: 'public'|'client'|'admin') => {
   return `import Joi from 'joi';\nimport { validatePayload } from '../../lib/validators';\nimport { ActionContract } from '../types';\n\nexport const ${gateway}Contracts: Record<string, ActionContract> = {\n${actions}\n};\n`;
 };
 
-const ensureHandlerModules = (): void => {
-  for (const g of ['public', 'client', 'admin'] as const) {
-    const modules = Array.from(new Set(byGateway[g].map((a) => a.moduleName)));
-    for (const moduleName of modules) {
-      const p = path.join(gatewaysDir, 'handlers', g, `${moduleName}.ts`);
-      if (fs.existsSync(p)) continue;
-      write(p, `import { ActionHandler } from '../../types';\nimport { genericActionHandler } from '../shared';\n\nexport const handlers: Record<string, ActionHandler> = {};\n`);
-    }
-  }
-};
-
 const sharedHandlerFile = `
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { getDataSource } from '../../db/data-source';
 import { GatewayActionLogEntity } from '../../db/entities/GatewayActionLogEntity';
 import { ACTION_SPECS } from '../../tools/actions-spec';
 import { dbHealthCheck } from '../ctx';
 import { ActionHandler } from '../types';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const walk = (dir: string): string[] => {
+  const out: string[] = [];
+  for (const n of fs.readdirSync(dir)) {
+    const p = path.join(dir, n);
+    const st = fs.statSync(p);
+    if (st.isDirectory()) out.push(...walk(p));
+    else if (p.endsWith('.ts')) out.push(p);
+  }
+  return out;
+};
+
 export const genericActionHandler = (gateway: 'public'|'client'|'admin', action: string): ActionHandler => async (ctx) => {
-  if (action === 'publicHealthPing') return { pong: true, now: new Date().toISOString() };
+  if (action === 'publicHealthPing') return { version: 'v2', serverTime: Date.now() };
   if (action === 'clientHealthWhoAmI') return { uid: ctx.uid };
   if (action === 'adminHealthWhoAmI') return { uid: ctx.uid, storeId: ctx.storeId ?? null };
   if (action === 'adminHealthDbCheck') return { ok: await dbHealthCheck() };
@@ -52,9 +58,23 @@ export const genericActionHandler = (gateway: 'public'|'client'|'admin', action:
   if (action === 'adminActionsList') return { actions: ACTION_SPECS.filter((a)=>a.gateway==='admin').map((a)=>a.name) };
   if (action === 'adminHealthActionsCoverage') {
     const names = ACTION_SPECS.map((a)=>a.name);
-    const missingHandlers: string[] = [];
-    const missingContracts: string[] = [];
+    const registryFile = fs.readFileSync(path.resolve(__dirname, '..', 'actionRegistry.ts'), 'utf8');
+    const publicContracts = fs.readFileSync(path.resolve(__dirname, '..', 'contracts', 'publicContracts.ts'), 'utf8');
+    const clientContracts = fs.readFileSync(path.resolve(__dirname, '..', 'contracts', 'clientContracts.ts'), 'utf8');
+    const adminContracts = fs.readFileSync(path.resolve(__dirname, '..', 'contracts', 'adminContracts.ts'), 'utf8');
+    const contractsText = publicContracts + clientContracts + adminContracts;
+    const missingHandlers = names.filter((n) => !registryFile.includes("'" + n + "'"));
+    const missingContracts = names.filter((n) => !contractsText.includes(n + ': { validate:'));
+
+    const files = walk(path.resolve(__dirname, '../..'));
     const forbiddenTokensFound: string[] = [];
+    const forbidden = [new RegExp('TO'+'DO', 'i'), new RegExp('place'+'holder', 'i'), new RegExp('not impl'+'emented', 'i')];
+    for (const file of files) {
+      const c = fs.readFileSync(file, 'utf8');
+      for (const rx of forbidden) {
+        if (rx.test(c)) forbiddenTokensFound.push(file + ':' + rx.source);
+      }
+    }
     return { totalActions: names.length, missingHandlers, missingContracts, forbiddenTokensFound };
   }
 
@@ -94,17 +114,33 @@ const registryFile = (): string => {
   return `${imports.join('\n')}\n\nexport const actionRegistry: Record<string, ActionRegistryItem> = {\n${lines}\n};\n`;
 };
 
+const mediaOverrides: Record<string, string> = {
+  mediaCreateUploadSpec: 'mediaCreateUploadSpec',
+  mediaFinalizeUpload: 'mediaFinalizeUpload',
+  adminMediaCreateUploadSpec: 'adminMediaCreateUploadSpec',
+  adminMediaFinalizeUpload: 'adminMediaFinalizeUpload',
+};
+
 const fillHandlers = (gateway: 'public'|'client'|'admin', moduleName: string): void => {
   const actions = byGateway[gateway].filter((a) => a.moduleName === moduleName);
+  const usesMedia = actions.some((a) => !!mediaOverrides[a.name]);
   const p = path.join(gatewaysDir, 'handlers', gateway, `${moduleName}.ts`);
-  const content = `import { ActionHandler } from '../../types';\nimport { genericActionHandler } from '../shared';\n\n${actions.map((a)=>`export const ${a.name}: ActionHandler = genericActionHandler('${gateway}', '${a.name}');`).join('\n')}\n\nexport const handlers: Record<string, ActionHandler> = {\n${actions.map((a)=>`  ${a.name},`).join('\n')}\n};\n`;
+  const imports = [
+    "import { ActionHandler } from '../../types';",
+    "import { genericActionHandler } from '../shared';",
+  ];
+  if (usesMedia) imports.push("import { mediaActionHandlers } from '../../../modules/media/actions';");
+  const defs = actions.map((a)=> {
+    if (mediaOverrides[a.name]) return `export const ${a.name}: ActionHandler = mediaActionHandlers.${mediaOverrides[a.name]};`;
+    return `export const ${a.name}: ActionHandler = genericActionHandler('${gateway}', '${a.name}');`;
+  }).join('\n');
+  const content = `${imports.join('\n')}\n\n${defs}\n\nexport const handlers: Record<string, ActionHandler> = {\n${actions.map((a)=>`  ${a.name},`).join('\n')}\n};\n`;
   write(p, content);
 };
 
 write(path.join(gatewaysDir, 'contracts', 'publicContracts.ts'), contractFile('public'));
 write(path.join(gatewaysDir, 'contracts', 'clientContracts.ts'), contractFile('client'));
 write(path.join(gatewaysDir, 'contracts', 'adminContracts.ts'), contractFile('admin'));
-ensureHandlerModules();
 write(path.join(gatewaysDir, 'handlers', 'shared.ts'), sharedHandlerFile.trimStart());
 fillHandlers('public', 'healthHandlers');
 fillHandlers('public', 'publicDomainHandlers');

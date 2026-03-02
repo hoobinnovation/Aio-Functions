@@ -59,6 +59,8 @@ import { OrderAttributionEntity } from './entities/OrderAttributionEntity';
 import { AddInsuranceAccountingAttribution1780000000000 } from './migrations/1780000000000-AddInsuranceAccountingAttribution';
 import { GatewayActionLogEntity } from './entities/GatewayActionLogEntity';
 import { AddGatewayActionLogs1790000000000 } from './migrations/1790000000000-AddGatewayActionLogs';
+import { MediaAssetEntity } from './entities/MediaAssetEntity';
+import { AddMediaAssets1800000000000 } from './migrations/1800000000000-AddMediaAssets';
 
 const requiredEnv = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS', 'DB_NAME'] as const;
 
@@ -137,8 +139,9 @@ const createDataSource = (): DataSource => {
       MarketingTouchpointEntity,
       OrderAttributionEntity,
       GatewayActionLogEntity,
+      MediaAssetEntity,
     ],
-    migrations: [InitCatalogBrowse1750000000000, AddNotificationsLoyalty1760000000000, AddTrackingHomeWalletDiscounts1770000000000, AddInsuranceAccountingAttribution1780000000000, AddGatewayActionLogs1790000000000],
+    migrations: [InitCatalogBrowse1750000000000, AddNotificationsLoyalty1760000000000, AddTrackingHomeWalletDiscounts1770000000000, AddInsuranceAccountingAttribution1780000000000, AddGatewayActionLogs1790000000000, AddMediaAssets1800000000000],
     synchronize: false,
     logging: false,
   });
