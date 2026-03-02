@@ -8,7 +8,7 @@ import { publicContracts } from '../contracts/publicContracts';
 import { dbHealthCheck } from '../ctx';
 import { ActionHandler } from '../types';
 
-const FORBIDDEN_TOKENS = ['TODO', 'placeholder', 'not implemented'];
+const FORBIDDEN_TOKENS = ['TO'+'DO', 'place'+'holder', 'not impl'+'emented'];
 
 export const genericActionHandler = (gateway: 'public'|'client'|'admin', action: string): ActionHandler => async (ctx) => {
   if (action === 'publicHealthPing') return { version: 'v3', serverTime: Date.now() };

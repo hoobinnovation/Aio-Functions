@@ -18,6 +18,7 @@ export const mediaCreateUploadSpec: ActionHandler = async (ctx) => {
 
 export const mediaFinalizeUpload: ActionHandler = async (ctx) => {
   if (!ctx.uid) invalidArgument('Authentication required.');
+  const uid = ctx.uid as string;
   const p = asObj(ctx.payload);
   const mediaId = String(p.mediaId ?? '');
   const contentType = String(p.contentType ?? '');
