@@ -57,6 +57,8 @@ import { PosOrderEntity } from './entities/PosOrderEntity';
 import { MarketingTouchpointEntity } from './entities/MarketingTouchpointEntity';
 import { OrderAttributionEntity } from './entities/OrderAttributionEntity';
 import { AddInsuranceAccountingAttribution1780000000000 } from './migrations/1780000000000-AddInsuranceAccountingAttribution';
+import { GatewayActionLogEntity } from './entities/GatewayActionLogEntity';
+import { AddGatewayActionLogs1790000000000 } from './migrations/1790000000000-AddGatewayActionLogs';
 
 const requiredEnv = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS', 'DB_NAME'] as const;
 
@@ -134,8 +136,9 @@ const createDataSource = (): DataSource => {
       PosOrderEntity,
       MarketingTouchpointEntity,
       OrderAttributionEntity,
+      GatewayActionLogEntity,
     ],
-    migrations: [InitCatalogBrowse1750000000000, AddNotificationsLoyalty1760000000000, AddTrackingHomeWalletDiscounts1770000000000, AddInsuranceAccountingAttribution1780000000000],
+    migrations: [InitCatalogBrowse1750000000000, AddNotificationsLoyalty1760000000000, AddTrackingHomeWalletDiscounts1770000000000, AddInsuranceAccountingAttribution1780000000000, AddGatewayActionLogs1790000000000],
     synchronize: false,
     logging: false,
   });
