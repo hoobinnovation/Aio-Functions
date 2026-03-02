@@ -1,0 +1,18 @@
+export const CLIENT_ACTIONS_SOT = [
+  'clientHealthWhoAmI','clientActionsList','authEnsureUserProfile','profileGet','profileUpdate','accountDeleteRequest',
+  'addressesList','addressesCreate','addressesUpdate','addressesDelete','addressesSetDefault',
+  'storesList','storesGet','storeContextGetMyStore','storeContextSetMyStore',
+  'homeGetLayout','productFavoritesList','productFavoritesToggle','storeFavoritesList','storeFavoritesToggle',
+  'cartGet','cartAddItem','cartUpdateQty','cartRemoveItem','cartClear','cartApplyCoupon','cartRemoveCoupon',
+  'shippingListMethods','shippingQuoteDelivery','checkoutPreview',
+  'notificationsRegisterToken','notificationsList','notificationsMarkRead','notificationsMarkAllRead','notificationsDelete',
+  'loyaltyGetDashboard','loyaltyListTransactions','loyaltyRedeem',
+  'walletGet','walletHistory',
+  'marketingCapture',
+  'alertsGetPrefs','alertsUpdatePrefs','alertsSubscribeBackInStock',
+  'recoGetSimilar','recoGetCartUpsell',
+  'postPurchaseGetNudges',
+  'supportCreateTicket','supportListTickets','supportGetTicket','supportAddMessage','supportCloseTicket',
+  'settingsGet','settingsUpdate','legalGetDocs',
+  'mediaCreateUploadSpec','mediaFinalizeUpload',
+] as const;
