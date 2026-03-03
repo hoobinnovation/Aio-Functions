@@ -1,4 +1,5 @@
 import { publicHealthPing, publicActionsList } from '../actions/public/publicActions';
+import { publicDevSeedDummyData } from '../actions/handlers/public/dev/publicDevSeedDummyData';
 import {
   publicCatalogGetHome,
   publicCatalogGetCategories,
@@ -50,6 +51,7 @@ const add = (r: Map<string, ActionHandler>, key: string, handler: ActionHandler)
 export const registryPublic = m();
 add(registryPublic,'publicHealthPing', publicHealthPing as ActionHandler);
 add(registryPublic,'publicActionsList', publicActionsList as ActionHandler);
+add(registryPublic,'publicDevSeedDummyData', publicDevSeedDummyData as ActionHandler);
 add(registryPublic,'publicCatalogGetHome', publicCatalogGetHome as ActionHandler);
 add(registryPublic,'publicCatalogGetCategories', publicCatalogGetCategories as ActionHandler);
 add(registryPublic,'publicCatalogListProducts', publicCatalogListProducts as ActionHandler);

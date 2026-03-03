@@ -285,3 +285,21 @@ ACTION_SPECS.adminReturnsUpdateStatus={schema:Joi.any().optional(),notes:'phase5
 ACTION_SPECS.paymentsStatus={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.paymentsConfirm={schema:Joi.object({providerSessionId:Joi.string().required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.ordersGet={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
+
+ACTION_SPECS.publicDevSeedDummyData = {
+  schema: Joi.object({
+    seedKey: Joi.string().required(),
+    mode: Joi.string().valid('reset', 'upsert').optional(),
+    storeId: Joi.string().optional(),
+    sizes: Joi.object({
+      categories: Joi.number().integer().min(1).max(200).optional(),
+      products: Joi.number().integer().min(1).max(1000).optional(),
+      variantsPerProduct: Joi.number().integer().min(1).max(20).optional(),
+      customers: Joi.number().integer().min(1).max(200).optional(),
+      orders: Joi.number().integer().min(1).max(1000).optional(),
+      insuranceOrders: Joi.number().integer().min(1).max(300).optional(),
+    }).optional(),
+  }).required(),
+  notes: 'Dev-only seed action for local/staging',
+  errorCodes: ['VALIDATION_ERROR', 'DEV_ONLY', 'SEED_KEY_INVALID', 'SEED_RATE_LIMIT', 'SEED_FAILED'],
+};
