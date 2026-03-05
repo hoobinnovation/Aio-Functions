@@ -22,7 +22,8 @@ export async function executeWithProtocol(fn: () => Promise<unknown>, meta: { re
 }
 
 export function validateEnvelope(data: unknown): EnvelopeRequest {
-  return validateOrThrow(envelopeSchema, data);
+
+    return validateOrThrow(envelopeSchema, data);
 }
 
 export function validateActionPayload(action: string, payload: unknown): unknown {

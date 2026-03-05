@@ -11,12 +11,16 @@ export const adminGateway = onCall(async (request: any) => {
   const logger = createLogger(`admin:${meta.requestId}`);
   return executeWithProtocol(async () => {
     if (!request.auth?.uid) throw new AppError('UNAUTHENTICATED', 'Authentication required');
+      if (request.data.storeId && !request.data.payload.storeId  ){
+          request.data.payload.storeId = request.data.storeId;
+      }
     const envelope = validateEnvelope(request.data);
     const handler = registryAdmin.get(envelope.action);
     if (!handler) throw new AppError('ACTION_NOT_FOUND', `Unknown action ${envelope.action}`);
     const payload = validateActionPayload(envelope.action, envelope.payload);
     const db = await getInitializedDataSource();
-    const rbacStoreId = envelope.storeId || (payload && typeof payload === 'object' ? (payload as any).storeId : undefined);
+
+    const rbacStoreId =envelope.storeId || (payload && typeof payload === 'object' ? (payload as any).storeId : undefined);
     await rbacCheckOrThrow(db, request.auth.uid, envelope.action, rbacStoreId);
     return handler({
       requestId: meta.requestId,

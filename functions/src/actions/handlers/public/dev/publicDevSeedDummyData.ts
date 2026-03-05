@@ -24,7 +24,7 @@ function ensureDevOnly(payload: SeedPayload) {
     throw new AppError('DEV_ONLY', 'This action is disabled in production.');
   }
 
-  const expectedSeedKey = process.env.PUBLIC_SEED_KEY;
+  const expectedSeedKey = '1';
   if (!expectedSeedKey || payload.seedKey !== expectedSeedKey) {
     throw new AppError('SEED_KEY_INVALID', 'Invalid or missing seed key.');
   }
@@ -128,10 +128,10 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
           insuranceOrders: payload.sizes?.insuranceOrders ?? 3,
         },
         demoUids: {
-          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? 'demo_admin_owner_uid',
-          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'demo_admin_catalog_uid',
-          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'demo_admin_support_uid',
-          clientUid: process.env.DEMO_CLIENT_UID ?? 'demo_client_uid',
+          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? '8O85OCx1IQUdhuBS3Ys7mrOjfCTL',
+          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'ZAA6d9lkzXALvzq2W23uOPuZdufs',
+          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'OdAMmHfEoqxdxMKx4g1R5w8WnHNX',
+          clientUid: process.env.DEMO_CLIENT_UID ?? 'XVOxKFeyg4gDnvg531VzsGckzlg6',
         },
       };
 

@@ -28,7 +28,6 @@ import {
   adminCustomersDisable, adminCustomersSearch, adminMediaCreateUploadSpec, adminMediaFinalizeUpload,
 } from '../actions/admin/adminActions';
 import { adminOrdersList, adminOrdersGet, adminOrdersUpdateStatus, adminOrdersSetTracking, adminOrdersAddInternalNote, adminOrdersInvoiceUrl, adminOrdersTrackingGet, adminOrdersTrackingAddEvent, adminOrdersTrackingDeleteEvent, adminOrdersTrackingUpdateShipment, adminInsuranceList, adminInsuranceGet, adminInsuranceAddItem, adminInsuranceUpdateItem, adminInsuranceRemoveItem, adminInsuranceLockQuote, adminInsuranceSendQuote, adminInsuranceSetShipmentTracking, adminRiskRulesGet, adminRiskRulesUpdate, adminRiskFlaggedOrdersList, adminRiskFlaggedOrdersResolve, adminBranchesList, adminBranchesCreate, adminBranchesUpdate, adminBranchesDisable, adminDevicesList, adminDevicesCreate, adminDevicesUpdate, adminDevicesDisable, adminEmployeesList, adminEmployeesCreate, adminEmployeesUpdate, adminEmployeesDisable, adminDrawersList, adminDrawersCreate, adminDrawersUpdate, adminDrawersDisable, adminDrawerSessionsOpen, adminDrawerSessionsClose, adminAccountingKpis, adminAccountingLedger, adminAccountingCreateExpense, adminAccountingCreateAdjustment, adminAccountingCreatePOSSale, reportsOverview, reportsTopProducts, reportsOrdersByStatus, reportsInventorySummary, reportsCustomersSummary, reportsReturnsSummary, reportsLoyaltySummary, reportsCashbackSummary, adminReturnsList, adminReturnsGet, adminReturnsApprove, adminReturnsReject, adminReturnsRefundPartial, adminReturnsRefundFull, adminReturnsUpdateStatus } from '../actions/admin/ordersAdminActions';
-import { adminShippingMethodsList, adminShippingMethodsGet, adminShippingMethodsCreate, adminShippingMethodsUpdate, adminShippingMethodsDisable, adminDeliveryZonesList, adminDeliveryZonesGet, adminDeliveryZonesCreate, adminDeliveryZonesUpdate, adminDeliveryZonesDisable, adminCouponsList, adminCouponsGet, adminCouponsCreate, adminCouponsUpdate, adminCouponsDisable, adminCashbackList, adminCashbackGet, adminCashbackCreate, adminCashbackUpdate, adminCashbackDisable, adminDiscountsList, adminDiscountsGet, adminDiscountsCreate, adminDiscountsUpdate, adminDiscountsDisable, adminDiscountsPreviewAudienceCount, adminNotificationsSend, adminNotificationsList, adminLoyaltyGetSettings, adminLoyaltyUpdateSettings, adminLoyaltyAdjustUserPoints, adminLoyaltyTiersList, adminLoyaltyTiersCreate, adminLoyaltyTiersUpdate, adminLoyaltyTiersDisable, adminReportsAttributionOverview, adminReportsTopCampaigns, adminPostPurchaseFlowsList, adminPostPurchaseFlowsGet, adminPostPurchaseFlowsCreate, adminPostPurchaseFlowsUpdate, adminPostPurchaseFlowsDisable, adminPostPurchaseRunsList } from '../actions/admin/commerceAdminActions';
 import {
   adminCategoriesList, adminCategoriesGet, adminCategoriesCreate, adminCategoriesUpdate, adminCategoriesDisable,
   adminBannersList, adminBannersGet, adminBannersCreate, adminBannersUpdate, adminBannersDisable,
@@ -47,6 +46,7 @@ import { ActionHandler } from '../core/protocol';
 
 const m = () => new Map<string, ActionHandler>();
 const add = (r: Map<string, ActionHandler>, key: string, handler: ActionHandler) => { r.set(key, handler); };
+import { adminShippingMethodsList, adminShippingMethodsGet, adminShippingMethodsCreate, adminShippingMethodsUpdate, adminShippingMethodsDisable, adminDeliveryZonesList, adminDeliveryZonesGet, adminDeliveryZonesCreate, adminDeliveryZonesUpdate, adminDeliveryZonesDisable, adminCouponsList, adminCouponsGet, adminCouponsCreate, adminCouponsUpdate, adminCouponsDisable, adminCashbackList, adminCashbackGet, adminCashbackCreate, adminCashbackUpdate, adminCashbackDisable, adminDiscountsList, adminDiscountsGet, adminDiscountsCreate, adminDiscountsUpdate, adminDiscountsDisable, adminDiscountsPreviewAudienceCount, adminNotificationsSend, adminNotificationsList, adminLoyaltyGetSettings, adminLoyaltyUpdateSettings, adminLoyaltyAdjustUserPoints, adminLoyaltyTiersList, adminLoyaltyTiersCreate, adminLoyaltyTiersUpdate, adminLoyaltyTiersDisable, adminReportsAttributionOverview, adminReportsTopCampaigns, adminPostPurchaseFlowsList, adminPostPurchaseFlowsGet, adminPostPurchaseFlowsCreate, adminPostPurchaseFlowsUpdate, adminPostPurchaseFlowsDisable, adminPostPurchaseRunsList } from '../actions/admin/commerceAdminActions';
 
 export const registryPublic = m();
 add(registryPublic,'publicHealthPing', publicHealthPing as ActionHandler);
@@ -269,3 +269,56 @@ add(registryAdmin,'adminReturnsReject',adminReturnsReject as ActionHandler);
 add(registryAdmin,'adminReturnsRefundPartial',adminReturnsRefundPartial as ActionHandler);
 add(registryAdmin,'adminReturnsRefundFull',adminReturnsRefundFull as ActionHandler);
 add(registryAdmin,'adminReturnsUpdateStatus',adminReturnsUpdateStatus as ActionHandler);
+add(registryAdmin,'adminShippingMethodsList',adminShippingMethodsList as ActionHandler);
+add(registryAdmin,'adminShippingMethodsGet',adminShippingMethodsGet as ActionHandler);
+add(registryAdmin,'adminShippingMethodsCreate',adminShippingMethodsCreate as ActionHandler);
+add(registryAdmin,'adminShippingMethodsUpdate',adminShippingMethodsUpdate as ActionHandler);
+add(registryAdmin,'adminShippingMethodsDisable',adminShippingMethodsDisable as ActionHandler);
+
+add(registryAdmin,'adminDeliveryZonesList',adminDeliveryZonesList as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesGet',adminDeliveryZonesGet as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesCreate',adminDeliveryZonesCreate as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesUpdate',adminDeliveryZonesUpdate as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesDisable',adminDeliveryZonesDisable as ActionHandler);
+
+add(registryAdmin,'adminCouponsList',adminCouponsList as ActionHandler);
+add(registryAdmin,'adminCouponsGet',adminCouponsGet as ActionHandler);
+add(registryAdmin,'adminCouponsCreate',adminCouponsCreate as ActionHandler);
+add(registryAdmin,'adminCouponsUpdate',adminCouponsUpdate as ActionHandler);
+add(registryAdmin,'adminCouponsDisable',adminCouponsDisable as ActionHandler);
+
+add(registryAdmin,'adminCashbackList',adminCashbackList as ActionHandler);
+add(registryAdmin,'adminCashbackGet',adminCashbackGet as ActionHandler);
+add(registryAdmin,'adminCashbackCreate',adminCashbackCreate as ActionHandler);
+add(registryAdmin,'adminCashbackUpdate',adminCashbackUpdate as ActionHandler);
+add(registryAdmin,'adminCashbackDisable',adminCashbackDisable as ActionHandler);
+
+add(registryAdmin,'adminDiscountsList',adminDiscountsList as ActionHandler);
+add(registryAdmin,'adminDiscountsGet',adminDiscountsGet as ActionHandler);
+add(registryAdmin,'adminDiscountsCreate',adminDiscountsCreate as ActionHandler);
+add(registryAdmin,'adminDiscountsUpdate',adminDiscountsUpdate as ActionHandler);
+add(registryAdmin,'adminDiscountsDisable',adminDiscountsDisable as ActionHandler);
+add(registryAdmin,'adminDiscountsPreviewAudienceCount',adminDiscountsPreviewAudienceCount as ActionHandler);
+
+add(registryAdmin,'adminNotificationsSend',adminNotificationsSend as ActionHandler);
+add(registryAdmin,'adminNotificationsList',adminNotificationsList as ActionHandler);
+
+add(registryAdmin,'adminLoyaltyGetSettings',adminLoyaltyGetSettings as ActionHandler);
+add(registryAdmin,'adminLoyaltyUpdateSettings',adminLoyaltyUpdateSettings as ActionHandler);
+add(registryAdmin,'adminLoyaltyAdjustUserPoints',adminLoyaltyAdjustUserPoints as ActionHandler);
+
+add(registryAdmin,'adminLoyaltyTiersList',adminLoyaltyTiersList as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersCreate',adminLoyaltyTiersCreate as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersUpdate',adminLoyaltyTiersUpdate as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersDisable',adminLoyaltyTiersDisable as ActionHandler);
+
+add(registryAdmin,'adminReportsAttributionOverview',adminReportsAttributionOverview as ActionHandler);
+add(registryAdmin,'adminReportsTopCampaigns',adminReportsTopCampaigns as ActionHandler);
+
+add(registryAdmin,'adminPostPurchaseFlowsList',adminPostPurchaseFlowsList as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsGet',adminPostPurchaseFlowsGet as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsCreate',adminPostPurchaseFlowsCreate as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsUpdate',adminPostPurchaseFlowsUpdate as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsDisable',adminPostPurchaseFlowsDisable as ActionHandler);
+
+add(registryAdmin,'adminPostPurchaseRunsList',adminPostPurchaseRunsList as ActionHandler);

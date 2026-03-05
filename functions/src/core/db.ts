@@ -74,22 +74,22 @@ import { Return } from '../entities/Return';
 import { ReturnItem } from '../entities/ReturnItem';
 import { Refund } from '../entities/Refund';
 import { Phase5OrdersInsuranceAccounting1726000000000 } from '../migrations/1726000000000-Phase5OrdersInsuranceAccounting';
+import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
 
-export function getDataSource(): DataSource {
+export function getDataSource(sync=false): DataSource {
   if (db) return db;
 
   db = new DataSource({
     type: 'mysql',
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT || 3306),
-    username: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
-    ssl: process.env.DB_SSL === 'true' ? {} : undefined,
-    synchronize: false,
-    logging: false,
+    host: PROD ?'' :'localhost',
+    port: Number(PROD ? '':3306),
+    username: PROD?'':'root',
+    password: PROD?'':'',
+    database: PROD?'':'aio',
+    synchronize: sync,
+    logging: !PROD,
     entities: [
       Store,
       AdminUser,
@@ -168,8 +168,8 @@ export function getDataSource(): DataSource {
   return db;
 }
 
-export async function getInitializedDataSource(): Promise<DataSource> {
-  const source = getDataSource();
+export async function getInitializedDataSource(sync = !PROD): Promise<DataSource> {
+  const source = getDataSource(sync);
   if (!source.isInitialized) {
     await source.initialize();
   }
