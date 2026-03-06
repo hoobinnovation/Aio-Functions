@@ -16,7 +16,7 @@ export interface ActionSpec {
 
 export const ACTION_SPECS: Record<string, ActionSpec> = {};
 
-export function validateOrThrow(schema: any, value: unknown, code = 'VALIDATION_ERROR') {
+export function validateOrThrow(schema: any, value: unknown, code = 'VALIDATION_FAILED') {
   const { error, value: out } = schema.validate(value, { abortEarly: false, allowUnknown: false, stripUnknown: true });
   if (error) {
     throw new AppError(code, 'Validation failed', {
