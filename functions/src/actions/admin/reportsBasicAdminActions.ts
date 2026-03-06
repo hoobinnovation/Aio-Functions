@@ -6,7 +6,7 @@ import { AppError } from '../../core/errors';
 function capabilities() { return { canEdit: false, canDelete: false }; }
 
 export async function reportsOverview(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'date', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'date', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const aggregatesRows = await ctx.db.query(
     `SELECT COUNT(*) ordersCount, COALESCE(SUM(subtotalCents),0) grossRevenueCents, COALESCE(SUM(discountCents),0) discountsCents,
             COALESCE(SUM(totalCents),0) netRevenueCents, COALESCE(AVG(totalCents),0) avgOrderValueCents,
@@ -52,7 +52,7 @@ export async function reportsOverview(ctx: ActionContext, payload: any) {
 }
 
 export async function reportsOrdersByStatus(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'ordersCount', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'ordersCount', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const qb = ctx.db.getRepository(Order).createQueryBuilder('o')
     .select('o.status', 'status')
     .addSelect('COUNT(*)', 'ordersCount')
@@ -84,7 +84,7 @@ export async function reportsOrdersByStatus(ctx: ActionContext, payload: any) {
 }
 
 export async function reportsTopProducts(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'qtySold', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'qtySold', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const sortMap: Record<string, string> = { qtySold: 'qtySold', netRevenueCents: 'netRevenueCents' };
   const sortExpr = sortMap[q.sort.by] ?? sortMap.qtySold;
   const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM (SELECT oi.productId FROM order_items oi JOIN orders o ON o.id=oi.orderId WHERE o.storeId=? AND o.createdAt BETWEEN ? AND ? GROUP BY oi.productId) t`, [q.storeId, q.range.from, q.range.to]);
@@ -115,7 +115,7 @@ export async function reportsTopProducts(ctx: ActionContext, payload: any) {
 }
 
 export async function reportsInventorySummary(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'name', sortDir: 'asc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'name', sortDir: 'asc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const filters = q.filters as { lowStockOnly?: boolean; deadStockDays?: number; categoryId?: string };
   const deadStockDays = Number(filters.deadStockDays ?? 0);
   const params: any[] = [q.storeId];
@@ -170,7 +170,7 @@ export async function reportsInventorySummary(ctx: ActionContext, payload: any) 
 }
 
 export async function reportsCustomersSummary(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'netRevenueCents', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'netRevenueCents', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM (SELECT uid FROM orders WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY uid) t`, [q.storeId, q.range.from, q.range.to]);
   const total = Number(totalRows[0]?.total ?? 0);
   if (q.fetchAll && total > 10000) throw new AppError('FETCH_ALL_LIMIT_EXCEEDED', 'Fetch all limit exceeded', { limit: 10000, total });
@@ -215,7 +215,7 @@ export async function reportsCustomersSummary(ctx: ActionContext, payload: any) 
 }
 
 export async function reportsReturnsSummary(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'returnsCount', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'returnsCount', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM (SELECT status FROM returns WHERE storeId=? AND requestedAt BETWEEN ? AND ? GROUP BY status) t`, [q.storeId, q.range.from, q.range.to]);
   const total = Number(totalRows[0]?.total ?? 0);
   if (q.fetchAll && total > 10000) throw new AppError('FETCH_ALL_LIMIT_EXCEEDED', 'Fetch all limit exceeded', { limit: 10000, total });
@@ -250,7 +250,7 @@ export async function reportsReturnsSummary(ctx: ActionContext, payload: any) {
 }
 
 export async function reportsLoyaltySummary(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const aggregates = await ctx.db.query(
     `SELECT COALESCE(SUM(CASE WHEN pointsDelta>0 THEN pointsDelta ELSE 0 END),0) pointsIssued,
             COALESCE(SUM(CASE WHEN pointsDelta<0 THEN ABS(pointsDelta) ELSE 0 END),0) pointsRedeemed,
@@ -274,7 +274,7 @@ export async function reportsLoyaltySummary(ctx: ActionContext, payload: any) {
 }
 
 export async function reportsCashbackSummary(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const aggregates = await ctx.db.query(
     `SELECT
       COALESCE(SUM(CASE WHEN wt.type='cashback_issue' THEN wt.amountCents ELSE 0 END),0) cashbackIssuedCents,

@@ -12,6 +12,7 @@ import { StoreSettings } from '../../entities/StoreSettings';
 import { UserProfile } from '../../entities/UserProfile';
 import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsListForGateway } from '../../health/actionsHealth';
 import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
+import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 export async function adminHealthWhoAmI(ctx: ActionContext) {
   return { uid: ctx.uid, gateway: ctx.gateway };
@@ -143,9 +144,10 @@ export async function adminStoreSettingsUpdate(ctx: ActionContext, payload: any)
   return adminStoreSettingsGet(ctx, { storeId: payload.storeId });
 }
 
-export async function adminCustomersList(ctx: ActionContext, payload: any) {
-  const limit = payload.limit ?? 20;
-  const offset = payload.offset ?? 0;
+export async function adminCustomersList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
+  const limit = q.limit;
+  const offset = q.offset;
   const rows = await ctx.db.getRepository(UserProfile).find({ order: { updatedAt: 'DESC' as any }, take: limit, skip: offset });
   return { customers: rows, limit, offset };
 }
@@ -184,11 +186,12 @@ export async function adminCustomersDisable(ctx: ActionContext, payload: any) {
   return adminCustomersGet(ctx, { uid: payload.uid });
 }
 
-export async function adminCustomersSearch(ctx: ActionContext, payload: any) {
-  const q = `%${payload.query || ''}%`;
+export async function adminCustomersSearch(ctx: ActionContext, payload: any = {}) {
+  const nq = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
+  const q = `%${nq.query || ''}%`;
   const rows = await ctx.db.query(
     'SELECT * FROM user_profiles WHERE uid LIKE ? OR email LIKE ? OR phone LIKE ? OR displayName LIKE ? ORDER BY updatedAt DESC LIMIT ?',
-    [q, q, q, q, payload.limit ?? 20],
+    [q, q, q, q, nq.limit],
   );
   return { customers: rows };
 }

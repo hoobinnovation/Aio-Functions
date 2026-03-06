@@ -18,6 +18,7 @@ import { InsuranceStatusEvent } from '../../entities/InsuranceStatusEvent';
 import { DineInSession } from '../../entities/DineInSession';
 import { Branch } from '../../entities/Branch';
 import { resolveEffectiveDineInSettings } from './dineInSupport';
+import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 async function getCart(ctx: ActionContext){let c=await ctx.db.getRepository(Cart).findOneBy({uid:ctx.uid!,storeId:ctx.storeId!});if(!c){c=ctx.db.getRepository(Cart).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,couponCode:null});await ctx.db.getRepository(Cart).save(c);}return c;}
 
@@ -85,7 +86,7 @@ export async function paymentsConfirm(ctx: ActionContext, payload: any){
   return { order: await ctx.db.getRepository(Order).findOneByOrFail({ id: order.id }), idempotent: false };
 }
 
-export async function ordersList(ctx: ActionContext){ return { orders: await ctx.db.getRepository(Order).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any } }) }; }
+export async function ordersList(ctx: ActionContext, payload: any = {}){ const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 }); return { orders: await ctx.db.getRepository(Order).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) }; }
 export async function ordersGet(ctx: ActionContext, p: any){ const o=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!}); if(!o) throw new AppError('NOT_FOUND','Order not found'); const items=await ctx.db.getRepository(OrderItem).find({where:{orderId:o.id}}); return { order:o, items, riskStatus:o.riskStatus }; }
 export async function ordersTracking(ctx: ActionContext, p: any){ const o=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!}); if(!o) throw new AppError('NOT_FOUND','Order not found'); const sh=await ctx.db.getRepository(Shipment).findOneBy({orderId:o.id}); if(!sh) return { shipment:null, events:[] }; const ev=await ctx.db.getRepository(TrackingEvent).find({where:{shipmentId:sh.id},order:{createdAt:'ASC' as any}}); return { shipment:sh, events:ev }; }
 export async function ordersInvoiceUrl(ctx: ActionContext, p: any){ const o=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!}); if(!o) throw new AppError('NOT_FOUND','Order not found'); return { invoiceUrl:`gs://invoices/${o.storeId}/${o.id}.pdf` }; }
@@ -97,4 +98,4 @@ export async function insuranceSubmit(ctx: ActionContext,p:any){ const o=await c
 export async function insuranceGet(ctx: ActionContext,p:any){ const o=await ctx.db.getRepository(InsuranceOrder).findOneBy({id:p.insuranceOrderId,uid:ctx.uid!}); if(!o) throw new AppError('NOT_FOUND','Insurance order not found'); const files=await ctx.db.getRepository(InsuranceFile).find({where:{insuranceOrderId:o.id}}); return { insuranceOrder:o, files }; }
 export async function insuranceApproveQuote(ctx: ActionContext,p:any){ const o=await ctx.db.getRepository(InsuranceOrder).findOneBy({id:p.insuranceOrderId,uid:ctx.uid!}); if(!o||o.status!=='quoted') throw new AppError('VALIDATION_ERROR','Quote not available'); await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(InsuranceOrder).update({id:o.id},{status:'approved'});}); return insuranceGet(ctx,{insuranceOrderId:o.id}); }
 export async function insuranceRejectQuote(ctx: ActionContext,p:any){ const o=await ctx.db.getRepository(InsuranceOrder).findOneBy({id:p.insuranceOrderId,uid:ctx.uid!}); if(!o||o.status!=='quoted') throw new AppError('VALIDATION_ERROR','Quote not available'); await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(InsuranceOrder).update({id:o.id},{status:'rejected'});}); return insuranceGet(ctx,{insuranceOrderId:o.id}); }
-export async function insuranceListMyOrders(ctx: ActionContext){ return { orders: await ctx.db.getRepository(InsuranceOrder).find({where:{uid:ctx.uid!},order:{createdAt:'DESC' as any}}) }; }
+export async function insuranceListMyOrders(ctx: ActionContext, payload: any = {}){ const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 }); return { orders: await ctx.db.getRepository(InsuranceOrder).find({where:{uid:ctx.uid!},order:{createdAt:'DESC' as any},take:q.limit,skip:q.offset}) }; }

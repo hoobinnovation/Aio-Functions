@@ -14,6 +14,7 @@ import { SeoSetting } from '../../entities/SeoSetting';
 import { LandingPage } from '../../entities/LandingPage';
 import { SitemapRun } from '../../entities/SitemapRun';
 import { AppError } from '../../core/errors';
+import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
 
 async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: string) {
   const row = await ctx.db.getRepository(repo).findOneBy({ id });
@@ -21,8 +22,10 @@ async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: strin
   return row;
 }
 
-export async function adminCategoriesList(ctx: ActionContext, payload: any) {
-  const rows = await ctx.db.getRepository(Category).find({ where: { storeId: payload.storeId }, order: { sortOrder: 'ASC' as any } });
+export async function adminCategoriesList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const rows = await ctx.db.getRepository(Category).find({ where: { storeId }, order: { sortOrder: 'ASC' as any }, take: q.limit, skip: q.offset });
   return { categories: rows };
 }
 export async function adminCategoriesGet(ctx: ActionContext, payload: any) { return { category: await byIdOrThrow(ctx, Category, payload.id, 'Category not found') }; }
@@ -37,7 +40,7 @@ export async function adminCategoriesUpdate(ctx: ActionContext, payload: any) {
 }
 export async function adminCategoriesDisable(ctx: ActionContext, payload: any) { return adminCategoriesUpdate(ctx, { id: payload.id, status: 'disabled' }); }
 
-export async function adminBannersList(ctx: ActionContext, payload: any) { return { banners: await ctx.db.getRepository(Banner).find({ where: { storeId: payload.storeId }, order: { sortOrder: 'ASC' as any } }) }; }
+export async function adminBannersList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { banners: await ctx.db.getRepository(Banner).find({ where: { storeId }, order: { sortOrder: 'ASC' as any }, take: q.limit, skip: q.offset }) }; }
 export async function adminBannersGet(ctx: ActionContext, payload: any) { return { banner: await byIdOrThrow(ctx, Banner, payload.id, 'Banner not found') }; }
 export async function adminBannersCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(Banner).save(tx.getRepository(Banner).create({ id, ...payload }));}); return adminBannersGet(ctx,{id}); }
 export async function adminBannersUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ const r=await tx.getRepository(Banner).update({id:payload.id},payload); if(!r.affected) throw new AppError('NOT_FOUND','Banner not found');}); return adminBannersGet(ctx,{id:payload.id}); }
@@ -55,7 +58,7 @@ export async function adminFeaturedSet(ctx: ActionContext, payload: any) {
   return adminFeaturedList(ctx, { storeId: payload.storeId });
 }
 
-export async function adminProductsList(ctx: ActionContext, payload: any) { return { products: await ctx.db.getRepository(Product).find({ where: { storeId: payload.storeId }, order: { updatedAt: 'DESC' as any } }) }; }
+export async function adminProductsList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { products: await ctx.db.getRepository(Product).find({ where: { storeId }, order: { updatedAt: 'DESC' as any }, take: q.limit, skip: q.offset }) }; }
 export async function adminProductsGet(ctx: ActionContext, payload: any) { return { product: await byIdOrThrow(ctx, Product, payload.id, 'Product not found') }; }
 export async function adminProductsCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(Product).save(tx.getRepository(Product).create({ id, ...payload }));}); return adminProductsGet(ctx,{id}); }
 export async function adminProductsUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ const r=await tx.getRepository(Product).update({id:payload.id},payload); if(!r.affected) throw new AppError('NOT_FOUND','Product not found');}); return adminProductsGet(ctx,{id:payload.id}); }
@@ -102,7 +105,7 @@ export async function adminHomeSectionsReorder(ctx: ActionContext, payload: any)
 export async function adminSeoGet(ctx: ActionContext, payload: any) { const row=await ctx.db.getRepository(SeoSetting).findOneBy({ storeId: payload.storeId, pageType: payload.pageType, pageKey: payload.pageKey }); return { seo: row }; }
 export async function adminSeoUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(SeoSetting).upsert({ id: payload.id || uuidv4(), ...payload }, ['id']);}); return adminSeoGet(ctx,payload); }
 
-export async function adminLandingPagesList(ctx: ActionContext, payload: any) { return { pages: await ctx.db.getRepository(LandingPage).find({ where: { storeId: payload.storeId }, order: { updatedAt: 'DESC' as any } }) }; }
+export async function adminLandingPagesList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { pages: await ctx.db.getRepository(LandingPage).find({ where: { storeId }, order: { updatedAt: 'DESC' as any }, take: q.limit, skip: q.offset }) }; }
 export async function adminLandingPagesGet(ctx: ActionContext, payload: any) { return { page: await byIdOrThrow(ctx, LandingPage, payload.id, 'Landing page not found') }; }
 export async function adminLandingPagesCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(LandingPage).save(tx.getRepository(LandingPage).create({ id, ...payload, status: 'draft' }));}); return adminLandingPagesGet(ctx,{id}); }
 export async function adminLandingPagesUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(LandingPage).update({id:payload.id},payload);}); return adminLandingPagesGet(ctx,{id:payload.id}); }

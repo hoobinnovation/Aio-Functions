@@ -57,7 +57,7 @@ function buildWhere(filters: MarketingFilters) {
 }
 
 export async function adminReportsAttributionOverview(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'revenueCents', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'revenueCents', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const filters = (q.filters ?? {}) as MarketingFilters;
   ensureSupportedFilters(filters);
 
@@ -170,7 +170,7 @@ export async function adminReportsAttributionOverview(ctx: ActionContext, payloa
 }
 
 export async function adminReportsTopCampaigns(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'revenueCents', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'revenueCents', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const filters = (q.filters ?? {}) as MarketingFilters;
   ensureSupportedFilters(filters);
   const { where, params } = buildWhere(filters);

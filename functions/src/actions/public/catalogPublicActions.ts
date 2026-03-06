@@ -4,11 +4,11 @@ import { Product } from '../../entities/Product';
 import { ProductVariant } from '../../entities/ProductVariant';
 import { SeoSetting } from '../../entities/SeoSetting';
 import { LandingPage } from '../../entities/LandingPage';
+import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 function page(payload: any) {
-  const limit = Math.min(Math.max(Number(payload?.limit || 20), 1), 100);
-  const offset = Math.max(Number(payload?.offset || 0), 0);
-  return { limit, offset };
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
+  return { limit: q.limit, offset: q.offset };
 }
 
 export async function publicCatalogGetHome(ctx: ActionContext, payload: any) {
