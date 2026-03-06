@@ -290,17 +290,23 @@ ACTION_SPECS.publicDevSeedDummyData = {
   schema: Joi.object({
     seedKey: Joi.string().required(),
     mode: Joi.string().valid('reset', 'upsert').optional(),
-    storeId: Joi.string().optional(),
+    scenario: Joi.string().valid('baseline', 'full').optional(),
+    storeCode: Joi.string().valid('ecom', 'resto', 'pharma').optional(),
     sizes: Joi.object({
-      categories: Joi.number().integer().min(1).max(200).optional(),
+      stores: Joi.number().integer().min(1).max(3).optional(),
+      branchesPerStore: Joi.number().integer().min(1).max(5).optional(),
+      categories: Joi.number().integer().min(1).max(50).optional(),
+      productsPerStore: Joi.number().integer().min(1).max(300).optional(),
+      customers: Joi.number().integer().min(5).max(120).optional(),
+      ordersPerStore: Joi.number().integer().min(5).max(300).optional(),
+      insuranceOrdersPerStore: Joi.number().integer().min(1).max(100).optional(),
       products: Joi.number().integer().min(1).max(1000).optional(),
       variantsPerProduct: Joi.number().integer().min(1).max(20).optional(),
-      customers: Joi.number().integer().min(1).max(200).optional(),
       orders: Joi.number().integer().min(1).max(1000).optional(),
       insuranceOrders: Joi.number().integer().min(1).max(300).optional(),
     }).optional(),
   }).required(),
-  notes: 'Dev-only seed action for local/staging',
+  notes: 'Dev-only scenario-based seed action for local/staging',
   errorCodes: ['VALIDATION_ERROR', 'DEV_ONLY', 'SEED_KEY_INVALID', 'SEED_RATE_LIMIT', 'SEED_FAILED'],
 };
 

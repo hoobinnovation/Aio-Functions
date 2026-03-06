@@ -1,12 +1,19 @@
 import { EntityManager } from 'typeorm';
 
 export type SeedMode = 'reset' | 'upsert';
+export type SeedScenario = 'baseline' | 'full';
 
 export interface SeedSizes {
+  stores?: number;
+  branchesPerStore?: number;
   categories?: number;
+  productsPerStore?: number;
+  customers?: number;
+  ordersPerStore?: number;
+  insuranceOrdersPerStore?: number;
+  // legacy knobs
   products?: number;
   variantsPerProduct?: number;
-  customers?: number;
   orders?: number;
   insuranceOrders?: number;
 }
@@ -14,21 +21,36 @@ export interface SeedSizes {
 export interface SeedPayload {
   seedKey: string;
   mode?: SeedMode;
-  storeId?: string;
+  scenario?: SeedScenario;
+  storeCode?: string;
   sizes?: SeedSizes;
+}
+
+export interface SeedStoreProfile {
+  code: string;
+  name: string;
+  vertical: 'ecommerce' | 'restaurant' | 'pharmacy';
+  supportEmail: string;
+  supportPhone: string;
 }
 
 export interface SeedContext {
   manager: EntityManager;
-  storeId: string;
+  now: Date;
+  scenario: SeedScenario;
   sizes: Required<SeedSizes>;
+  stores: SeedStoreProfile[];
   demoUids: {
     adminOwnerUid: string;
-    adminCatalogUid: string;
+    adminManagerUid: string;
+    adminOpsUid: string;
+    adminAnalystUid: string;
     adminSupportUid: string;
-    clientUid: string;
+    clientUid?: string;
+    adminCatalogUid?: string;
   };
-  now: Date;
+  // backward-compatible fields for legacy seed modules
+  storeId?: string;
 }
 
 export interface SeedSummary {
