@@ -1,5 +1,5 @@
 export const ADMIN_ACTIONS_SOT = [
-  'adminHealthWhoAmI','adminHealthDbCheck','adminHealthActionsCoverage','adminActionsList','adminMe',
+  'adminHealthWhoAmI','adminHealthDbCheck','adminHealthActionsCoverage','adminActionsList','adminMe','adminEdgeSyncIngest',
   'adminStoresList','adminStoresGet','adminStoresCreate','adminStoresUpdate','adminStoresDisable','adminStoreSettingsGet','adminStoreSettingsUpdate',
   'adminCustomersList','adminCustomersGet','adminCustomersUpdate','adminCustomersDisable','adminCustomersSearch',
   'adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable',
@@ -91,4 +91,5 @@ export const ADMIN_ACTIONS_SOT = [
   'adminReturnsRefundPartial',
   'adminReturnsRefundFull',
   'adminReturnsUpdateStatus',
+  'adminDineInSettingsGet','adminDineInSettingsUpdate','adminDineInTablesList','adminDineInTablesGet','adminDineInTablesCreate','adminDineInTablesUpdate','adminDineInTablesDisable','adminDineInTablesGenerateQr','adminDineInTablesRegenerateQr','adminDineInTablesBulkGeneratePdfData','adminDineInSessionsList','adminDineInSessionsGet','adminDineInSessionsClose','adminDineInWaiterCallsList','adminDineInWaiterCallsGet','adminDineInWaiterCallsAcknowledge','adminDineInWaiterCallsResolve','adminDineInDashboardStats',
 ] as const;

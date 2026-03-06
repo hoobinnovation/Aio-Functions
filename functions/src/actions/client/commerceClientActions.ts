@@ -23,6 +23,11 @@ import { SupportMessage } from '../../entities/SupportMessage';
 import { UserSetting } from '../../entities/UserSetting';
 import { LegalDoc } from '../../entities/LegalDoc';
 import { AppError } from '../../core/errors';
+import { Order } from '../../entities/Order';
+import { DineInSession } from '../../entities/DineInSession';
+import { OrderReview } from '../../entities/OrderReview';
+import { resolveEffectiveDineInSettings } from './dineInSupport';
+import { Branch } from '../../entities/Branch';
 
 function hav(lat1:number,lng1:number,lat2:number,lng2:number){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 async function cart(ctx:ActionContext){let c=await ctx.db.getRepository(Cart).findOneBy({uid:ctx.uid!,storeId:ctx.storeId!});if(!c){await ctx.db.transaction(async(tx:EntityManager)=>{c=tx.getRepository(Cart).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,couponCode:null});await tx.getRepository(Cart).save(c);});}return c!;}
@@ -76,3 +81,8 @@ export async function supportCloseTicket(ctx:ActionContext,p:any){await ctx.db.t
 export async function settingsGet(ctx:ActionContext){let s=await ctx.db.getRepository(UserSetting).findOneBy({uid:ctx.uid!});if(!s)s=ctx.db.getRepository(UserSetting).create({uid:ctx.uid!,config:{}});return {settings:s};}
 export async function settingsUpdate(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(UserSetting).upsert({uid:ctx.uid!,config:p.config||{}},['uid']);});return settingsGet(ctx);} 
 export async function legalGetDocs(ctx:ActionContext,p:any){const docs=await ctx.db.getRepository(LegalDoc).find({where:{storeId:ctx.storeId!,status:'active',docType:p.docType||undefined}});return {docs};}
+
+
+export async function reviewsCanReview(ctx:ActionContext,p:any){const order=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!,storeId:ctx.storeId!});if(!order) throw new AppError('NOT_FOUND','Order not found');const existing=await ctx.db.getRepository(OrderReview).findOneBy({orderId:order.id,uid:ctx.uid!});const branch=order.branchId?await ctx.db.getRepository(Branch).findOneBy({id:order.branchId,storeId:ctx.storeId!}):null;const settings=branch?await resolveEffectiveDineInSettings(ctx,branch):null;return {canReview:!existing,reason:existing?'alreadyReviewed':null,requiresSession:order.serviceType==='dineIn' ? !!settings?.requireSessionForRating : false,order};}
+
+export async function reviewsCreate(ctx:ActionContext,p:any){const gate=await reviewsCanReview(ctx,{orderId:p.orderId});if(!gate.canReview) throw new AppError('VALIDATION_FAILED','Order already reviewed');const order=gate.order as Order;let sessionId:string|null=null;if(order.serviceType==='dineIn'){if(!order.dineInSessionId) throw new AppError('DINE_IN_SESSION_REQUIRED','Dine-in session required');const session=await ctx.db.getRepository(DineInSession).findOneBy({id:order.dineInSessionId,storeId:ctx.storeId!});if(!session) throw new AppError('DINE_IN_SESSION_NOT_FOUND','Dine-in session not found');sessionId=session.id;}const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(OrderReview).insert({id,storeId:ctx.storeId!,orderId:order.id,uid:ctx.uid!,rating:p.rating,comment:p.comment??null,branchId:order.branchId??null,tableId:order.tableId??null,dineInSessionId:sessionId});});return {review:await ctx.db.getRepository(OrderReview).findOneByOrFail({id})};}

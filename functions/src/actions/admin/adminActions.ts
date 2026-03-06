@@ -1,10 +1,5 @@
 import { EntityManager } from 'typeorm';
 import { ActionContext } from '../../core/protocol';
-import { ADMIN_ACTIONS_SOT } from '../../sot/adminActions';
-import { CLIENT_ACTIONS_SOT } from '../../sot/clientActions';
-import { PUBLIC_ACTIONS_SOT } from '../../sot/publicActions';
-import { registryAdmin, registryClient, registryPublic } from '../../gateways/registries';
-import { ACTION_SPECS } from '../../core/validate';
 import { AdminUser } from '../../entities/AdminUser';
 import { AdminRole } from '../../entities/AdminRole';
 import { AdminStoreAccess } from '../../entities/AdminStoreAccess';
@@ -15,17 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Store } from '../../entities/Store';
 import { StoreSettings } from '../../entities/StoreSettings';
 import { UserProfile } from '../../entities/UserProfile';
-
-function coverage(sot: readonly string[], reg: Map<string, unknown>) {
-  const handlers = Array.from(reg.keys());
-  return {
-    missingHandlers: sot.filter((a) => !reg.has(a)),
-    missingSpecs: handlers.filter((a) => !ACTION_SPECS[a]),
-    extraHandlers: handlers.filter((a) => !sot.includes(a)),
-    implementedCount: handlers.length,
-    sotCount: sot.length,
-  };
-}
+import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsListForGateway } from '../../health/actionsHealth';
+import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 
 export async function adminHealthWhoAmI(ctx: ActionContext) {
   return { uid: ctx.uid, gateway: ctx.gateway };
@@ -44,22 +30,28 @@ export async function adminHealthDbCheck(ctx: ActionContext) {
 }
 
 export async function adminHealthActionsCoverage() {
-  const publicCoverage = coverage(PUBLIC_ACTIONS_SOT, registryPublic);
-  const clientCoverage = coverage(CLIENT_ACTIONS_SOT, registryClient);
-  const adminCoverage = coverage(ADMIN_ACTIONS_SOT, registryAdmin);
+  const coverage = adminHealthActionsCoverageCore();
   return {
-    public: publicCoverage,
-    client: clientCoverage,
-    admin: adminCoverage,
-    hasErrors: [publicCoverage, clientCoverage, adminCoverage].some((g) => g.extraHandlers.length > 0),
+    ...coverage,
+    hasErrors: [coverage.public, coverage.client, coverage.admin].some((g) => g.extraHandlers.length > 0),
   };
 }
 
-export async function adminActionsList() {
+export async function adminActionsList(ctx: ActionContext) {
+  const actions = actionsListForGateway('admin');
+  const allowed = ctx.auth?.admin?.roles?.length
+    ? actions.filter((action) => {
+        const policy = ACTION_ROLE_MAP[action];
+        if (!policy) {
+          return false;
+        }
+        return policy.rolesAllowed.some((role) => ctx.auth!.admin!.roles.includes(role));
+      })
+    : actions;
+
   return {
     gateway: 'admin',
-    implementedActions: Array.from(registryAdmin.keys()),
-    sotActionsCount: ADMIN_ACTIONS_SOT.length,
+    allowedActions: allowed,
   };
 }
 

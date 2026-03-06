@@ -1,8 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { ActionContext } from '../../core/protocol';
-import { CLIENT_ACTIONS_SOT } from '../../sot/clientActions';
-import { registryClient } from '../../gateways/registries';
+import { actionsListForGateway } from '../../health/actionsHealth';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { AppError } from '../../core/errors';
 import { getBucketName, getStorage } from '../../utils/storage';
@@ -35,8 +34,7 @@ export async function clientHealthWhoAmI(ctx: ActionContext) {
 export async function clientActionsList() {
   return {
     gateway: 'client',
-    implementedActions: Array.from(registryClient.keys()),
-    sotActionsCount: CLIENT_ACTIONS_SOT.length,
+    allowedActions: actionsListForGateway('client'),
   };
 }
 

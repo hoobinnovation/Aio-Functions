@@ -19,8 +19,9 @@ import {
   storesList, storesGet, storeContextGetMyStore, storeContextSetMyStore, mediaCreateUploadSpec, mediaFinalizeUpload,
 } from '../actions/client/clientActions';
 import { checkoutCreatePaymentSession, paymentsStatus, paymentsConfirm, ordersList, ordersGet, ordersTracking, ordersInvoiceUrl, ordersReorder, insuranceCreateDraft, insuranceAttachFiles, insuranceSubmit, insuranceGet, insuranceApproveQuote, insuranceRejectQuote, insuranceListMyOrders } from '../actions/client/ordersClientActions';
-import { cartGet, cartAddItem, cartUpdateQty, cartRemoveItem, cartClear, cartApplyCoupon, cartRemoveCoupon, shippingListMethods, shippingQuoteDelivery, checkoutPreview, notificationsRegisterToken, notificationsList, notificationsMarkRead, notificationsMarkAllRead, notificationsDelete, loyaltyGetDashboard, loyaltyListTransactions, loyaltyRedeem, walletGet, walletHistory, marketingCapture, alertsGetPrefs, alertsUpdatePrefs, alertsSubscribeBackInStock, recoGetSimilar, recoGetCartUpsell, postPurchaseGetNudges, supportCreateTicket, supportListTickets, supportGetTicket, supportAddMessage, supportCloseTicket, settingsGet, settingsUpdate, legalGetDocs } from '../actions/client/commerceClientActions';
+import { cartGet, cartAddItem, cartUpdateQty, cartRemoveItem, cartClear, cartApplyCoupon, cartRemoveCoupon, shippingListMethods, shippingQuoteDelivery, checkoutPreview, notificationsRegisterToken, notificationsList, notificationsMarkRead, notificationsMarkAllRead, notificationsDelete, loyaltyGetDashboard, loyaltyListTransactions, loyaltyRedeem, walletGet, walletHistory, marketingCapture, alertsGetPrefs, alertsUpdatePrefs, alertsSubscribeBackInStock, recoGetSimilar, recoGetCartUpsell, postPurchaseGetNudges, supportCreateTicket, supportListTickets, supportGetTicket, supportAddMessage, supportCloseTicket, settingsGet, settingsUpdate, legalGetDocs, reviewsCanReview, reviewsCreate } from '../actions/client/commerceClientActions';
 import { homeGetLayout, productFavoritesList, productFavoritesToggle, storeFavoritesList, storeFavoritesToggle } from '../actions/client/catalogClientActions';
+import { dineInScanTableCode, dineInGetSession, dineInCloseSession, dineInCallWaiter, dineInRequestBill } from '../actions/client/dineInClientActions';
 import {
   adminHealthWhoAmI, adminHealthDbCheck, adminHealthActionsCoverage, adminActionsList, adminMe,
   adminStoresList, adminStoresGet, adminStoresCreate, adminStoresUpdate, adminStoresDisable,
@@ -48,6 +49,7 @@ import { adminInventoryImportCreateBatch, adminInventoryImportPreview, adminInve
 import { reportsOverview, reportsTopProducts, reportsOrdersByStatus, reportsInventorySummary, reportsCustomersSummary, reportsReturnsSummary, reportsLoyaltySummary, reportsCashbackSummary } from '../actions/admin/reportsBasicAdminActions';
 import { adminReportsAttributionOverview, adminReportsTopCampaigns } from '../actions/admin/reportsMarketingAdminActions';
 import { adminAccountingKpis, adminAccountingLedger } from '../actions/admin/accountingAdminActions';
+import { adminDineInSettingsGet, adminDineInSettingsUpdate, adminDineInTablesList, adminDineInTablesGet, adminDineInTablesCreate, adminDineInTablesUpdate, adminDineInTablesDisable, adminDineInTablesGenerateQr, adminDineInTablesRegenerateQr, adminDineInTablesBulkGeneratePdfData, adminDineInSessionsList, adminDineInSessionsGet, adminDineInSessionsClose, adminDineInWaiterCallsList, adminDineInWaiterCallsGet, adminDineInWaiterCallsAcknowledge, adminDineInWaiterCallsResolve, adminDineInDashboardStats } from '../actions/admin/dineInAdminActions';
 
 const m = () => new Map<string, ActionHandler>();
 const add = (r: Map<string, ActionHandler>, key: string, handler: ActionHandler) => { r.set(key, handler); };
@@ -214,6 +216,13 @@ add(registryClient,'insuranceGet',insuranceGet as ActionHandler);
 add(registryClient,'insuranceApproveQuote',insuranceApproveQuote as ActionHandler);
 add(registryClient,'insuranceRejectQuote',insuranceRejectQuote as ActionHandler);
 add(registryClient,'insuranceListMyOrders',insuranceListMyOrders as ActionHandler);
+add(registryClient,'dineInScanTableCode',dineInScanTableCode as ActionHandler);
+add(registryClient,'dineInGetSession',dineInGetSession as ActionHandler);
+add(registryClient,'dineInCloseSession',dineInCloseSession as ActionHandler);
+add(registryClient,'dineInCallWaiter',dineInCallWaiter as ActionHandler);
+add(registryClient,'dineInRequestBill',dineInRequestBill as ActionHandler);
+add(registryClient,'reviewsCanReview',reviewsCanReview as ActionHandler);
+add(registryClient,'reviewsCreate',reviewsCreate as ActionHandler);
 add(registryAdmin,'adminOrdersList',adminOrdersList as ActionHandler);
 add(registryAdmin,'adminOrdersGet',adminOrdersGet as ActionHandler);
 add(registryAdmin,'adminOrdersUpdateStatus',adminOrdersUpdateStatus as ActionHandler);

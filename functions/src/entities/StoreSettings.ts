@@ -23,6 +23,9 @@ export class StoreSettings {
   @Column({ type: 'tinyint', width: 1, default: 1 })
   deliveryEnabled!: boolean;
 
+  @Column({ type: 'text', nullable: true })
+  dineInConfigJson!: string | null;
+
   @UpdateDateColumn({ type: 'datetime' })
   updatedAt!: Date;
 }

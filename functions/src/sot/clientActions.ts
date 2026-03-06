@@ -30,4 +30,5 @@ export const CLIENT_ACTIONS_SOT = [
   'insuranceApproveQuote',
   'insuranceRejectQuote',
   'insuranceListMyOrders',
+  'dineInScanTableCode','dineInGetSession','dineInCloseSession','dineInCallWaiter','dineInRequestBill','reviewsCanReview','reviewsCreate',
 ] as const;

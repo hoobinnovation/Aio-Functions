@@ -1,27 +1,28 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { AppError } from '../core/errors';
-import { getInitializedDataSource } from '../core/db';
-import { createLogger } from '../core/logging';
-import { registryPublic } from './registries';
-import { executeWithProtocol, responseMeta, validateActionPayload, validateEnvelope } from './helpers';
+import Joi from 'joi';
+import { buildCloudContext } from '../context/cloudContext';
+import { dispatchAction } from '../dispatch/dispatchAction';
+import { UnifiedRequest } from '../protocol/envelopes';
 
-export const publicGateway = onCall(async (request: any) => {
-  const meta = responseMeta();
-  const logger = createLogger(`public:${meta.requestId}`);
-  return executeWithProtocol(async () => {
-    const envelope = validateEnvelope(request.data);
-    const handler = registryPublic.get(envelope.action);
-    if (!handler) throw new AppError('ACTION_NOT_FOUND', `Unknown action ${envelope.action}`);
-    const payload = validateActionPayload(envelope.action, envelope.payload);
-    const db = await getInitializedDataSource();
-    return handler({
-      requestId: meta.requestId,
-      serverTime: meta.serverTime,
-      uid: request.auth?.uid,
-      storeId: envelope.storeId,
-      gateway: 'public',
-      db,
-      logger,
-    }, payload);
-  }, meta);
+const requestSchema = Joi.object({
+  action: Joi.string().required(),
+  storeId: Joi.string().optional(),
+  payload: Joi.any().optional(),
+  meta: Joi.object().optional(),
+}).required();
+
+export const publicGateway = onCall(async (request) => {
+  const envelope = requestSchema.validate(request.data, { abortEarly: false, allowUnknown: false, stripUnknown: false });
+  const req = envelope.value as UnifiedRequest;
+  const ctx = await buildCloudContext('public', request, req?.storeId, req?.meta);
+
+  if (envelope.error) {
+    return {
+      ok: false,
+      error: { code: 'VALIDATION_FAILED', message: 'Validation failed', details: { issues: envelope.error.details.map((d) => d.message) } },
+      meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
+    };
+  }
+
+  return dispatchAction('public', req, ctx);
 });
