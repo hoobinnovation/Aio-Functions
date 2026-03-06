@@ -41,7 +41,7 @@ function buildFilters(filters: LedgerFilters) {
 }
 
 export async function adminAccountingKpis(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 });
+  const q = normalizeTableQuery(payload, { sortBy: 'day', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const safeSort = sanitizeSort(q.sort, ['day'], { by: 'day', dir: 'desc' });
   const safeGroupBy = sanitizeGroupBy(q.groupBy, ['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']);
   const rangeFrom = q.range.from;
@@ -104,7 +104,7 @@ export async function adminAccountingKpis(ctx: ActionContext, payload: any) {
 }
 
 export async function adminAccountingLedger(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'createdAt', sortDir: 'desc', pageSize: 100 });
+  const q = normalizeTableQuery(payload, { sortBy: 'createdAt', sortDir: 'desc', pageSize: 100 }, { fallbackStoreId: ctx.storeId });
   const safeSort = sanitizeSort(q.sort, ['createdAt', 'debitCents', 'creditCents', 'netCents', 'type', 'channel'], { by: 'createdAt', dir: 'desc' });
   const safeGroupBy = sanitizeGroupBy(q.groupBy, ['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']);
   const filters = (q.filters ?? {}) as LedgerFilters;

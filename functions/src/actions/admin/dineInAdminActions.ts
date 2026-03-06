@@ -9,6 +9,7 @@ import { DineInSession } from '../../entities/DineInSession';
 import { DineInWaiterCall } from '../../entities/DineInWaiterCall';
 import { Order } from '../../entities/Order';
 import { OrderReview } from '../../entities/OrderReview';
+import { normalizeDateInput, normalizeListQueryInput } from '../../utils/queryNormalization';
 
 async function getSettingsRow(ctx: ActionContext) {
   let row = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId! });
@@ -34,10 +35,11 @@ export async function adminDineInSettingsUpdate(ctx: ActionContext, payload: any
   return adminDineInSettingsGet(ctx);
 }
 
-export async function adminDineInTablesList(ctx: ActionContext, payload: any) {
+export async function adminDineInTablesList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
-  return { tables: await ctx.db.getRepository(DineInTable).find({ where, order: { createdAt: 'DESC' as any } }) };
+  return { tables: await ctx.db.getRepository(DineInTable).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
 }
 
 export async function adminDineInTablesGet(ctx: ActionContext, payload: any) {
@@ -86,11 +88,12 @@ export async function adminDineInTablesBulkGeneratePdfData(ctx: ActionContext, p
   return { store: { storeId: ctx.storeId! }, branch, generatedAt: new Date().toISOString(), cards };
 }
 
-export async function adminDineInSessionsList(ctx: ActionContext, payload: any) {
+export async function adminDineInSessionsList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
   if (payload.status) where.status = payload.status;
-  return { sessions: await ctx.db.getRepository(DineInSession).find({ where, order: { createdAt: 'DESC' as any } }) };
+  return { sessions: await ctx.db.getRepository(DineInSession).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
 }
 
 export async function adminDineInSessionsGet(ctx: ActionContext, payload: any) {
@@ -104,11 +107,12 @@ export async function adminDineInSessionsClose(ctx: ActionContext, payload: any)
   return adminDineInSessionsGet(ctx, payload);
 }
 
-export async function adminDineInWaiterCallsList(ctx: ActionContext, payload: any) {
+export async function adminDineInWaiterCallsList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
   if (payload.status) where.status = payload.status;
-  return { waiterCalls: await ctx.db.getRepository(DineInWaiterCall).find({ where, order: { createdAt: 'DESC' as any } }) };
+  return { waiterCalls: await ctx.db.getRepository(DineInWaiterCall).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
 }
 
 export async function adminDineInWaiterCallsGet(ctx: ActionContext, payload: any) {
@@ -128,19 +132,22 @@ export async function adminDineInWaiterCallsResolve(ctx: ActionContext, payload:
 }
 
 export async function adminDineInDashboardStats(ctx: ActionContext, payload: any) {
+  const normalizedDate = normalizeDateInput(payload, { defaultDaysBack: 7, requireCompleteRange: true });
+  const dateFrom = normalizedDate.from!;
+  const dateTo = normalizedDate.to!;
   const branchFilterSql = payload.branchId ? ' AND branchId = ? ' : '';
   const params = payload.branchId ? [ctx.storeId!, payload.branchId] : [ctx.storeId!];
   const [tableRow] = await ctx.db.query(`SELECT COUNT(*) totalTables, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) activeTables, SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) disabledTables, SUM(CASE WHEN status='maintenance' THEN 1 ELSE 0 END) maintenanceTables FROM dine_in_tables WHERE storeId=?${branchFilterSql}`, params);
   const [sessionsActiveRow] = await ctx.db.query(`SELECT COUNT(*) sessionsActiveNow FROM dine_in_sessions WHERE storeId=?${branchFilterSql} AND status='active' AND expiresAt>NOW()`, params);
-  const [sessionsStartedRow] = await ctx.db.query(`SELECT COUNT(*) sessionsStartedInRange FROM dine_in_sessions WHERE storeId=?${branchFilterSql} AND createdAt BETWEEN ? AND ?`, [...params, payload.dateFrom, payload.dateTo]);
+  const [sessionsStartedRow] = await ctx.db.query(`SELECT COUNT(*) sessionsStartedInRange FROM dine_in_sessions WHERE storeId=?${branchFilterSql} AND createdAt BETWEEN ? AND ?`, [...params, dateFrom, dateTo]);
   const [waiterOpenRow] = await ctx.db.query(`SELECT COUNT(*) waiterCallsOpenNow FROM dine_in_waiter_calls WHERE storeId=?${branchFilterSql} AND status IN ('open','acknowledged')`, params);
-  const [waiterResolvedRow] = await ctx.db.query(`SELECT COUNT(*) waiterCallsResolvedInRange, SUM(CASE WHEN callType='requestBill' THEN 1 ELSE 0 END) billRequestsInRange FROM dine_in_waiter_calls WHERE storeId=?${branchFilterSql} AND status='resolved' AND updatedAt BETWEEN ? AND ?`, [...params, payload.dateFrom, payload.dateTo]);
-  const [ordersRow] = await ctx.db.query(`SELECT COUNT(*) dineInOrdersInRange, COALESCE(SUM(totalCents),0) dineInRevenueInRange FROM orders WHERE storeId=?${branchFilterSql} AND serviceType='dineIn' AND createdAt BETWEEN ? AND ?`, [...params, payload.dateFrom, payload.dateTo]);
-  const [reviewsRow] = await ctx.db.query(`SELECT COUNT(*) dineInReviewsInRange, COALESCE(AVG(rating),0) dineInAverageRatingInRange FROM order_reviews WHERE storeId=?${branchFilterSql} AND createdAt BETWEEN ? AND ?`, [...params, payload.dateFrom, payload.dateTo]);
+  const [waiterResolvedRow] = await ctx.db.query(`SELECT COUNT(*) waiterCallsResolvedInRange, SUM(CASE WHEN callType='requestBill' THEN 1 ELSE 0 END) billRequestsInRange FROM dine_in_waiter_calls WHERE storeId=?${branchFilterSql} AND status='resolved' AND updatedAt BETWEEN ? AND ?`, [...params, dateFrom, dateTo]);
+  const [ordersRow] = await ctx.db.query(`SELECT COUNT(*) dineInOrdersInRange, COALESCE(SUM(totalCents),0) dineInRevenueInRange FROM orders WHERE storeId=?${branchFilterSql} AND serviceType='dineIn' AND createdAt BETWEEN ? AND ?`, [...params, dateFrom, dateTo]);
+  const [reviewsRow] = await ctx.db.query(`SELECT COUNT(*) dineInReviewsInRange, COALESCE(AVG(rating),0) dineInAverageRatingInRange FROM order_reviews WHERE storeId=?${branchFilterSql} AND createdAt BETWEEN ? AND ?`, [...params, dateFrom, dateTo]);
 
-  const topBranchesBySessions = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM dine_in_sessions WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, payload.dateFrom, payload.dateTo]);
-  const topBranchesByWaiterCalls = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM dine_in_waiter_calls WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, payload.dateFrom, payload.dateTo]);
-  const topBranchesByDineInOrders = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM orders WHERE storeId=? AND serviceType='dineIn' AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, payload.dateFrom, payload.dateTo]);
+  const topBranchesBySessions = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM dine_in_sessions WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, dateFrom, dateTo]);
+  const topBranchesByWaiterCalls = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM dine_in_waiter_calls WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, dateFrom, dateTo]);
+  const topBranchesByDineInOrders = await ctx.db.query(`SELECT branchId, COUNT(*) value FROM orders WHERE storeId=? AND serviceType='dineIn' AND createdAt BETWEEN ? AND ? GROUP BY branchId ORDER BY value DESC LIMIT 5`, [ctx.storeId!, dateFrom, dateTo]);
 
   return { ...tableRow, ...sessionsActiveRow, ...sessionsStartedRow, ...waiterOpenRow, ...waiterResolvedRow, ...ordersRow, ...reviewsRow, topBranchesBySessions, topBranchesByWaiterCalls, topBranchesByDineInOrders };
 }

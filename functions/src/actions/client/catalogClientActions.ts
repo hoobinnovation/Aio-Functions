@@ -4,14 +4,16 @@ import { ActionContext } from '../../core/protocol';
 import { HomeSection } from '../../entities/HomeSection';
 import { UserProductFavorite } from '../../entities/UserProductFavorite';
 import { UserStoreFavorite } from '../../entities/UserStoreFavorite';
+import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 export async function homeGetLayout(ctx: ActionContext) {
   const rows = await ctx.db.getRepository(HomeSection).find({ where: { storeId: ctx.storeId, enabled: true }, order: { sortOrder: 'ASC' as any } });
   return { sections: rows };
 }
 
-export async function productFavoritesList(ctx: ActionContext) {
-  const rows = await ctx.db.getRepository(UserProductFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any } });
+export async function productFavoritesList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+  const rows = await ctx.db.getRepository(UserProductFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset });
   return { favorites: rows };
 }
 
@@ -30,8 +32,9 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
   return { favorited: true };
 }
 
-export async function storeFavoritesList(ctx: ActionContext) {
-  const rows = await ctx.db.getRepository(UserStoreFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any } });
+export async function storeFavoritesList(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+  const rows = await ctx.db.getRepository(UserStoreFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset });
   return { favorites: rows };
 }
 

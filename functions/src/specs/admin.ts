@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { ActionSpec } from '../core/validate';
+import { isDevRelaxedValidationEnabled } from '../utils/queryNormalization';
 
 function validateEdgeEvents(value: unknown, helpers: any) {
   if (!Array.isArray(value)) {
@@ -58,10 +59,12 @@ export const ADMIN_ACTION_SPECS: Record<string, ActionSpec> = {
 
 
 const sessionStatusSchema = Joi.string().valid('active','closed','expired');
+const relaxedQueryValidation = isDevRelaxedValidationEnabled();
+const requiredInStrictProd = (schema: any) => (relaxedQueryValidation ? schema.optional() : schema.required());
 
 ADMIN_ACTION_SPECS.adminDineInSettingsGet = { schema: Joi.any().optional(), notes: 'dine-in settings get', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInSettingsUpdate = { schema: Joi.object({ enabled: Joi.boolean().required(), secureTableModeEnabled: Joi.boolean().required(), verificationMethod: Joi.string().valid('qrOnly','qrPlusGeo').required(), sessionTtlMinutes: Joi.number().integer().min(1).required(), requireSessionForOrder: Joi.boolean().required(), requireSessionForWaiterCall: Joi.boolean().required(), requireSessionForRating: Joi.boolean().required(), requireSessionForBillRequest: Joi.boolean().required(), allowCustomerSessionClose: Joi.boolean().required() }).required(), notes: 'dine-in settings update', errorCodes: ['VALIDATION_FAILED'] };
-ADMIN_ACTION_SPECS.adminDineInTablesList = { schema: Joi.object({ branchId: Joi.string().optional() }).optional(), notes: 'dine-in tables list', errorCodes: ['VALIDATION_FAILED'] };
+ADMIN_ACTION_SPECS.adminDineInTablesList = { schema: Joi.object({ page: Joi.number().integer().min(1).optional(), pageSize: Joi.number().integer().min(1).max(200).optional(), fetchAll: Joi.boolean().optional() }).keys({ branchId: Joi.string().optional() }).optional(), notes: 'dine-in tables list', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInTablesGet = { schema: Joi.object({ tableId: Joi.string().required() }).required(), notes: 'dine-in tables get', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInTablesCreate = { schema: Joi.object({ branchId: Joi.string().required(), code: Joi.string().required(), tableNumber: Joi.string().required(), name: Joi.string().allow('', null), seatsCount: Joi.number().integer().min(1).required() }).required(), notes: 'dine-in table create', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInTablesUpdate = { schema: Joi.object({ tableId: Joi.string().required(), tableNumber: Joi.string().required(), name: Joi.string().allow('', null), seatsCount: Joi.number().integer().min(1).required(), status: Joi.string().valid('active','disabled','maintenance').required() }).required(), notes: 'dine-in table update', errorCodes: ['VALIDATION_FAILED'] };
@@ -69,11 +72,22 @@ ADMIN_ACTION_SPECS.adminDineInTablesDisable = { schema: Joi.object({ tableId: Jo
 ADMIN_ACTION_SPECS.adminDineInTablesGenerateQr = { schema: Joi.object({ tableId: Joi.string().required() }).required(), notes: 'dine-in table qr generate', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInTablesRegenerateQr = { schema: Joi.object({ tableId: Joi.string().required() }).required(), notes: 'dine-in table qr regenerate', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInTablesBulkGeneratePdfData = { schema: Joi.object({ branchId: Joi.string().required(), tableIds: Joi.array().items(Joi.string()).optional() }).required(), notes: 'dine-in pdf data', errorCodes: ['VALIDATION_FAILED'] };
-ADMIN_ACTION_SPECS.adminDineInSessionsList = { schema: Joi.object({ branchId: Joi.string().optional(), status: sessionStatusSchema.optional() }).optional(), notes: 'dine-in sessions list', errorCodes: ['VALIDATION_FAILED'] };
+ADMIN_ACTION_SPECS.adminDineInSessionsList = { schema: Joi.object({ page: Joi.number().integer().min(1).optional(), pageSize: Joi.number().integer().min(1).max(200).optional(), fetchAll: Joi.boolean().optional() }).keys({ branchId: Joi.string().optional(), status: sessionStatusSchema.optional() }).optional(), notes: 'dine-in sessions list', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInSessionsGet = { schema: Joi.object({ sessionId: Joi.string().required() }).required(), notes: 'dine-in sessions get', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInSessionsClose = { schema: Joi.object({ sessionId: Joi.string().required() }).required(), notes: 'dine-in sessions close', errorCodes: ['VALIDATION_FAILED'] };
-ADMIN_ACTION_SPECS.adminDineInWaiterCallsList = { schema: Joi.object({ branchId: Joi.string().optional(), status: Joi.string().optional() }).optional(), notes: 'dine-in waiter calls list', errorCodes: ['VALIDATION_FAILED'] };
+ADMIN_ACTION_SPECS.adminDineInWaiterCallsList = { schema: Joi.object({ page: Joi.number().integer().min(1).optional(), pageSize: Joi.number().integer().min(1).max(200).optional(), fetchAll: Joi.boolean().optional() }).keys({ branchId: Joi.string().optional(), status: Joi.string().optional() }).optional(), notes: 'dine-in waiter calls list', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInWaiterCallsGet = { schema: Joi.object({ waiterCallId: Joi.string().required() }).required(), notes: 'dine-in waiter calls get', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInWaiterCallsAcknowledge = { schema: Joi.object({ waiterCallId: Joi.string().required() }).required(), notes: 'dine-in waiter calls ack', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInWaiterCallsResolve = { schema: Joi.object({ waiterCallId: Joi.string().required() }).required(), notes: 'dine-in waiter calls resolve', errorCodes: ['VALIDATION_FAILED'] };
-ADMIN_ACTION_SPECS.adminDineInDashboardStats = { schema: Joi.object({ branchId: Joi.string().optional(), dateFrom: Joi.string().required(), dateTo: Joi.string().required() }).required(), notes: 'dine-in stats', errorCodes: ['VALIDATION_FAILED'] };
+ADMIN_ACTION_SPECS.adminDineInDashboardStats = {
+  schema: Joi.object({
+    branchId: Joi.string().optional(),
+    dateFrom: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
+    dateTo: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
+    from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
+    to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
+    range: requiredInStrictProd(Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional() })),
+  }).required(),
+  notes: 'dine-in stats',
+  errorCodes: ['VALIDATION_FAILED'],
+};

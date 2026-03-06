@@ -9,6 +9,7 @@ import { InsuranceStatusEvent } from '../../entities/InsuranceStatusEvent';
 import { UserProfile } from '../../entities/UserProfile';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { Shipment } from '../../entities/Shipment';
+import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
 
 async function buildOrderDto(ctx: ActionContext, storeId: string, insuranceOrderId: string) {
   const order = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: insuranceOrderId, storeId });
@@ -45,7 +46,7 @@ async function buildOrderDto(ctx: ActionContext, storeId: string, insuranceOrder
   };
 }
 
-export async function adminInsuranceList(ctx: ActionContext, payload: any) { const orders = await ctx.db.getRepository(InsuranceOrder).find({ where: { storeId: payload.storeId }, order: { createdAt: 'DESC' as any } }); return { orders }; }
+export async function adminInsuranceList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); const orders = await ctx.db.getRepository(InsuranceOrder).find({ where: { storeId }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }); return { orders }; }
 export async function adminInsuranceGet(ctx: ActionContext, payload: any) { return buildOrderDto(ctx, payload.storeId, payload.insuranceOrderId); }
 export async function adminInsuranceAddItem(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager) => { const order = await tx.getRepository(InsuranceOrder).findOneBy({ id: payload.insuranceOrderId, storeId: payload.storeId }); if (!order) throw new AppError('NOT_FOUND', 'Insurance order not found'); if (order.quoteLocked) throw new AppError('IMPORT_BATCH_STATE_INVALID', 'Quote is locked'); await tx.getRepository(InsuranceItem).save(tx.getRepository(InsuranceItem).create({ id: uuidv4(), insuranceOrderId: order.id, name: payload.name, qty: payload.qty, clientContributionCents: String(payload.clientContributionCents), companyContributionCents: String(payload.companyContributionCents) })); }); return buildOrderDto(ctx, payload.storeId, payload.insuranceOrderId); }
 export async function adminInsuranceUpdateItem(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager) => { const item = await tx.getRepository(InsuranceItem).findOneBy({ id: payload.itemId }); if (!item) throw new AppError('NOT_FOUND', 'Insurance item not found'); const order = await tx.getRepository(InsuranceOrder).findOneBy({ id: item.insuranceOrderId, storeId: payload.storeId }); if (!order) throw new AppError('NOT_FOUND', 'Insurance order not found'); if (order.quoteLocked) throw new AppError('IMPORT_BATCH_STATE_INVALID', 'Quote is locked'); await tx.getRepository(InsuranceItem).update({ id: payload.itemId }, { name: payload.name ?? item.name, qty: payload.qty ?? item.qty, clientContributionCents: payload.clientContributionCents == null ? item.clientContributionCents : String(payload.clientContributionCents), companyContributionCents: payload.companyContributionCents == null ? item.companyContributionCents : String(payload.companyContributionCents) }); }); return buildOrderDto(ctx, payload.storeId, payload.insuranceOrderId); }

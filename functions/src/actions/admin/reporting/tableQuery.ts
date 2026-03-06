@@ -1,4 +1,14 @@
 import { AppError } from '../../../core/errors';
+import {
+  normalizeColumns,
+  normalizeDateInput,
+  normalizeFilters,
+  normalizeFlags,
+  normalizeGroupBy,
+  normalizePagination,
+  normalizeSort,
+  isDevRelaxedValidationEnabled,
+} from '../../../utils/queryNormalization';
 
 export const MAX_FETCH_ALL = 10000;
 
@@ -17,29 +27,35 @@ export interface TableQuery {
   flags: Record<string, unknown>;
 }
 
-export function normalizeRange(range: TableRange) {
-  const from = new Date(range.from);
-  const to = new Date(range.to);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
-    throw new AppError('VALIDATION_FAILED', 'Invalid range');
+export function normalizeRange(payload: any) {
+  const normalized = normalizeDateInput(payload, {
+    defaultDaysBack: 30,
+    requireCompleteRange: !isDevRelaxedValidationEnabled(),
+  });
+  if (!normalized.from || !normalized.to) {
+    const fallback = normalizeDateInput({}, { defaultDaysBack: 30, requireCompleteRange: true });
+    return { from: fallback.from!, to: fallback.to! };
   }
-  return { from: from.toISOString(), to: to.toISOString() };
+  return { from: normalized.from, to: normalized.to };
 }
 
-export function normalizeTableQuery(payload: any, defaults: { sortBy: string; sortDir: 'asc' | 'desc'; pageSize: number }): TableQuery {
-  const range = normalizeRange(payload.range);
-  const fetchAll = Boolean(payload.fetchAll);
+export function normalizeTableQuery(payload: any, defaults: { sortBy: string; sortDir: 'asc' | 'desc'; pageSize: number }, options?: { fallbackStoreId?: string | null }): TableQuery {
+  const range = normalizeRange(payload);
+  const pagination = normalizePagination(payload, defaults.pageSize, MAX_FETCH_ALL);
+  const sort = normalizeSort(payload, { by: defaults.sortBy, dir: defaults.sortDir });
+  const storeId = payload?.storeId ?? options?.fallbackStoreId ?? null;
+  if (!storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required');
   return {
-    storeId: String(payload.storeId),
+    storeId: String(storeId),
     range,
-    filters: (payload.filters ?? {}) as Record<string, unknown>,
-    sort: { by: payload.sort?.by ?? defaults.sortBy, dir: payload.sort?.dir === 'asc' ? 'asc' : (payload.sort?.dir === 'desc' ? 'desc' : defaults.sortDir) },
-    page: fetchAll ? 1 : Math.max(1, Number(payload.page ?? 1)),
-    pageSize: fetchAll ? MAX_FETCH_ALL : Math.max(1, Number(payload.pageSize ?? defaults.pageSize)),
-    fetchAll,
-    groupBy: Array.isArray(payload.groupBy) ? payload.groupBy : null,
-    columns: Array.isArray(payload.columns) ? payload.columns : null,
-    flags: (payload.flags ?? {}) as Record<string, unknown>,
+    filters: normalizeFilters(payload?.filters),
+    sort,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    fetchAll: pagination.fetchAll,
+    groupBy: normalizeGroupBy(payload?.groupBy),
+    columns: normalizeColumns(payload?.columns),
+    flags: normalizeFlags(payload?.flags),
   };
 }
 
