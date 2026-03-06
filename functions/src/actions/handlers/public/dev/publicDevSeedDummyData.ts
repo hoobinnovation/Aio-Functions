@@ -94,13 +94,13 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
           insuranceOrders: payload.sizes?.insuranceOrders ?? 8,
         },
         demoUids: {
-          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? 'demo_admin_owner',
-          adminManagerUid: process.env.DEMO_ADMIN_MANAGER_UID ?? 'demo_admin_manager',
-          adminOpsUid: process.env.DEMO_ADMIN_OPS_UID ?? 'demo_admin_operations',
+          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? '8O85OCx1IQUdhuBS3Ys7mrOjfCTL',
+          adminManagerUid: process.env.DEMO_ADMIN_MANAGER_UID ?? '50dMnpqXPWEIeAmmKs3smUX8LDnO',
+          adminOpsUid: process.env.DEMO_ADMIN_OPS_UID ?? 'Nfmtax9liBTyHaiKWR5QnI2AKpMz',
           adminAnalystUid: process.env.DEMO_ADMIN_ANALYST_UID ?? 'demo_admin_analyst',
-          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'demo_admin_support',
-          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'demo_admin_manager',
-          clientUid: process.env.DEMO_CLIENT_UID ?? 'demo_customer_01',
+          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'OdAMmHfEoqxdxMKx4g1R5w8WnHNX',
+          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'ZAA6d9lkzXALvzq2W23uOPuZdufs',
+          clientUid: process.env.DEMO_CLIENT_UID ?? 'XVOxKFeyg4gDnvg531VzsGckzlg6',
         },
       };
 

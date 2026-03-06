@@ -90,9 +90,9 @@ declare module 'firebase-admin' {
   export = admin;
 }
 
-declare module 'firebase-functions/v2/https' {
+/*declare module 'firebase-functions/v2/https' {
   export function onCall(handler: (request: any) => Promise<any> | any): any;
-}
+}*/
 
 declare module 'firebase-functions/v2/storage' {
   export function onObjectFinalized(handler: (event: any) => Promise<void> | void): any;
