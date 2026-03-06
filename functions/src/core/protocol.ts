@@ -37,7 +37,19 @@ export interface ActionContext {
   serverTime: string;
   uid?: string;
   storeId?: string;
+  meta?: Record<string, unknown>;
   gateway: 'public' | 'client' | 'admin';
+  runtime?: 'cloud';
+  auth?: {
+    uid?: string;
+    admin?: {
+      roles: string[];
+      status: string;
+      storeAccess: string[];
+    };
+  };
+  ip?: string;
+  userAgent?: string;
   db: DataSource;
   logger: {
     info: (msg: string, data?: unknown) => void;

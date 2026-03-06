@@ -15,10 +15,13 @@ import { TrackingEvent } from '../../entities/TrackingEvent';
 import { InsuranceOrder } from '../../entities/InsuranceOrder';
 import { InsuranceFile } from '../../entities/InsuranceFile';
 import { InsuranceStatusEvent } from '../../entities/InsuranceStatusEvent';
+import { DineInSession } from '../../entities/DineInSession';
+import { Branch } from '../../entities/Branch';
+import { resolveEffectiveDineInSettings } from './dineInSupport';
 
 async function getCart(ctx: ActionContext){let c=await ctx.db.getRepository(Cart).findOneBy({uid:ctx.uid!,storeId:ctx.storeId!});if(!c){c=ctx.db.getRepository(Cart).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,couponCode:null});await ctx.db.getRepository(Cart).save(c);}return c;}
 
-export async function checkoutCreatePaymentSession(ctx: ActionContext){
+export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: any = {}){
   const setting = await ctx.db.getRepository(StorePaymentSetting).findOneBy({ storeId: ctx.storeId! });
   if (!setting) throw new AppError('CONFIG_MISSING', 'Payment provider config missing');
   const cart = await getCart(ctx);
@@ -34,7 +37,26 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext){
         await tx.getRepository(ProductVariant).decrement({ id: i.variantId }, 'stockQty', i.qty);
       }
     }
-    await tx.getRepository(Order).save(tx.getRepository(Order).create({ id: orderId, storeId: ctx.storeId!, uid: ctx.uid!, channel: 'app', status: 'pending_payment', subtotalCents: String(subtotal), discountCents: '0', shippingCents: '0', taxCents: '0', totalCents: String(subtotal), paymentStatus: 'pending', riskStatus: 'clear' }));
+    let serviceType = payload.serviceType ?? 'standard';
+    let branchId: string | null = payload.branchId ?? null;
+    let tableId: string | null = null;
+    let dineInSessionId: string | null = null;
+    if (serviceType === 'dineIn') {
+      const token = payload.dineInSessionToken;
+      if (!token) throw new AppError('DINE_IN_SESSION_REQUIRED', 'Dine-in session is required');
+      const session = await tx.getRepository(DineInSession).findOneBy({ sessionToken: token, storeId: ctx.storeId!, customerUid: ctx.uid!, status: 'active' });
+      if (!session) throw new AppError('DINE_IN_SESSION_NOT_FOUND', 'Dine-in session not found');
+      if (new Date(session.expiresAt).getTime() < Date.now()) throw new AppError('DINE_IN_SESSION_EXPIRED', 'Dine-in session expired');
+      const branch = await tx.getRepository(Branch).findOneBy({ id: session.branchId, storeId: ctx.storeId! });
+      if (!branch) throw new AppError('DINE_IN_BRANCH_NOT_FOUND', 'Dine-in branch not found');
+      const settings = await resolveEffectiveDineInSettings(ctx, branch);
+      if (settings.requireSessionForOrder && !session) throw new AppError('DINE_IN_SESSION_REQUIRED', 'Dine-in session is required');
+      branchId = session.branchId;
+      tableId = session.tableId;
+      dineInSessionId = session.id;
+      await tx.getRepository(DineInSession).update({ id: session.id }, { lastSeenAt: new Date() });
+    }
+    await tx.getRepository(Order).save(tx.getRepository(Order).create({ id: orderId, storeId: ctx.storeId!, uid: ctx.uid!, channel: 'app', status: 'pending_payment', serviceType, branchId, tableId, dineInSessionId, subtotalCents: String(subtotal), discountCents: '0', shippingCents: '0', taxCents: '0', totalCents: String(subtotal), paymentStatus: 'pending', riskStatus: 'clear' }));
     for (const i of items) await tx.getRepository(OrderItem).save(tx.getRepository(OrderItem).create({ id: uuidv4(), orderId, productId: i.productId, variantId: i.variantId, nameSnapshot: 'item', priceCents: i.unitPriceCents, qty: i.qty }));
     await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({ id: uuidv4(), orderId, status: 'pending_payment', note: null, createdByUid: ctx.uid! }));
     await tx.getRepository(Shipment).save(tx.getRepository(Shipment).create({ id: uuidv4(), orderId, carrier: null, trackingNumber: null, status: 'pending' }));

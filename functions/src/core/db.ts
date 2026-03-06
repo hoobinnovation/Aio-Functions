@@ -77,11 +77,19 @@ import { LedgerEntry } from '../entities/LedgerEntry';
 import { Return } from '../entities/Return';
 import { ReturnItem } from '../entities/ReturnItem';
 import { Refund } from '../entities/Refund';
+import { EdgeNode } from '../entities/EdgeNode';
+import { EdgeIngestedEvent } from '../entities/EdgeIngestedEvent';
+import { OrderReview } from '../entities/OrderReview';
+import { DineInWaiterCall } from '../entities/DineInWaiterCall';
+import { DineInSession } from '../entities/DineInSession';
+import { DineInTable } from '../entities/DineInTable';
 import { Phase5OrdersInsuranceAccounting1726000000000 } from '../migrations/1726000000000-Phase5OrdersInsuranceAccounting';
 import { Phase6InventoryImport1727000000000 } from '../migrations/1727000000000-Phase6InventoryImport';
 import { ReportsBasicIndexes1727100000000 } from '../migrations/1727100000000-ReportsBasicIndexes';
 import { ReportsMarketingIndexes1727200000000 } from '../migrations/1727200000000-ReportsMarketingIndexes';
 import { AccountingLedgerIndexes1727400000000 } from '../migrations/1727400000000-AccountingLedgerIndexes';
+import { EdgeSyncIngest1728000000000 } from '../migrations/1728000000000-EdgeSyncIngest';
+import { DineInSecureTableSession1728100000000 } from '../migrations/1728100000000-DineInSecureTableSession';
 import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
@@ -173,8 +181,14 @@ export function getDataSource(sync=false): DataSource {
       Return,
       ReturnItem,
       Refund,
+      EdgeNode,
+      EdgeIngestedEvent,
+      DineInTable,
+      DineInSession,
+      DineInWaiterCall,
+      OrderReview,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000],
   });
 
   return db;

@@ -1,6 +1,5 @@
 import { ActionContext } from '../../core/protocol';
-import { PUBLIC_ACTIONS_SOT } from '../../sot/publicActions';
-import { registryPublic } from '../../gateways/registries';
+import { actionsListForGateway } from '../../health/actionsHealth';
 
 export async function publicHealthPing(ctx: ActionContext) {
   return { pong: true, gateway: ctx.gateway };
@@ -9,7 +8,6 @@ export async function publicHealthPing(ctx: ActionContext) {
 export async function publicActionsList() {
   return {
     gateway: 'public',
-    implementedActions: Array.from(registryPublic.keys()),
-    sotActionsCount: PUBLIC_ACTIONS_SOT.length,
+    allowedActions: actionsListForGateway('public'),
   };
 }

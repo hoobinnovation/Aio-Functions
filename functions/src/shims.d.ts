@@ -1,4 +1,6 @@
 type Buffer = any;
+declare const Buffer: any;
+declare function require(name: string): any;
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -34,11 +36,20 @@ declare module 'joi' {
     max(limit: number): AnySchema;
     min(limit: number): AnySchema;
     keys(schema: Record<string, AnySchema>): AnySchema;
+    custom(cb: (value: unknown, helpers: any) => unknown): AnySchema;
+  }
+  interface ArraySchema extends AnySchema {
+    items(schema: AnySchema): ArraySchema;
+  }
+  interface DateSchema extends AnySchema {
+    iso(): DateSchema;
   }
   interface JoiRoot {
     object(schema?: Record<string, AnySchema>): AnySchema;
     string(): AnySchema;
     any(): AnySchema;
+    array(): ArraySchema;
+    date(): DateSchema;
     number(): AnySchema;
     boolean(): AnySchema;
   }
@@ -79,9 +90,9 @@ declare module 'firebase-admin' {
   export = admin;
 }
 
-declare module 'firebase-functions/v2/https' {
+/*declare module 'firebase-functions/v2/https' {
   export function onCall(handler: (request: any) => Promise<any> | any): any;
-}
+}*/
 
 declare module 'firebase-functions/v2/storage' {
   export function onObjectFinalized(handler: (event: any) => Promise<void> | void): any;
@@ -101,4 +112,11 @@ declare module 'sharp' {
   }
   function sharp(input: unknown): SharpInstance;
   export default sharp;
+}
+
+
+declare module 'crypto' {
+  export function createHash(algo: string): { update: (input: string) => { digest: (enc: string) => string } };
+  export function createHmac(algo: string, key: string): { update: (input: string) => { digest: (enc: string) => string } };
+  export function timingSafeEqual(a: any, b: any): boolean;
 }

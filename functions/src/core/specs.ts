@@ -290,17 +290,23 @@ ACTION_SPECS.publicDevSeedDummyData = {
   schema: Joi.object({
     seedKey: Joi.string().required(),
     mode: Joi.string().valid('reset', 'upsert').optional(),
-    storeId: Joi.string().optional(),
+    scenario: Joi.string().valid('baseline', 'full').optional(),
+    storeCode: Joi.string().valid('ecom', 'resto', 'pharma').optional(),
     sizes: Joi.object({
-      categories: Joi.number().integer().min(1).max(200).optional(),
+      stores: Joi.number().integer().min(1).max(3).optional(),
+      branchesPerStore: Joi.number().integer().min(1).max(5).optional(),
+      categories: Joi.number().integer().min(1).max(50).optional(),
+      productsPerStore: Joi.number().integer().min(1).max(300).optional(),
+      customers: Joi.number().integer().min(5).max(120).optional(),
+      ordersPerStore: Joi.number().integer().min(5).max(300).optional(),
+      insuranceOrdersPerStore: Joi.number().integer().min(1).max(100).optional(),
       products: Joi.number().integer().min(1).max(1000).optional(),
       variantsPerProduct: Joi.number().integer().min(1).max(20).optional(),
-      customers: Joi.number().integer().min(1).max(200).optional(),
       orders: Joi.number().integer().min(1).max(1000).optional(),
       insuranceOrders: Joi.number().integer().min(1).max(300).optional(),
     }).optional(),
   }).required(),
-  notes: 'Dev-only seed action for local/staging',
+  notes: 'Dev-only scenario-based seed action for local/staging',
   errorCodes: ['VALIDATION_ERROR', 'DEV_ONLY', 'SEED_KEY_INVALID', 'SEED_RATE_LIMIT', 'SEED_FAILED'],
 };
 
@@ -499,3 +505,15 @@ ACTION_SPECS.adminReportsTopCampaigns = { schema: reportPayloadBaseStrict.keys({
 
 ACTION_SPECS.adminAccountingKpis = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).required(), sort: Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() }).required(), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']), columns: allowedStringArray(['groupKey', 'cashInCents', 'cashOutCents', 'netCashFlowCents']) }), notes: 'accounting kpis strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
 ACTION_SPECS.adminAccountingLedger = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ channel: Joi.string().max(24).optional(), branchId: Joi.string().max(36).optional(), deviceId: Joi.string().max(36).optional(), employeeId: Joi.string().max(36).optional(), type: Joi.string().max(40).optional(), referenceId: Joi.string().max(64).optional() }).required(), sort: Joi.object({ by: Joi.string().valid('createdAt', 'debitCents', 'creditCents', 'netCents', 'type', 'channel').required(), dir: Joi.string().valid('asc', 'desc').required() }).required(), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']), columns: allowedStringArray(['id', 'createdAt', 'type', 'referenceType', 'referenceId', 'debitCents', 'creditCents', 'netCents', 'channel', 'branchId', 'deviceId', 'employeeId', 'notes']) }), notes: 'accounting ledger strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+
+
+ACTION_SPECS.dineInScanTableCode={schema:Joi.object({qrCode:Joi.string().required(),geo:Joi.object({lat:Joi.number().required(),lng:Joi.number().required()}).optional(),sourceMode:Joi.string().valid('localOnly','hybrid','cloudOnly').required()}).required(),notes:'dine in scan',errorCodes:['VALIDATION_FAILED']};
+ACTION_SPECS.dineInGetSession={schema:Joi.object({sessionToken:Joi.string().required()}).required(),notes:'dine in session get',errorCodes:['VALIDATION_FAILED']};
+ACTION_SPECS.dineInCloseSession={schema:Joi.object({sessionToken:Joi.string().required()}).required(),notes:'dine in session close',errorCodes:['VALIDATION_FAILED']};
+ACTION_SPECS.dineInCallWaiter={schema:Joi.object({sessionToken:Joi.string().required(),callType:Joi.string().valid('callWaiter','requestBill','needHelp','cleanup').required(),note:Joi.string().max(1000).allow('',null),orderId:Joi.string().optional()}).required(),notes:'dine in waiter call',errorCodes:['VALIDATION_FAILED']};
+ACTION_SPECS.dineInRequestBill={schema:Joi.object({sessionToken:Joi.string().required(),orderId:Joi.string().optional(),note:Joi.string().max(1000).allow('',null)}).required(),notes:'dine in request bill',errorCodes:['VALIDATION_FAILED']};
+
+ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+
+ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.string().valid('standard','delivery','pickup','dineIn').optional(),branchId:Joi.string().optional(),dineInSessionToken:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','DINE_IN_SESSION_REQUIRED']};

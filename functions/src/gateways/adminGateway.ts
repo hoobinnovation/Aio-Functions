@@ -1,35 +1,30 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { AppError } from '../core/errors';
-import { getInitializedDataSource } from '../core/db';
-import { createLogger } from '../core/logging';
-import { rbacCheckOrThrow } from '../core/rbac';
-import { registryAdmin } from './registries';
-import { executeWithProtocol, responseMeta, validateActionPayload, validateEnvelope } from './helpers';
+import Joi from 'joi';
+import { buildCloudContext } from '../context/cloudContext';
+import { dispatchAction } from '../dispatch/dispatchAction';
+import { UnifiedRequest } from '../protocol/envelopes';
+import { resolveAdminAuth } from '../rbac/adminRbac';
 
-export const adminGateway = onCall(async (request: any) => {
-  const meta = responseMeta();
-  const logger = createLogger(`admin:${meta.requestId}`);
-  return executeWithProtocol(async () => {
-    if (!request.auth?.uid) throw new AppError('UNAUTHENTICATED', 'Authentication required');
-      if (request.data.storeId && !request.data.payload.storeId  ){
-          request.data.payload.storeId = request.data.storeId;
-      }
-    const envelope = validateEnvelope(request.data);
-    const handler = registryAdmin.get(envelope.action);
-    if (!handler) throw new AppError('ACTION_NOT_FOUND', `Unknown action ${envelope.action}`);
-    const payload = validateActionPayload(envelope.action, envelope.payload);
-    const db = await getInitializedDataSource();
+const requestSchema = Joi.object({
+  action: Joi.string().required(),
+  storeId: Joi.string().optional(),
+  payload: Joi.any().optional(),
+  meta: Joi.object().optional(),
+}).required();
 
-    const rbacStoreId =envelope.storeId || (payload && typeof payload === 'object' ? (payload as any).storeId : undefined);
-    await rbacCheckOrThrow(db, request.auth.uid, envelope.action, rbacStoreId);
-    return handler({
-      requestId: meta.requestId,
-      serverTime: meta.serverTime,
-      uid: request.auth.uid,
-      storeId: envelope.storeId,
-      gateway: 'admin',
-      db,
-      logger,
-    }, payload);
-  }, meta);
+export const adminGateway = onCall(async (request) => {
+  const envelope = requestSchema.validate(request.data, { abortEarly: false, allowUnknown: false, stripUnknown: false });
+  const req = envelope.value as UnifiedRequest;
+  const ctx = await buildCloudContext('admin', request, req?.storeId, req?.meta);
+
+  if (envelope.error) {
+    return {
+      ok: false,
+      error: { code: 'VALIDATION_FAILED', message: 'Validation failed', details: { issues: envelope.error.details.map((d) => d.message) } },
+      meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
+    };
+  }
+
+  ctx.auth.admin = await resolveAdminAuth(ctx);
+  return dispatchAction('admin', req, ctx);
 });

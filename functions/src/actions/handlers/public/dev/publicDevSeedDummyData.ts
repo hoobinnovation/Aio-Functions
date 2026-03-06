@@ -1,19 +1,9 @@
 import { EntityManager } from 'typeorm';
 import { AppError } from '../../../../core/errors';
 import { ActionContext } from '../../../../core/protocol';
-import { seedStoresAndSettings } from './seeders/seedStoresAndSettings';
-import { seedRBAC } from './seeders/seedRBAC';
-import { seedCatalog } from './seeders/seedCatalog';
-import { seedHomeCMS } from './seeders/seedHomeCMS';
-import { seedDeliveryZonesAndShipping } from './seeders/seedDeliveryZonesAndShipping';
-import { seedOrdersPaymentsTracking } from './seeders/seedOrdersPaymentsTracking';
-import { seedPromotions } from './seeders/seedPromotions';
-import { seedLoyaltyWallet } from './seeders/seedLoyaltyWallet';
-import { seedSupportNotifications } from './seeders/seedSupportNotifications';
-import { seedInsurance } from './seeders/seedInsurance';
-import { seedAccounting } from './seeders/seedAccounting';
-import { addSkip, deterministicId, initSummary, incCreated } from './seederUtils';
-import { SeedContext, SeedPayload } from './types';
+import { addSkip, initSummary, incCreated } from './seederUtils';
+import { SeedContext, SeedPayload, SeedStoreProfile } from './types';
+import { seedFullDemoScenario } from './seeders/seedFullDemoScenario';
 
 const rateLimitWindowMs = 10 * 60 * 1000;
 const rateLimitMaxCalls = 3;
@@ -60,112 +50,87 @@ async function resetAllTables(ctx: ActionContext) {
   }
 }
 
-async function seedRemainingEntities(ctx: SeedContext, summary: ReturnType<typeof initSummary>) {
-  const managerAny = ctx.manager as any;
-  for (const metadata of managerAny.connection.entityMetadatas as any[]) {
-    const count = await ctx.manager.getRepository(metadata.target).count();
-    if (count > 0) continue;
-
-    const row: Record<string, unknown> = {};
-    let skipReason: string | null = null;
-
-    for (const column of metadata.columns) {
-      if (column.isCreateDate || column.isUpdateDate || column.isDeleteDate || column.isVersion || column.isGenerated) {
-        continue;
-      }
-
-      const hasDefault = column.default !== undefined && column.default !== null;
-      if (column.isPrimary) {
-        if (hasDefault) continue;
-        if (column.type === Number || column.type === 'int' || column.type === 'bigint') {
-          skipReason = 'requires explicit seeder';
-          break;
-        }
-        row[column.propertyName] = deterministicId(metadata.tableName, 1);
-        continue;
-      }
-
-      if (column.isNullable) {
-        row[column.propertyName] = null;
-        continue;
-      }
-
-      if (hasDefault) continue;
-
-      skipReason = 'requires explicit seeder';
-      break;
-    }
-
-    if (skipReason) {
-      addSkip(summary, metadata.name, skipReason);
-      continue;
-    }
-
-    await ctx.manager.getRepository(metadata.target).insert(row);
-    incCreated(summary, metadata.name);
-  }
+function defaultStores(): SeedStoreProfile[] {
+  return [
+    { code: 'ecom', name: 'AIO E-Commerce', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
+    { code: 'resto', name: 'AIO Bistro', vertical: 'restaurant', supportEmail: 'support@resto.demo', supportPhone: '+15550010002' },
+    { code: 'pharma', name: 'AIO Pharmacy', vertical: 'pharmacy', supportEmail: 'support@pharma.demo', supportPhone: '+15550010003' },
+  ];
 }
 
 export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: SeedPayload) {
   try {
     ensureDevOnly(payload);
     const mode = payload.mode ?? 'upsert';
-    const storeId = payload.storeId ?? 'store_demo_001';
+    const scenario = payload.scenario ?? 'full';
     const now = new Date();
     const summary = initSummary();
+
+    const stores = payload.storeCode
+      ? defaultStores().filter((store) => store.code === payload.storeCode)
+      : defaultStores();
+
+    if (!stores.length) {
+      throw new AppError('VALIDATION_FAILED', 'Requested storeCode is not supported in seed profiles');
+    }
 
     const seedingWork = async (manager: EntityManager) => {
       const seedCtx: SeedContext = {
         manager,
-        storeId,
         now,
+        scenario,
+        stores,
         sizes: {
-          categories: payload.sizes?.categories ?? 4,
-          products: payload.sizes?.products ?? 12,
+          stores: payload.sizes?.stores ?? stores.length,
+          branchesPerStore: payload.sizes?.branchesPerStore ?? 3,
+          categories: payload.sizes?.categories ?? 6,
+          productsPerStore: payload.sizes?.productsPerStore ?? payload.sizes?.products ?? 24,
+          customers: payload.sizes?.customers ?? 20,
+          ordersPerStore: payload.sizes?.ordersPerStore ?? payload.sizes?.orders ?? 36,
+          insuranceOrdersPerStore: payload.sizes?.insuranceOrdersPerStore ?? payload.sizes?.insuranceOrders ?? 8,
+          products: payload.sizes?.products ?? 24,
           variantsPerProduct: payload.sizes?.variantsPerProduct ?? 2,
-          customers: payload.sizes?.customers ?? 4,
-          orders: payload.sizes?.orders ?? 6,
-          insuranceOrders: payload.sizes?.insuranceOrders ?? 3,
+          orders: payload.sizes?.orders ?? 36,
+          insuranceOrders: payload.sizes?.insuranceOrders ?? 8,
         },
         demoUids: {
           adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? '8O85OCx1IQUdhuBS3Ys7mrOjfCTL',
-          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'ZAA6d9lkzXALvzq2W23uOPuZdufs',
+          adminManagerUid: process.env.DEMO_ADMIN_MANAGER_UID ?? '50dMnpqXPWEIeAmmKs3smUX8LDnO',
+          adminOpsUid: process.env.DEMO_ADMIN_OPS_UID ?? 'Nfmtax9liBTyHaiKWR5QnI2AKpMz',
+          adminAnalystUid: process.env.DEMO_ADMIN_ANALYST_UID ?? 'demo_admin_analyst',
           adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'OdAMmHfEoqxdxMKx4g1R5w8WnHNX',
+          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'ZAA6d9lkzXALvzq2W23uOPuZdufs',
           clientUid: process.env.DEMO_CLIENT_UID ?? 'XVOxKFeyg4gDnvg531VzsGckzlg6',
         },
       };
 
-      await seedStoresAndSettings(seedCtx, summary);
-      await seedRBAC(seedCtx, summary);
-      await seedCatalog(seedCtx, summary);
-      await seedHomeCMS(seedCtx, summary);
-      await seedDeliveryZonesAndShipping(seedCtx, summary);
-      await seedOrdersPaymentsTracking(seedCtx, summary);
-      await seedPromotions(seedCtx, summary);
-      await seedLoyaltyWallet(seedCtx, summary);
-      await seedSupportNotifications(seedCtx, summary);
-      await seedInsurance(seedCtx, summary);
-      await seedAccounting(seedCtx, summary);
-      await seedRemainingEntities(seedCtx, summary);
+      if (scenario === 'baseline') {
+        seedCtx.sizes.productsPerStore = Math.min(seedCtx.sizes.productsPerStore, 12);
+        seedCtx.sizes.ordersPerStore = Math.min(seedCtx.sizes.ordersPerStore, 18);
+      }
+
+      await seedFullDemoScenario(seedCtx, summary);
+      incCreated(summary, 'SeedScenarioRuns');
+      addSkip(summary, 'SeedMode', `mode=${mode} scenario=${scenario}`);
     };
 
     if (mode === 'reset') {
       await resetAllTables(actionCtx);
     }
 
-    await actionCtx.db.transaction(async (tx) => {
+    await actionCtx.db.transaction(async (tx: EntityManager) => {
       await seedingWork(tx);
     });
 
     return {
-      storeId,
+      ok: true,
       mode,
+      scenario,
+      stores: stores.map((s) => s.code),
       summary,
+      note: 'Seed completed. Use seeded admin/demo IDs shown in skipped summary rows.',
     };
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    throw new AppError('SEED_FAILED', 'Failed to seed dummy data.', {
-      reason: error instanceof Error ? error.message : String(error),
-    });
+  } catch (err) {
+    throw err instanceof AppError ? err : new AppError('SEED_FAILED', 'Failed to seed dummy data', { cause: String(err) });
   }
 }
