@@ -17,6 +17,10 @@ import { ProductVariant } from '../entities/ProductVariant';
 import { ProductSpec } from '../entities/ProductSpec';
 import { ProductImage } from '../entities/ProductImage';
 import { InventoryAdjustment } from '../entities/InventoryAdjustment';
+import { ProductPrefixMapping } from '../entities/ProductPrefixMapping';
+import { InventoryImportBatch } from '../entities/InventoryImportBatch';
+import { InventoryImportRow } from '../entities/InventoryImportRow';
+import { InventoryBalance } from '../entities/InventoryBalance';
 import { Banner } from '../entities/Banner';
 import { FeaturedItem } from '../entities/FeaturedItem';
 import { UserProductFavorite } from '../entities/UserProductFavorite';
@@ -74,6 +78,10 @@ import { Return } from '../entities/Return';
 import { ReturnItem } from '../entities/ReturnItem';
 import { Refund } from '../entities/Refund';
 import { Phase5OrdersInsuranceAccounting1726000000000 } from '../migrations/1726000000000-Phase5OrdersInsuranceAccounting';
+import { Phase6InventoryImport1727000000000 } from '../migrations/1727000000000-Phase6InventoryImport';
+import { ReportsBasicIndexes1727100000000 } from '../migrations/1727100000000-ReportsBasicIndexes';
+import { ReportsMarketingIndexes1727200000000 } from '../migrations/1727200000000-ReportsMarketingIndexes';
+import { AccountingLedgerIndexes1727400000000 } from '../migrations/1727400000000-AccountingLedgerIndexes';
 import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
@@ -107,6 +115,10 @@ export function getDataSource(sync=false): DataSource {
       ProductSpec,
       ProductImage,
       InventoryAdjustment,
+      ProductPrefixMapping,
+      InventoryImportBatch,
+      InventoryImportRow,
+      InventoryBalance,
       Banner,
       FeaturedItem,
       UserProductFavorite,
@@ -162,13 +174,13 @@ export function getDataSource(sync=false): DataSource {
       ReturnItem,
       Refund,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000],
   });
 
   return db;
 }
 
-export async function getInitializedDataSource(sync = !PROD): Promise<DataSource> {
+export async function getInitializedDataSource(sync = false): Promise<DataSource> {
   const source = getDataSource(sync);
   if (!source.isInitialized) {
     await source.initialize();
