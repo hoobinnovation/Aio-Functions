@@ -1,14 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { EntityManager } from 'typeorm';
 import { ActionContext } from '../../core/protocol';
-import { HomeSection } from '../../entities/HomeSection';
 import { UserProductFavorite } from '../../entities/UserProductFavorite';
 import { UserStoreFavorite } from '../../entities/UserStoreFavorite';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
+import { buildHomeLayout } from '../home/homeBuilder';
 
-export async function homeGetLayout(ctx: ActionContext) {
-  const rows = await ctx.db.getRepository(HomeSection).find({ where: { storeId: ctx.storeId, enabled: true }, order: { sortOrder: 'ASC' as any } });
-  return { sections: rows };
+export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
+  return buildHomeLayout(ctx, payload);
 }
 
 export async function productFavoritesList(ctx: ActionContext, payload: any = {}) {
