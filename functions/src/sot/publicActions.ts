@@ -12,4 +12,5 @@ export const PUBLIC_ACTIONS_SOT = [
   'publicCategoryGetBySlug',
   'publicSeoGetPageMeta',
   'publicSeoGetLanding',
+  'publicDevSeedDummyData',
 ] as const;

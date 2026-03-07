@@ -195,10 +195,10 @@ export async function rbacCheckOrThrow(db: DataSource, adminUid: string, action:
 
   const roles = await db.getRepository(AdminRole).find({ where: { adminUid } });
   const roleSet = new Set(roles.map((r: AdminRole) => r.role));
+  console.log(roles,roleSet)
   if (!policy.rolesAllowed.some((role) => roleSet.has(role))) {
     throw new AppError('FORBIDDEN', 'Missing required admin role');
   }
-
   if (policy.storeAccessRequired) {
     if (!storeId) throw new AppError('FORBIDDEN', 'storeId is required for this action');
     const access = await db.getRepository(AdminStoreAccess).findOne({ where: { adminUid, storeId } });

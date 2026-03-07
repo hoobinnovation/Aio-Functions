@@ -1,48 +1,111 @@
 import { publicHealthPing, publicActionsList } from '../actions/public/publicActions';
+import { publicDevSeedDummyData } from '../actions/handlers/public/dev/publicDevSeedDummyData';
 import {
-  publicCatalogGetHome,
-  publicCatalogGetCategories,
-  publicCatalogListProducts,
-  publicCatalogSearchProducts,
-  publicCatalogGetFilters,
-  publicProductGetById,
-  publicProductGetBySlug,
-  publicCategoryGetById,
-  publicCategoryGetBySlug,
-  publicSeoGetPageMeta,
-  publicSeoGetLanding,
+    publicCatalogGetHome,
+    publicCatalogGetCategories,
+    publicCatalogListProducts,
+    publicCatalogSearchProducts,
+    publicCatalogGetFilters,
+    publicProductGetById,
+    publicProductGetBySlug,
+    publicCategoryGetById,
+    publicCategoryGetBySlug,
+    publicSeoGetPageMeta,
+    publicSeoGetLanding,
 } from '../actions/public/catalogPublicActions';
 import {
-  clientHealthWhoAmI, clientActionsList, authEnsureUserProfile, profileGet, profileUpdate, accountDeleteRequest,
-  addressesList, addressesCreate, addressesUpdate, addressesDelete, addressesSetDefault,
-  storesList, storesGet, storeContextGetMyStore, storeContextSetMyStore, mediaCreateUploadSpec, mediaFinalizeUpload,
+    clientHealthWhoAmI, clientActionsList, authEnsureUserProfile, profileGet, profileUpdate, accountDeleteRequest,
+    addressesList, addressesCreate, addressesUpdate, addressesDelete, addressesSetDefault,
+    storesList, storesGet, storeContextGetMyStore, storeContextSetMyStore, mediaCreateUploadSpec, mediaFinalizeUpload,
 } from '../actions/client/clientActions';
 import { checkoutCreatePaymentSession, paymentsStatus, paymentsConfirm, ordersList, ordersGet, ordersTracking, ordersInvoiceUrl, ordersReorder, insuranceCreateDraft, insuranceAttachFiles, insuranceSubmit, insuranceGet, insuranceApproveQuote, insuranceRejectQuote, insuranceListMyOrders } from '../actions/client/ordersClientActions';
 import { cartGet, cartAddItem, cartUpdateQty, cartRemoveItem, cartClear, cartApplyCoupon, cartRemoveCoupon, shippingListMethods, shippingQuoteDelivery, checkoutPreview, notificationsRegisterToken, notificationsList, notificationsMarkRead, notificationsMarkAllRead, notificationsDelete, loyaltyGetDashboard, loyaltyListTransactions, loyaltyRedeem, walletGet, walletHistory, marketingCapture, alertsGetPrefs, alertsUpdatePrefs, alertsSubscribeBackInStock, recoGetSimilar, recoGetCartUpsell, postPurchaseGetNudges, supportCreateTicket, supportListTickets, supportGetTicket, supportAddMessage, supportCloseTicket, settingsGet, settingsUpdate, legalGetDocs } from '../actions/client/commerceClientActions';
 import { homeGetLayout, productFavoritesList, productFavoritesToggle, storeFavoritesList, storeFavoritesToggle } from '../actions/client/catalogClientActions';
 import {
-  adminHealthWhoAmI, adminHealthDbCheck, adminHealthActionsCoverage, adminActionsList, adminMe,
-  adminStoresList, adminStoresGet, adminStoresCreate, adminStoresUpdate, adminStoresDisable,
-  adminStoreSettingsGet, adminStoreSettingsUpdate, adminCustomersList, adminCustomersGet, adminCustomersUpdate,
-  adminCustomersDisable, adminCustomersSearch, adminMediaCreateUploadSpec, adminMediaFinalizeUpload,
+    adminHealthWhoAmI, adminHealthDbCheck, adminHealthActionsCoverage, adminActionsList, adminMe,
+    adminStoresList, adminStoresGet, adminStoresCreate, adminStoresUpdate, adminStoresDisable,
+    adminStoreSettingsGet, adminStoreSettingsUpdate, adminCustomersList, adminCustomersGet, adminCustomersUpdate,
+    adminCustomersDisable, adminCustomersSearch, adminMediaCreateUploadSpec, adminMediaFinalizeUpload,
 } from '../actions/admin/adminActions';
-import { adminOrdersList, adminOrdersGet, adminOrdersUpdateStatus, adminOrdersSetTracking, adminOrdersAddInternalNote, adminOrdersInvoiceUrl, adminOrdersTrackingGet, adminOrdersTrackingAddEvent, adminOrdersTrackingDeleteEvent, adminOrdersTrackingUpdateShipment, adminInsuranceList, adminInsuranceGet, adminInsuranceAddItem, adminInsuranceUpdateItem, adminInsuranceRemoveItem, adminInsuranceLockQuote, adminInsuranceSendQuote, adminInsuranceSetShipmentTracking, adminRiskRulesGet, adminRiskRulesUpdate, adminRiskFlaggedOrdersList, adminRiskFlaggedOrdersResolve, adminBranchesList, adminBranchesCreate, adminBranchesUpdate, adminBranchesDisable, adminDevicesList, adminDevicesCreate, adminDevicesUpdate, adminDevicesDisable, adminEmployeesList, adminEmployeesCreate, adminEmployeesUpdate, adminEmployeesDisable, adminDrawersList, adminDrawersCreate, adminDrawersUpdate, adminDrawersDisable, adminDrawerSessionsOpen, adminDrawerSessionsClose, adminAccountingKpis, adminAccountingLedger, adminAccountingCreateExpense, adminAccountingCreateAdjustment, adminAccountingCreatePOSSale, reportsOverview, reportsTopProducts, reportsOrdersByStatus, reportsInventorySummary, reportsCustomersSummary, reportsReturnsSummary, reportsLoyaltySummary, reportsCashbackSummary, adminReturnsList, adminReturnsGet, adminReturnsApprove, adminReturnsReject, adminReturnsRefundPartial, adminReturnsRefundFull, adminReturnsUpdateStatus } from '../actions/admin/ordersAdminActions';
-import { adminShippingMethodsList, adminShippingMethodsGet, adminShippingMethodsCreate, adminShippingMethodsUpdate, adminShippingMethodsDisable, adminDeliveryZonesList, adminDeliveryZonesGet, adminDeliveryZonesCreate, adminDeliveryZonesUpdate, adminDeliveryZonesDisable, adminCouponsList, adminCouponsGet, adminCouponsCreate, adminCouponsUpdate, adminCouponsDisable, adminCashbackList, adminCashbackGet, adminCashbackCreate, adminCashbackUpdate, adminCashbackDisable, adminDiscountsList, adminDiscountsGet, adminDiscountsCreate, adminDiscountsUpdate, adminDiscountsDisable, adminDiscountsPreviewAudienceCount, adminNotificationsSend, adminNotificationsList, adminLoyaltyGetSettings, adminLoyaltyUpdateSettings, adminLoyaltyAdjustUserPoints, adminLoyaltyTiersList, adminLoyaltyTiersCreate, adminLoyaltyTiersUpdate, adminLoyaltyTiersDisable, adminReportsAttributionOverview, adminReportsTopCampaigns, adminPostPurchaseFlowsList, adminPostPurchaseFlowsGet, adminPostPurchaseFlowsCreate, adminPostPurchaseFlowsUpdate, adminPostPurchaseFlowsDisable, adminPostPurchaseRunsList } from '../actions/admin/commerceAdminActions';
 import {
-  adminCategoriesList, adminCategoriesGet, adminCategoriesCreate, adminCategoriesUpdate, adminCategoriesDisable,
-  adminBannersList, adminBannersGet, adminBannersCreate, adminBannersUpdate, adminBannersDisable,
-  adminFeaturedList, adminFeaturedSearchProducts, adminFeaturedSet,
-  adminProductsList, adminProductsGet, adminProductsCreate, adminProductsUpdate, adminProductsDisable,
-  adminProductImagesList, adminProductImagesAdd, adminProductImagesRemove, adminProductImagesReorder,
-  adminProductSpecsList, adminProductSpecsCreate, adminProductSpecsUpdate, adminProductSpecsDelete,
-  adminProductVariantsList, adminProductVariantsCreate, adminProductVariantsUpdate, adminProductVariantsDelete, adminProductVariantsBulkStockUpdate,
-  adminInventoryAdjust, adminInventoryHistory, adminInventoryLowStockReport,
-  adminHomeSectionsList, adminHomeSectionsGet, adminHomeSectionsCreate, adminHomeSectionsUpdate, adminHomeSectionsDisable, adminHomeSectionsReorder,
-  adminSeoGet, adminSeoUpdate,
-  adminLandingPagesList, adminLandingPagesGet, adminLandingPagesCreate, adminLandingPagesUpdate, adminLandingPagesPublish, adminLandingPagesUnpublish, adminLandingPagesDisable,
-  adminSitemapRegenerate,
+    adminOrdersList,
+    adminOrdersGet,
+    adminOrdersCreate,
+    adminOrdersUpdateStatus,
+    adminOrdersSetTracking,
+    adminOrdersAddInternalNote,
+    adminOrdersInvoiceUrl,
+    adminOrdersTrackingGet,
+    adminOrdersTrackingAddEvent,
+    adminOrdersTrackingDeleteEvent,
+    adminOrdersTrackingUpdateShipment,
+    adminInsuranceList,
+    adminInsuranceGet,
+    adminInsuranceAddItem,
+    adminInsuranceUpdateItem,
+    adminInsuranceRemoveItem,
+    adminInsuranceLockQuote,
+    adminInsuranceSendQuote,
+    adminInsuranceSetShipmentTracking,
+    adminRiskRulesGet,
+    adminRiskRulesUpdate,
+    adminRiskFlaggedOrdersList,
+    adminRiskFlaggedOrdersResolve,
+    adminBranchesList,
+    adminBranchesCreate,
+    adminBranchesUpdate,
+    adminBranchesDisable,
+    adminDevicesList,
+    adminDevicesCreate,
+    adminDevicesUpdate,
+    adminDevicesDisable,
+    adminEmployeesList,
+    adminEmployeesCreate,
+    adminEmployeesUpdate,
+    adminEmployeesDisable,
+    adminDrawersList,
+    adminDrawersCreate,
+    adminDrawersUpdate,
+    adminDrawersDisable,
+    adminDrawerSessionsOpen,
+    adminDrawerSessionsClose,
+    adminAccountingKpis,
+    adminAccountingLedger,
+    adminAccountingCreateExpense,
+    adminAccountingCreateAdjustment,
+    adminAccountingCreatePOSSale,
+    reportsOverview,
+    reportsTopProducts,
+    reportsOrdersByStatus,
+    reportsInventorySummary,
+    reportsCustomersSummary,
+    reportsReturnsSummary,
+    reportsLoyaltySummary,
+    reportsCashbackSummary,
+    adminReturnsList,
+    adminReturnsGet,
+    adminReturnsApprove,
+    adminReturnsReject,
+    adminReturnsRefundPartial,
+    adminReturnsRefundFull,
+    adminReturnsUpdateStatus
+} from '../actions/admin/ordersAdminActions';
+import {
+    adminCategoriesList, adminCategoriesGet, adminCategoriesCreate, adminCategoriesUpdate, adminCategoriesDisable,
+    adminBannersList, adminBannersGet, adminBannersCreate, adminBannersUpdate, adminBannersDisable,
+    adminFeaturedList, adminFeaturedSearchProducts, adminFeaturedSet,
+    adminProductsList, adminProductsGet, adminProductsCreate, adminProductsUpdate, adminProductsDisable,
+    adminProductImagesList, adminProductImagesAdd, adminProductImagesRemove, adminProductImagesReorder,
+    adminProductSpecsList, adminProductSpecsCreate, adminProductSpecsUpdate, adminProductSpecsDelete,
+    adminProductVariantsList, adminProductVariantsCreate, adminProductVariantsUpdate, adminProductVariantsDelete, adminProductVariantsBulkStockUpdate,
+    adminInventoryAdjust, adminInventoryHistory, adminInventoryLowStockReport,
+    adminHomeSectionsList, adminHomeSectionsGet, adminHomeSectionsCreate, adminHomeSectionsUpdate, adminHomeSectionsDisable, adminHomeSectionsReorder,
+    adminSeoGet, adminSeoUpdate,
+    adminLandingPagesList, adminLandingPagesGet, adminLandingPagesCreate, adminLandingPagesUpdate, adminLandingPagesPublish, adminLandingPagesUnpublish, adminLandingPagesDisable,
+    adminSitemapRegenerate,
 } from '../actions/admin/catalogAdminActions';
 import { ActionHandler } from '../core/protocol';
+import { adminShippingMethodsList, adminShippingMethodsGet, adminShippingMethodsCreate, adminShippingMethodsUpdate, adminShippingMethodsDisable, adminDeliveryZonesList, adminDeliveryZonesGet, adminDeliveryZonesCreate, adminDeliveryZonesUpdate, adminDeliveryZonesDisable, adminCouponsList, adminCouponsGet, adminCouponsCreate, adminCouponsUpdate, adminCouponsDisable, adminCashbackList, adminCashbackGet, adminCashbackCreate, adminCashbackUpdate, adminCashbackDisable, adminDiscountsList, adminDiscountsGet, adminDiscountsCreate, adminDiscountsUpdate, adminDiscountsDisable, adminDiscountsPreviewAudienceCount, adminNotificationsSend, adminNotificationsList, adminLoyaltyGetSettings, adminLoyaltyUpdateSettings, adminLoyaltyAdjustUserPoints, adminLoyaltyTiersList, adminLoyaltyTiersCreate, adminLoyaltyTiersUpdate, adminLoyaltyTiersDisable, adminReportsAttributionOverview, adminReportsTopCampaigns, adminPostPurchaseFlowsList, adminPostPurchaseFlowsGet, adminPostPurchaseFlowsCreate, adminPostPurchaseFlowsUpdate, adminPostPurchaseFlowsDisable, adminPostPurchaseRunsList } from '../actions/admin/commerceAdminActions';
 
 const m = () => new Map<string, ActionHandler>();
 const add = (r: Map<string, ActionHandler>, key: string, handler: ActionHandler) => { r.set(key, handler); };
@@ -50,6 +113,7 @@ const add = (r: Map<string, ActionHandler>, key: string, handler: ActionHandler)
 export const registryPublic = m();
 add(registryPublic,'publicHealthPing', publicHealthPing as ActionHandler);
 add(registryPublic,'publicActionsList', publicActionsList as ActionHandler);
+add(registryPublic,'publicDevSeedDummyData', publicDevSeedDummyData as ActionHandler);
 add(registryPublic,'publicCatalogGetHome', publicCatalogGetHome as ActionHandler);
 add(registryPublic,'publicCatalogGetCategories', publicCatalogGetCategories as ActionHandler);
 add(registryPublic,'publicCatalogListProducts', publicCatalogListProducts as ActionHandler);
@@ -207,8 +271,10 @@ add(registryClient,'insuranceGet',insuranceGet as ActionHandler);
 add(registryClient,'insuranceApproveQuote',insuranceApproveQuote as ActionHandler);
 add(registryClient,'insuranceRejectQuote',insuranceRejectQuote as ActionHandler);
 add(registryClient,'insuranceListMyOrders',insuranceListMyOrders as ActionHandler);
+
 add(registryAdmin,'adminOrdersList',adminOrdersList as ActionHandler);
 add(registryAdmin,'adminOrdersGet',adminOrdersGet as ActionHandler);
+add(registryAdmin,'adminOrdersCreate',adminOrdersCreate as ActionHandler);
 add(registryAdmin,'adminOrdersUpdateStatus',adminOrdersUpdateStatus as ActionHandler);
 add(registryAdmin,'adminOrdersSetTracking',adminOrdersSetTracking as ActionHandler);
 add(registryAdmin,'adminOrdersAddInternalNote',adminOrdersAddInternalNote as ActionHandler);
@@ -267,3 +333,46 @@ add(registryAdmin,'adminReturnsReject',adminReturnsReject as ActionHandler);
 add(registryAdmin,'adminReturnsRefundPartial',adminReturnsRefundPartial as ActionHandler);
 add(registryAdmin,'adminReturnsRefundFull',adminReturnsRefundFull as ActionHandler);
 add(registryAdmin,'adminReturnsUpdateStatus',adminReturnsUpdateStatus as ActionHandler);
+add(registryAdmin,'adminShippingMethodsList',adminShippingMethodsList as ActionHandler);
+add(registryAdmin,'adminShippingMethodsGet',adminShippingMethodsGet as ActionHandler);
+add(registryAdmin,'adminShippingMethodsCreate',adminShippingMethodsCreate as ActionHandler);
+add(registryAdmin,'adminShippingMethodsUpdate',adminShippingMethodsUpdate as ActionHandler);
+add(registryAdmin,'adminShippingMethodsDisable',adminShippingMethodsDisable as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesList',adminDeliveryZonesList as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesGet',adminDeliveryZonesGet as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesCreate',adminDeliveryZonesCreate as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesUpdate',adminDeliveryZonesUpdate as ActionHandler);
+add(registryAdmin,'adminDeliveryZonesDisable',adminDeliveryZonesDisable as ActionHandler);
+add(registryAdmin,'adminCouponsList',adminCouponsList as ActionHandler);
+add(registryAdmin,'adminCouponsGet',adminCouponsGet as ActionHandler);
+add(registryAdmin,'adminCouponsCreate',adminCouponsCreate as ActionHandler);
+add(registryAdmin,'adminCouponsUpdate',adminCouponsUpdate as ActionHandler);
+add(registryAdmin,'adminCouponsDisable',adminCouponsDisable as ActionHandler);
+add(registryAdmin,'adminCashbackList',adminCashbackList as ActionHandler);
+add(registryAdmin,'adminCashbackGet',adminCashbackGet as ActionHandler);
+add(registryAdmin,'adminCashbackCreate',adminCashbackCreate as ActionHandler);
+add(registryAdmin,'adminCashbackUpdate',adminCashbackUpdate as ActionHandler);
+add(registryAdmin,'adminCashbackDisable',adminCashbackDisable as ActionHandler);
+add(registryAdmin,'adminDiscountsList',adminDiscountsList as ActionHandler);
+add(registryAdmin,'adminDiscountsGet',adminDiscountsGet as ActionHandler);
+add(registryAdmin,'adminDiscountsCreate',adminDiscountsCreate as ActionHandler);
+add(registryAdmin,'adminDiscountsUpdate',adminDiscountsUpdate as ActionHandler);
+add(registryAdmin,'adminDiscountsDisable',adminDiscountsDisable as ActionHandler);
+add(registryAdmin,'adminDiscountsPreviewAudienceCount',adminDiscountsPreviewAudienceCount as ActionHandler);
+add(registryAdmin,'adminNotificationsSend',adminNotificationsSend as ActionHandler);
+add(registryAdmin,'adminNotificationsList',adminNotificationsList as ActionHandler);
+add(registryAdmin,'adminLoyaltyGetSettings',adminLoyaltyGetSettings as ActionHandler);
+add(registryAdmin,'adminLoyaltyUpdateSettings',adminLoyaltyUpdateSettings as ActionHandler);
+add(registryAdmin,'adminLoyaltyAdjustUserPoints',adminLoyaltyAdjustUserPoints as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersList',adminLoyaltyTiersList as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersCreate',adminLoyaltyTiersCreate as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersUpdate',adminLoyaltyTiersUpdate as ActionHandler);
+add(registryAdmin,'adminLoyaltyTiersDisable',adminLoyaltyTiersDisable as ActionHandler);
+add(registryAdmin,'adminReportsAttributionOverview',adminReportsAttributionOverview as ActionHandler);
+add(registryAdmin,'adminReportsTopCampaigns',adminReportsTopCampaigns as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsList',adminPostPurchaseFlowsList as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsGet',adminPostPurchaseFlowsGet as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsCreate',adminPostPurchaseFlowsCreate as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsUpdate',adminPostPurchaseFlowsUpdate as ActionHandler);
+add(registryAdmin,'adminPostPurchaseFlowsDisable',adminPostPurchaseFlowsDisable as ActionHandler);
+add(registryAdmin,'adminPostPurchaseRunsList',adminPostPurchaseRunsList as ActionHandler);
