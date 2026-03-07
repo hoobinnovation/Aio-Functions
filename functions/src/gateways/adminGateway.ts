@@ -1,37 +1,45 @@
-// functions/src/gateways/adminGateway.ts
 import { onCall } from "firebase-functions/v2/https";
 import { AppError } from "../core/errors";
 import { getInitializedDataSource } from "../core/db";
 import { createLogger } from "../core/logging";
 import { rbacCheckOrThrow } from "../core/rbac";
 import { registryAdmin } from "./registries";
-import { executeWithProtocol, responseMeta, validateActionPayload, validateEnvelope } from "./helpers";
+import {
+    executeWithProtocol,
+    responseMeta,
+    validateActionPayload,
+    validateEnvelope,
+} from "./helpers";
 
 export const adminGateway = onCall(async (request: any) => {
     const meta = responseMeta();
     const logger = createLogger(`admin:${meta.requestId}`);
 
     return executeWithProtocol(async () => {
-        if (!request.auth?.uid) throw new AppError("UNAUTHENTICATED", "Authentication required");
+        if (!request.auth?.uid) {
+            throw new AppError("UNAUTHENTICATED", "Authentication required");
+        }
 
-        // ✅ Validate envelope first (لا نعدل request.data قبل الفاليديشن)
         const envelope = validateEnvelope(request.data);
 
-        // ✅ Ensure payload object
         const rawPayload: any =
-            envelope.payload && typeof envelope.payload === "object" ? { ...envelope.payload } : {};
+            envelope.payload && typeof envelope.payload === "object"
+                ? { ...envelope.payload }
+                : {};
 
-        // ✅ Force storeId into payload when storeId exists in envelope
         if (envelope.storeId && !rawPayload.storeId) {
             rawPayload.storeId = String(envelope.storeId);
         }
 
         const handler = registryAdmin.get(envelope.action);
-        if (!handler) throw new AppError("ACTION_NOT_FOUND", `Unknown action ${envelope.action}`);
+        if (!handler) {
+            throw new AppError("ACTION_NOT_FOUND", `Unknown action ${envelope.action}`);
+        }
 
         const payload = validateActionPayload(envelope.action, rawPayload);
 
         const db = await getInitializedDataSource();
+
         const rbacStoreId =
             envelope.storeId ||
             (payload && typeof payload === "object" ? (payload as any).storeId : undefined);
