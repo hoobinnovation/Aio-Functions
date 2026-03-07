@@ -7,14 +7,29 @@ import { Branch } from '../../entities/Branch';
 import { buildTableQrCode, getDefaultDineInSettings } from '../client/dineInSupport';
 import { DineInSession } from '../../entities/DineInSession';
 import { DineInWaiterCall } from '../../entities/DineInWaiterCall';
-import { Order } from '../../entities/Order';
-import { OrderReview } from '../../entities/OrderReview';
 import { normalizeDateInput, normalizeListQueryInput } from '../../utils/queryNormalization';
+
+function tableCapabilities() {
+  return { canEdit: true, canDelete: false };
+}
+
+function readonlyCapabilities() {
+  return { canEdit: false, canDelete: false };
+}
 
 async function getSettingsRow(ctx: ActionContext) {
   let row = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId! });
   if (!row) {
-    row = ctx.db.getRepository(StoreSettings).create({ storeId: ctx.storeId!, currency: 'USD', taxMode: 'exclusive', supportWhatsApp: null, supportEmail: null, pickupEnabled: true, deliveryEnabled: true, dineInConfigJson: null });
+    row = ctx.db.getRepository(StoreSettings).create({
+      storeId: ctx.storeId!,
+      currency: 'USD',
+      taxMode: 'exclusive',
+      supportWhatsApp: null,
+      supportEmail: null,
+      pickupEnabled: true,
+      deliveryEnabled: true,
+      dineInConfigJson: null,
+    });
     await ctx.db.getRepository(StoreSettings).save(row);
   }
   return row;
@@ -28,10 +43,29 @@ export async function adminDineInSettingsGet(ctx: ActionContext) {
 }
 
 export async function adminDineInSettingsUpdate(ctx: ActionContext, payload: any) {
-  const row = await getSettingsRow(ctx);
   const defaults = getDefaultDineInSettings();
   const next = { ...defaults, ...payload };
-  await ctx.db.getRepository(StoreSettings).update({ storeId: ctx.storeId! }, { dineInConfigJson: JSON.stringify({ dineIn: next }) });
+
+  await ctx.db.transaction(async (trx) => {
+    const row = await trx.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId! });
+    if (!row) {
+      const created = trx.getRepository(StoreSettings).create({
+        storeId: ctx.storeId!,
+        currency: 'USD',
+        taxMode: 'exclusive',
+        supportWhatsApp: null,
+        supportEmail: null,
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        dineInConfigJson: JSON.stringify({ dineIn: next }),
+      });
+      await trx.getRepository(StoreSettings).save(created);
+      return;
+    }
+
+    await trx.getRepository(StoreSettings).update({ storeId: ctx.storeId! }, { dineInConfigJson: JSON.stringify({ dineIn: next }) });
+  });
+
   return adminDineInSettingsGet(ctx);
 }
 
@@ -39,7 +73,20 @@ export async function adminDineInTablesList(ctx: ActionContext, payload: any = {
   const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
-  return { tables: await ctx.db.getRepository(DineInTable).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
+
+  const repo = ctx.db.getRepository(DineInTable);
+  const [items, total] = await repo.findAndCount({
+    where,
+    order: { createdAt: 'DESC' as any },
+    take: q.limit,
+    skip: q.offset,
+  });
+
+  return {
+    items,
+    pageInfo: { page: q.page, pageSize: q.limit, total },
+    capabilities: tableCapabilities(),
+  };
 }
 
 export async function adminDineInTablesGet(ctx: ActionContext, payload: any) {
@@ -49,29 +96,78 @@ export async function adminDineInTablesGet(ctx: ActionContext, payload: any) {
 }
 
 export async function adminDineInTablesCreate(ctx: ActionContext, payload: any) {
-  const branch = await ctx.db.getRepository(Branch).findOneBy({ id: payload.branchId, storeId: ctx.storeId! });
-  if (!branch) throw new AppError('DINE_IN_BRANCH_NOT_FOUND', 'Branch not found');
   const id = uuidv4();
-  await ctx.db.getRepository(DineInTable).insert({ id, storeId: ctx.storeId!, branchId: payload.branchId, code: payload.code, tableNumber: payload.tableNumber, name: payload.name || null, seatsCount: payload.seatsCount, status: 'active', qrVersion: 1, qrPayload: '', qrSignature: '', lastQrIssuedAt: null });
+  await ctx.db.transaction(async (trx) => {
+    const branch = await trx.getRepository(Branch).findOneBy({ id: payload.branchId, storeId: ctx.storeId! });
+    if (!branch) throw new AppError('DINE_IN_BRANCH_NOT_FOUND', 'Branch not found');
+
+    await trx.getRepository(DineInTable).insert({
+      id,
+      storeId: ctx.storeId!,
+      branchId: payload.branchId,
+      code: payload.code,
+      tableNumber: payload.tableNumber,
+      name: payload.name || null,
+      seatsCount: payload.seatsCount,
+      status: 'active',
+      qrVersion: 1,
+      qrPayload: '',
+      qrSignature: '',
+      lastQrIssuedAt: null,
+    });
+  });
+
   return adminDineInTablesGet(ctx, { tableId: id });
 }
 
 export async function adminDineInTablesUpdate(ctx: ActionContext, payload: any) {
-  await ctx.db.getRepository(DineInTable).update({ id: payload.tableId, storeId: ctx.storeId! }, { tableNumber: payload.tableNumber, name: payload.name || null, seatsCount: payload.seatsCount, status: payload.status });
+  await ctx.db.transaction(async (trx) => {
+    await trx.getRepository(DineInTable).update(
+      { id: payload.tableId, storeId: ctx.storeId! },
+      { tableNumber: payload.tableNumber, name: payload.name || null, seatsCount: payload.seatsCount, status: payload.status },
+    );
+  });
   return adminDineInTablesGet(ctx, { tableId: payload.tableId });
 }
 
 export async function adminDineInTablesDisable(ctx: ActionContext, payload: any) {
-  await ctx.db.getRepository(DineInTable).update({ id: payload.tableId, storeId: ctx.storeId! }, { status: 'disabled' });
+  await ctx.db.transaction(async (trx) => {
+    await trx.getRepository(DineInTable).update({ id: payload.tableId, storeId: ctx.storeId! }, { status: 'disabled' });
+  });
   return adminDineInTablesGet(ctx, { tableId: payload.tableId });
 }
 
 async function generateQr(ctx: ActionContext, tableId: string, bump = false) {
-  const table = await ctx.db.getRepository(DineInTable).findOneBy({ id: tableId, storeId: ctx.storeId! });
-  if (!table) throw new AppError('DINE_IN_TABLE_NOT_FOUND', 'Table not found');
-  const qr = buildTableQrCode(ctx.storeId!, table.branchId, { ...table, qrVersion: bump ? table.qrVersion + 1 : table.qrVersion });
-  await ctx.db.getRepository(DineInTable).update({ id: table.id }, { qrVersion: bump ? table.qrVersion + 1 : table.qrVersion, qrPayload: qr.payload, qrSignature: qr.signature, lastQrIssuedAt: new Date() });
-  return { qrCode: qr.qrCode, tableNumber: table.tableNumber, tableName: table.name, branchId: table.branchId, tableId: table.id, issuedAt: new Date().toISOString() };
+  const qr = await ctx.db.transaction(async (trx) => {
+    const table = await trx.getRepository(DineInTable).findOneBy({ id: tableId, storeId: ctx.storeId! });
+    if (!table) throw new AppError('DINE_IN_TABLE_NOT_FOUND', 'Table not found');
+
+    const generated = buildTableQrCode(ctx.storeId!, table.branchId, {
+      ...table,
+      qrVersion: bump ? table.qrVersion + 1 : table.qrVersion,
+    });
+
+    await trx.getRepository(DineInTable).update(
+      { id: table.id },
+      {
+        qrVersion: bump ? table.qrVersion + 1 : table.qrVersion,
+        qrPayload: generated.payload,
+        qrSignature: generated.signature,
+        lastQrIssuedAt: new Date(),
+      },
+    );
+
+    return {
+      qrCode: generated.qrCode,
+      tableNumber: table.tableNumber,
+      tableName: table.name,
+      branchId: table.branchId,
+      tableId: table.id,
+      issuedAt: new Date().toISOString(),
+    };
+  });
+
+  return qr;
 }
 
 export async function adminDineInTablesGenerateQr(ctx: ActionContext, payload: any) { return generateQr(ctx, payload.tableId, false); }
@@ -83,7 +179,9 @@ export async function adminDineInTablesBulkGeneratePdfData(ctx: ActionContext, p
 
   const where: any = { storeId: ctx.storeId!, branchId: payload.branchId };
   const tables = await ctx.db.getRepository(DineInTable).find({ where, order: { tableNumber: 'ASC' as any } });
-  const selected = payload.tableIds?.length ? tables.filter((t: DineInTable) => payload.tableIds.includes(t.id)) : tables.filter((t: DineInTable) => t.status === 'active' || t.status === 'maintenance');
+  const selected = payload.tableIds?.length
+    ? tables.filter((t: DineInTable) => payload.tableIds.includes(t.id))
+    : tables.filter((t: DineInTable) => t.status === 'active' || t.status === 'maintenance');
   const cards = selected.map((table: DineInTable) => ({ tableId: table.id, tableNumber: table.tableNumber, name: table.name, seatsCount: table.seatsCount, branchId: table.branchId, qrCode: buildTableQrCode(ctx.storeId!, table.branchId, table).qrCode, printableCaption: `Table ${table.tableNumber}${table.name ? ` - ${table.name}` : ''}` }));
   return { store: { storeId: ctx.storeId! }, branch, generatedAt: new Date().toISOString(), cards };
 }
@@ -93,7 +191,20 @@ export async function adminDineInSessionsList(ctx: ActionContext, payload: any =
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
   if (payload.status) where.status = payload.status;
-  return { sessions: await ctx.db.getRepository(DineInSession).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
+
+  const repo = ctx.db.getRepository(DineInSession);
+  const [items, total] = await repo.findAndCount({
+    where,
+    order: { createdAt: 'DESC' as any },
+    take: q.limit,
+    skip: q.offset,
+  });
+
+  return {
+    items,
+    pageInfo: { page: q.page, pageSize: q.limit, total },
+    capabilities: readonlyCapabilities(),
+  };
 }
 
 export async function adminDineInSessionsGet(ctx: ActionContext, payload: any) {
@@ -103,7 +214,9 @@ export async function adminDineInSessionsGet(ctx: ActionContext, payload: any) {
 }
 
 export async function adminDineInSessionsClose(ctx: ActionContext, payload: any) {
-  await ctx.db.getRepository(DineInSession).update({ id: payload.sessionId, storeId: ctx.storeId! }, { status: 'closed', lastSeenAt: new Date() });
+  await ctx.db.transaction(async (trx) => {
+    await trx.getRepository(DineInSession).update({ id: payload.sessionId, storeId: ctx.storeId! }, { status: 'closed', lastSeenAt: new Date() });
+  });
   return adminDineInSessionsGet(ctx, payload);
 }
 
@@ -112,7 +225,20 @@ export async function adminDineInWaiterCallsList(ctx: ActionContext, payload: an
   const where: any = { storeId: ctx.storeId! };
   if (payload.branchId) where.branchId = payload.branchId;
   if (payload.status) where.status = payload.status;
-  return { waiterCalls: await ctx.db.getRepository(DineInWaiterCall).find({ where, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
+
+  const repo = ctx.db.getRepository(DineInWaiterCall);
+  const [items, total] = await repo.findAndCount({
+    where,
+    order: { createdAt: 'DESC' as any },
+    take: q.limit,
+    skip: q.offset,
+  });
+
+  return {
+    items,
+    pageInfo: { page: q.page, pageSize: q.limit, total },
+    capabilities: tableCapabilities(),
+  };
 }
 
 export async function adminDineInWaiterCallsGet(ctx: ActionContext, payload: any) {
@@ -122,12 +248,16 @@ export async function adminDineInWaiterCallsGet(ctx: ActionContext, payload: any
 }
 
 export async function adminDineInWaiterCallsAcknowledge(ctx: ActionContext, payload: any) {
-  await ctx.db.getRepository(DineInWaiterCall).update({ id: payload.waiterCallId, storeId: ctx.storeId! }, { status: 'acknowledged' });
+  await ctx.db.transaction(async (trx) => {
+    await trx.getRepository(DineInWaiterCall).update({ id: payload.waiterCallId, storeId: ctx.storeId! }, { status: 'acknowledged' });
+  });
   return adminDineInWaiterCallsGet(ctx, payload);
 }
 
 export async function adminDineInWaiterCallsResolve(ctx: ActionContext, payload: any) {
-  await ctx.db.getRepository(DineInWaiterCall).update({ id: payload.waiterCallId, storeId: ctx.storeId! }, { status: 'resolved', resolvedAt: new Date(), resolvedByAdminUid: ctx.uid! });
+  await ctx.db.transaction(async (trx) => {
+    await trx.getRepository(DineInWaiterCall).update({ id: payload.waiterCallId, storeId: ctx.storeId! }, { status: 'resolved', resolvedAt: new Date(), resolvedByAdminUid: ctx.uid! });
+  });
   return adminDineInWaiterCallsGet(ctx, payload);
 }
 
