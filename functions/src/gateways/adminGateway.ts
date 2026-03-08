@@ -4,6 +4,7 @@ import { buildCloudContext } from '../context/cloudContext';
 import { dispatchAction } from '../dispatch/dispatchAction';
 import { UnifiedRequest } from '../protocol/envelopes';
 import { resolveAdminAuth } from '../rbac/adminRbac';
+import { toValidationDetails } from '../protocol/clientApiContract';
 
 const requestSchema = Joi.object({
   action: Joi.string().required(),
@@ -20,7 +21,7 @@ export const adminGateway = onCall(async (request) => {
   if (envelope.error) {
     return {
       ok: false,
-      error: { code: 'VALIDATION_FAILED', message: 'Validation failed', details: { issues: envelope.error.details.map((d) => d.message) } },
+      error: { code: 'VALIDATION_FAILED', message: 'Invalid request envelope', details: toValidationDetails(envelope.error) },
       meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
     };
   }

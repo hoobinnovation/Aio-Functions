@@ -6,15 +6,29 @@ import { SeoSetting } from '../../entities/SeoSetting';
 import { LandingPage } from '../../entities/LandingPage';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
-function page(payload: any) {
-  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
-  return { limit: q.limit, offset: q.offset };
+function listQuery(payload: any) {
+  return normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100, defaultSort: { by: 'updatedAt', dir: 'desc' } });
 }
 
-export async function publicCatalogGetHome(ctx: ActionContext, payload: any) {
-  const { limit, offset } = page(payload);
-  const products = await ctx.db.getRepository(Product).find({ where: { storeId: ctx.storeId, status: 'active' }, take: limit, skip: offset, order: { updatedAt: 'DESC' as any } });
-  return { sections: [{ type: 'products', items: products }], pagination: { limit, offset } };
+function buildPagination(total: number, page: number, pageSize: number) {
+  return {
+    total,
+    page,
+    pageSize,
+    hasMore: page * pageSize < total,
+  };
+}
+
+export async function publicCatalogGetHome(ctx: ActionContext, payload: any = {}) {
+  const q = listQuery(payload);
+  const [products, total] = await ctx.db.getRepository(Product).findAndCount({
+    where: { storeId: ctx.storeId, status: 'active' },
+    take: q.limit,
+    skip: q.offset,
+    order: { [q.sort.by]: q.sort.dir.toUpperCase() as any },
+  });
+
+  return { sections: [{ type: 'products', items: products }], pagination: buildPagination(total, q.page, q.pageSize) };
 }
 
 export async function publicCatalogGetCategories(ctx: ActionContext) {
@@ -22,19 +36,24 @@ export async function publicCatalogGetCategories(ctx: ActionContext) {
   return { categories };
 }
 
-export async function publicCatalogListProducts(ctx: ActionContext, payload: any) {
-  const { limit, offset } = page(payload);
+export async function publicCatalogListProducts(ctx: ActionContext, payload: any = {}) {
+  const q = listQuery(payload);
   const where: any = { storeId: ctx.storeId, status: 'active' };
   if (payload?.categoryId) where.categoryId = payload.categoryId;
-  const products = await ctx.db.getRepository(Product).find({ where, take: limit, skip: offset, order: { updatedAt: 'DESC' as any } });
-  return { products, pagination: { limit, offset } };
+  const [products, total] = await ctx.db.getRepository(Product).findAndCount({
+    where,
+    take: q.limit,
+    skip: q.offset,
+    order: { [q.sort.by]: q.sort.dir.toUpperCase() as any },
+  });
+  return { products, pagination: buildPagination(total, q.page, q.pageSize) };
 }
 
-export async function publicCatalogSearchProducts(ctx: ActionContext, payload: any) {
-  const { limit, offset } = page(payload);
-  const q = `%${payload?.query || ''}%`;
-  const rows = await ctx.db.query('SELECT * FROM products WHERE storeId=? AND status=\'active\' AND (name LIKE ? OR slug LIKE ?) ORDER BY updatedAt DESC LIMIT ? OFFSET ?', [ctx.storeId, q, q, limit, offset]);
-  return { products: rows, pagination: { limit, offset } };
+export async function publicCatalogSearchProducts(ctx: ActionContext, payload: any = {}) {
+  const qn = listQuery(payload);
+  const q = `%${qn.query || ''}%`;
+  const rows = await ctx.db.query('SELECT * FROM products WHERE storeId=? AND status=\'active\' AND (name LIKE ? OR slug LIKE ?) ORDER BY updatedAt DESC LIMIT ? OFFSET ?', [ctx.storeId, q, q, qn.limit, qn.offset]);
+  return { products: rows, pagination: { page: qn.page, pageSize: qn.pageSize, hasMore: rows.length === qn.limit }, query: qn.query };
 }
 
 export async function publicCatalogGetFilters(ctx: ActionContext) {

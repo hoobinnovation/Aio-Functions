@@ -571,3 +571,80 @@ ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required(
 ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
 
 ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.string().valid('standard','delivery','pickup','dineIn').optional(),branchId:Joi.string().optional(),dineInSessionToken:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','DINE_IN_SESSION_REQUIRED']};
+
+const clientFriendlyListQueryPayload = Joi.object({
+  storeId: Joi.string().optional(),
+  filters: Joi.object().optional(),
+  sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional() }).optional(),
+  page: Joi.number().integer().min(1).optional(),
+  pageSize: Joi.number().integer().min(1).max(200).optional(),
+  fetchAll: Joi.boolean().optional(),
+  groupBy: Joi.array().items(Joi.string()).optional(),
+  columns: Joi.array().items(Joi.string()).allow(null).optional(),
+  flags: Joi.object().optional(),
+  query: Joi.string().allow('', null).optional(),
+  q: Joi.string().allow('', null).optional(),
+  search: Joi.string().allow('', null).optional(),
+  limit: Joi.number().integer().min(1).max(200).optional(),
+  offset: Joi.number().integer().min(0).optional(),
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).allow(null).optional(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).allow(null).optional(),
+  range: Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).allow(null), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).allow(null) }).optional(),
+}).optional();
+
+ACTION_SPECS.homeGetLayout = {
+  schema: Joi.object({ mode: Joi.string().valid('live', 'preview').optional() }).optional(),
+  notes: 'home layout (client stabilized contract)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.catalogListProducts = {
+  schema: clientFriendlyListQueryPayload.keys({ categoryId: Joi.string().optional() }),
+  notes: 'catalog list (client stabilized contract)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.publicCatalogGetHome = {
+  schema: clientFriendlyListQueryPayload,
+  notes: 'public home catalog query (stabilized)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.publicCatalogListProducts = {
+  schema: clientFriendlyListQueryPayload.keys({ categoryId: Joi.string().optional() }),
+  notes: 'public catalog list query (stabilized)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.publicCatalogSearchProducts = {
+  schema: clientFriendlyListQueryPayload,
+  notes: 'public catalog search query (stabilized)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.publicCatalogGetFilters = {
+  schema: clientFriendlyListQueryPayload,
+  notes: 'public catalog filters query (stabilized)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.productFavoritesList = { schema: clientFriendlyListQueryPayload, notes: 'product favorites list query (stabilized)', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.storeFavoritesList = { schema: clientFriendlyListQueryPayload, notes: 'store favorites list query (stabilized)', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.supportListTickets = { schema: clientFriendlyListQueryPayload, notes: 'support tickets list query (stabilized)', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.loyaltyListTransactions = { schema: clientFriendlyListQueryPayload, notes: 'loyalty transactions query (stabilized)', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.walletHistory = { schema: clientFriendlyListQueryPayload, notes: 'wallet history query (stabilized)', errorCodes: ['VALIDATION_FAILED'] };
+
+ACTION_SPECS.settingsUpdate = {
+  schema: Joi.object({
+    config: Joi.object().optional(),
+    settings: Joi.object().optional(),
+  }).required(),
+  notes: 'settings update (backward-safe config/settings)',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ACTION_SPECS.legalGetDocs = {
+  schema: Joi.object({ docType: Joi.string().allow('', null).optional() }).optional(),
+  notes: 'legal docs query (stabilized)',
+  errorCodes: ['VALIDATION_FAILED'],
+};

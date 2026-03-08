@@ -31,8 +31,7 @@ export async function catalogGetCategories(ctx: ActionContext) {
 }
 
 export async function catalogListProducts(ctx: ActionContext, payload: any = {}) {
-    const page = Number(payload.page || 1);
-    const limit = Number(payload.limit || 20);
+    const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
 
     const repo = ctx.db.getRepository(Product);
 
@@ -48,17 +47,23 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
     const [products, total] = await repo.findAndCount({
         where,
         order: {
-            createdAt: 'DESC' as any,
+            [q.sort.by]: q.sort.dir.toUpperCase() as any,
         },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: q.offset,
+        take: q.limit,
     });
 
     return {
         products,
         total,
-        page,
-        limit,
+        page: q.page,
+        pageSize: q.pageSize,
+        pagination: {
+            page: q.page,
+            pageSize: q.pageSize,
+            total,
+            hasMore: q.offset + products.length < total,
+        },
     };
 }
 

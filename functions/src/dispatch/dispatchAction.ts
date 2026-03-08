@@ -7,6 +7,7 @@ import { Gateway, UnifiedRequest, UnifiedResponse } from '../protocol/envelopes'
 import { ACTION_REGISTRIES } from '../registries/actionRegistries';
 import { enforceAdminRbac } from '../rbac/adminRbac';
 import { ACTION_SPECS } from '../specs/actionSpecs';
+import { mapErrorForContract, normalizeActionPayload, toValidationDetails } from '../protocol/clientApiContract';
 
 function toErrorResponse(err: unknown, requestId: string, serverTime: string): UnifiedResponse {
     const rawCode =
@@ -14,7 +15,7 @@ function toErrorResponse(err: unknown, requestId: string, serverTime: string): U
             ? String((err as { code: unknown }).code)
             : undefined;
 
-    const appErr = err instanceof AppError ? err : toAppError(err);
+    const appErr = mapErrorForContract(err instanceof AppError ? err : toAppError(err));
     const mappedCode = mapErrorCode(rawCode ?? appErr.code);
 
     return {
@@ -35,6 +36,7 @@ function mapErrorCode(code: string): string {
             return STABLE_ERROR_CODES.AUTH_REQUIRED;
 
         case 'FORBIDDEN':
+        case 'PERMISSION_DENIED':
             return STABLE_ERROR_CODES.FORBIDDEN;
 
         case 'STORE_ACCESS_REQUIRED':
@@ -43,6 +45,18 @@ function mapErrorCode(code: string): string {
         case 'VALIDATION_FAILED':
         case 'VALIDATION_ERROR':
             return STABLE_ERROR_CODES.VALIDATION_FAILED;
+
+        case 'PUBLIC_STORE_ID_REQUIRED':
+            return STABLE_ERROR_CODES.PUBLIC_STORE_ID_REQUIRED;
+
+        case 'PUBLIC_STORE_ID_INVALID':
+            return STABLE_ERROR_CODES.PUBLIC_STORE_ID_INVALID;
+
+        case 'UNSUPPORTED_ACTION':
+            return 'UNSUPPORTED_ACTION';
+
+        case 'INVALID_STATE':
+            return 'INVALID_STATE';
 
         case 'EDGE_NODE_FORBIDDEN':
             return 'EDGE_NODE_FORBIDDEN';
@@ -109,19 +123,19 @@ function validatePayload(gateway: Gateway, action: string, payload: unknown): un
     const spec = ACTION_SPECS[gateway][action];
 
     if (!spec) {
-        throw new AppError(STABLE_ERROR_CODES.NOT_FOUND, `No spec registered for action ${action}`);
+        throw new AppError('UNSUPPORTED_ACTION', `No spec registered for action ${action}`);
     }
 
-    const { error, value } = spec.schema.validate(payload, {
+    const normalizedPayload = normalizeActionPayload(gateway, action, payload);
+
+    const { error, value } = spec.schema.validate(normalizedPayload, {
         abortEarly: false,
         allowUnknown: false,
-        stripUnknown: false,
+        stripUnknown: true,
     });
 
     if (error) {
-        throw new AppError(STABLE_ERROR_CODES.VALIDATION_FAILED, 'Validation failed', {
-            issues: error.details.map((detail: { message: string }) => detail.message),
-        });
+        throw new AppError(STABLE_ERROR_CODES.VALIDATION_FAILED, 'Invalid request payload', toValidationDetails(error));
     }
 
     return value;
@@ -153,11 +167,19 @@ export async function dispatchAction(
             throw new AppError(STABLE_ERROR_CODES.AUTH_REQUIRED, 'Authentication required');
         }
 
+        if (gateway === 'public') {
+            const storeId = typeof request.storeId === 'string' ? request.storeId.trim() : '';
+            if (!storeId) {
+                throw new AppError(STABLE_ERROR_CODES.PUBLIC_STORE_ID_REQUIRED, 'storeId is required for public requests');
+            }
+            request.storeId = storeId;
+        }
+
         const registry = ACTION_REGISTRIES[gateway] as Record<string, ActionHandler>;
         const handler = registry[request.action];
 
         if (!handler) {
-            throw new AppError(STABLE_ERROR_CODES.NOT_FOUND, `Action ${request.action} was not found`);
+            throw new AppError('UNSUPPORTED_ACTION', `Action ${request.action} was not found`);
         }
 
         const payload = validatePayload(gateway, request.action, request.payload);
