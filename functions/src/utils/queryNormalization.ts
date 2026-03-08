@@ -39,8 +39,13 @@ export interface QueryContractOptions {
   allowedSortFields?: string[];
   sortAliases?: Record<string, { by: string; direction: 'asc' | 'desc' }>;
   allowedFilterKeys?: string[];
+  filterAliases?: Record<string, string>;
   allowedGroupByKeys?: string[];
+  groupByAliases?: Record<string, string>;
   allowedColumns?: string[];
+  columnAliases?: Record<string, string>;
+  allowedFlagKeys?: string[];
+  flagAliases?: Record<string, string>;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -241,7 +246,7 @@ function coerceSimpleFilterValue(value: unknown): unknown {
   return undefined;
 }
 
-export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[]) {
+export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[], filterAliases?: Record<string, string>) {
   if (!isObject(filters)) {
     if (filters == null) return {};
     throw new AppError('QUERY_FILTERS_INVALID', 'filters must be an object');
@@ -249,7 +254,7 @@ export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[])
 
   const normalized = Object.fromEntries(
     Object.entries(filters)
-      .map(([key, value]) => [key, coerceSimpleFilterValue(value)] as const)
+      .map(([key, value]) => [filterAliases?.[key] ?? key, coerceSimpleFilterValue(value)] as const)
       .filter(([, value]) => value !== undefined),
   );
 
@@ -266,14 +271,23 @@ export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[])
   return normalized;
 }
 
-export function normalizeFlags(flags: unknown) {
+export function normalizeFlags(flags: unknown, allowedFlagKeys?: string[], flagAliases?: Record<string, string>) {
   if (!isObject(flags)) return {};
-  return Object.fromEntries(
+  const normalized = Object.fromEntries(
     Object.entries(flags).map(([key, value]) => {
       const normalizedBool = toBooleanOrUndefined(value);
-      return [key, normalizedBool ?? value];
+      return [flagAliases?.[key] ?? key, normalizedBool ?? value];
     }).filter(([, value]) => value !== undefined),
   ) as Record<string, unknown>;
+
+  if (allowedFlagKeys?.length) {
+    const unsupported = Object.keys(normalized).filter((key) => !allowedFlagKeys.includes(key));
+    if (unsupported.length) {
+      throw new AppError('VALIDATION_FAILED', 'Unsupported flags for this action', { unsupported, allowed: allowedFlagKeys });
+    }
+  }
+
+  return normalized;
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -294,13 +308,13 @@ function enforceAllowedList(values: string[], allowedValues: string[] | undefine
   return values;
 }
 
-export function normalizeGroupBy(groupBy: unknown, allowedGroupByKeys?: string[]) {
-  const normalized = normalizeStringArray(groupBy);
+export function normalizeGroupBy(groupBy: unknown, allowedGroupByKeys?: string[], groupByAliases?: Record<string, string>) {
+  const normalized = normalizeStringArray(groupBy).map((value) => groupByAliases?.[value] ?? value);
   return enforceAllowedList(normalized, allowedGroupByKeys, 'QUERY_GROUP_BY_INVALID', 'Unsupported groupBy keys for this action');
 }
 
-export function normalizeColumns(columns: unknown, allowedColumns?: string[]) {
-  const normalized = normalizeStringArray(columns);
+export function normalizeColumns(columns: unknown, allowedColumns?: string[], columnAliases?: Record<string, string>) {
+  const normalized = normalizeStringArray(columns).map((value) => columnAliases?.[value] ?? value);
   const safeColumns = enforceAllowedList(normalized, allowedColumns, 'QUERY_COLUMNS_INVALID', 'Unsupported columns for this action');
   return safeColumns.length ? safeColumns : null;
 }
@@ -339,9 +353,9 @@ export function normalizeListQueryInput(
     sortAliases: options?.contract?.sortAliases,
   });
 
-  const filters = normalizeFilters(payload?.filters, options?.contract?.allowedFilterKeys);
-  const groupBy = normalizeGroupBy(payload?.groupBy, options?.contract?.allowedGroupByKeys);
-  const columns = normalizeColumns(payload?.columns, options?.contract?.allowedColumns);
+  const filters = normalizeFilters(payload?.filters, options?.contract?.allowedFilterKeys, options?.contract?.filterAliases);
+  const groupBy = normalizeGroupBy(payload?.groupBy, options?.contract?.allowedGroupByKeys, options?.contract?.groupByAliases);
+  const columns = normalizeColumns(payload?.columns, options?.contract?.allowedColumns, options?.contract?.columnAliases);
 
   return {
     ...pagination,
@@ -349,7 +363,7 @@ export function normalizeListQueryInput(
     offset,
     filters,
     sort,
-    flags: normalizeFlags(payload?.flags),
+    flags: normalizeFlags(payload?.flags, options?.contract?.allowedFlagKeys, options?.contract?.flagAliases),
     groupBy,
     columns,
     search,
