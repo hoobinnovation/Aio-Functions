@@ -46,6 +46,12 @@ function mapErrorCode(code: string): string {
         case 'VALIDATION_ERROR':
             return STABLE_ERROR_CODES.VALIDATION_FAILED;
 
+        case 'PUBLIC_STORE_ID_REQUIRED':
+            return STABLE_ERROR_CODES.PUBLIC_STORE_ID_REQUIRED;
+
+        case 'PUBLIC_STORE_ID_INVALID':
+            return STABLE_ERROR_CODES.PUBLIC_STORE_ID_INVALID;
+
         case 'UNSUPPORTED_ACTION':
             return 'UNSUPPORTED_ACTION';
 
@@ -159,6 +165,14 @@ export async function dispatchAction(
 
         if (gateway !== 'public' && !ctx.auth.uid) {
             throw new AppError(STABLE_ERROR_CODES.AUTH_REQUIRED, 'Authentication required');
+        }
+
+        if (gateway === 'public') {
+            const storeId = typeof request.storeId === 'string' ? request.storeId.trim() : '';
+            if (!storeId) {
+                throw new AppError(STABLE_ERROR_CODES.PUBLIC_STORE_ID_REQUIRED, 'storeId is required for public requests');
+            }
+            request.storeId = storeId;
         }
 
         const registry = ACTION_REGISTRIES[gateway] as Record<string, ActionHandler>;

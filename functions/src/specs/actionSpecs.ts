@@ -7,15 +7,25 @@ import { ADMIN_ACTION_SPECS } from './admin';
 
 type GatewaySpecs = Record<string, ActionSpec>;
 
+function withPublicStoreErrors(spec: ActionSpec): ActionSpec {
+    const errorCodes = Array.from(new Set([...(spec.errorCodes ?? []), 'PUBLIC_STORE_ID_REQUIRED', 'PUBLIC_STORE_ID_INVALID']));
+    return {
+        ...spec,
+        errorCodes,
+    };
+}
+
 function buildGatewaySpecs(gateway: Gateway): GatewaySpecs {
     return ACTION_CATALOGS[gateway].reduce<GatewaySpecs>((acc, action) => {
-        acc[action] =
+        const resolvedSpec =
             LEGACY_ACTION_SPECS[action] ??
             {
                 schema: Joi.any().optional(),
                 notes: 'Default payload',
                 errorCodes: ['VALIDATION_FAILED'],
             };
+
+        acc[action] = gateway === 'public' ? withPublicStoreErrors(resolvedSpec) : resolvedSpec;
         return acc;
     }, {});
 }
