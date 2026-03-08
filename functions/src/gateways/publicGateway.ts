@@ -33,12 +33,15 @@ function toPublicEnvelopeError(error: any) {
 
 export const publicGateway = onCall(async (request: any) => {
   const incoming = request?.data && typeof request.data === 'object' && request.data !== null
-    ? { ...request.data, storeId: typeof request.data.storeId === 'string' ? request.data.storeId.trim() : request.data.storeId }
+    ? { ...request.data, storeId: request.data.storeId ?(
+              typeof request.data.storeId === 'string' ? request.data.storeId.trim() : request.data.storeId
+          ) : request.data.payload.storeId }
     : request?.data;
 
   const envelope = requestSchema.validate(incoming, { abortEarly: false, allowUnknown: false, stripUnknown: true });
   const req = envelope.value as UnifiedRequest;
-  const ctx = await buildCloudContext('public', request, req?.storeId, req?.meta);
+  // @ts-ignore
+    const ctx = await buildCloudContext('public', request, req?.storeId || req.payload?.storeId, req?.meta);
 
   if (envelope.error) {
     return {
