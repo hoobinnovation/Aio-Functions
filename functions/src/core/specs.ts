@@ -518,7 +518,7 @@ ACTION_SPECS.adminAccountingLedger = { schema: reportPayloadBaseStrict.keys({ fi
 const listQueryPayload = Joi.object({
   storeId: Joi.string().optional(),
   filters: Joi.object().optional(),
-  sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional() }).optional(),
+  sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional(), direction: Joi.string().valid('asc', 'desc').optional() }).optional(),
   page: Joi.number().integer().min(1).optional(),
   pageSize: Joi.number().integer().min(1).max(200).optional(),
   fetchAll: Joi.boolean().optional(),
@@ -575,7 +575,7 @@ ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.st
 const clientFriendlyListQueryPayload = Joi.object({
   storeId: Joi.string().optional(),
   filters: Joi.object().optional(),
-  sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional() }).optional(),
+  sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional(), direction: Joi.string().valid('asc', 'desc').optional() }).optional(),
   page: Joi.number().integer().min(1).optional(),
   pageSize: Joi.number().integer().min(1).max(200).optional(),
   fetchAll: Joi.boolean().optional(),

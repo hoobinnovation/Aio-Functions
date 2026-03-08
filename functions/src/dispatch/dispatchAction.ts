@@ -46,6 +46,15 @@ function mapErrorCode(code: string): string {
         case 'VALIDATION_ERROR':
             return STABLE_ERROR_CODES.VALIDATION_FAILED;
 
+        case 'QUERY_SORT_INVALID':
+        case 'QUERY_FILTERS_INVALID':
+        case 'QUERY_SEARCH_INVALID':
+        case 'QUERY_PAGINATION_INVALID':
+        case 'QUERY_RANGE_INVALID':
+        case 'QUERY_GROUP_BY_INVALID':
+        case 'QUERY_COLUMNS_INVALID':
+            return code;
+
         case 'PUBLIC_STORE_ID_REQUIRED':
             return STABLE_ERROR_CODES.PUBLIC_STORE_ID_REQUIRED;
 
