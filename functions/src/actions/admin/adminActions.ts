@@ -14,6 +14,58 @@ import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsLi
 import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
+
+type AdminModuleDescriptor = {
+  key: string;
+  label: string;
+  icon: string;
+  actionNames: readonly string[];
+};
+
+const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
+  { key: 'stores', label: 'Stores', icon: 'store', actionNames: ['adminStoresList','adminStoresGet','adminStoresCreate','adminStoresUpdate','adminStoresDisable'] },
+  { key: 'storeSettings', label: 'Store Settings', icon: 'settings', actionNames: ['adminStoreSettingsGet','adminStoreSettingsUpdate'] },
+  { key: 'customers', label: 'Customers', icon: 'people', actionNames: ['adminCustomersList','adminCustomersGet','adminCustomersUpdate','adminCustomersDisable','adminCustomersSearch'] },
+  { key: 'categories', label: 'Categories', icon: 'category', actionNames: ['adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable'] },
+  { key: 'banners', label: 'Banners', icon: 'image', actionNames: ['adminBannersList','adminBannersGet','adminBannersCreate','adminBannersUpdate','adminBannersDisable'] },
+  { key: 'featuredProducts', label: 'Featured Products', icon: 'star', actionNames: ['adminFeaturedList','adminFeaturedSearchProducts','adminFeaturedSet'] },
+  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable'] },
+  { key: 'productImages', label: 'Product Images', icon: 'collections', actionNames: ['adminProductImagesList','adminProductImagesAdd','adminProductImagesRemove','adminProductImagesReorder'] },
+  { key: 'productSpecs', label: 'Product Specs', icon: 'fact_check', actionNames: ['adminProductSpecsList','adminProductSpecsCreate','adminProductSpecsUpdate','adminProductSpecsDelete'] },
+  { key: 'productVariants', label: 'Product Variants', icon: 'view_module', actionNames: ['adminProductVariantsList','adminProductVariantsCreate','adminProductVariantsUpdate','adminProductVariantsDelete','adminProductVariantsBulkStockUpdate'] },
+  { key: 'inventory', label: 'Inventory', icon: 'inventory', actionNames: ['adminInventoryAdjust','adminInventoryHistory','adminInventoryLowStockReport','adminInventoryImportCreateBatch','adminInventoryImportPreview','adminInventoryImportGetUnmappedPrefixes','adminInventoryImportResolvePrefixes','adminInventoryImportApply','adminInventoryImportGet'] },
+  { key: 'orders', label: 'Orders', icon: 'shopping_bag', actionNames: ['adminOrdersList','adminOrdersGet','adminOrdersUpdateStatus','adminOrdersSetTracking','adminOrdersAddInternalNote','adminOrdersInvoiceUrl','adminOrdersTrackingGet','adminOrdersTrackingAddEvent','adminOrdersTrackingDeleteEvent','adminOrdersTrackingUpdateShipment'] },
+  { key: 'shippingMethods', label: 'Shipping Methods', icon: 'local_shipping', actionNames: ['adminShippingMethodsList','adminShippingMethodsGet','adminShippingMethodsCreate','adminShippingMethodsUpdate','adminShippingMethodsDisable'] },
+  { key: 'deliveryZones', label: 'Delivery Zones', icon: 'map', actionNames: ['adminDeliveryZonesList','adminDeliveryZonesGet','adminDeliveryZonesCreate','adminDeliveryZonesUpdate','adminDeliveryZonesDisable'] },
+  { key: 'coupons', label: 'Coupons', icon: 'confirmation_number', actionNames: ['adminCouponsList','adminCouponsGet','adminCouponsCreate','adminCouponsUpdate','adminCouponsDisable'] },
+  { key: 'cashback', label: 'Cashback', icon: 'payments', actionNames: ['adminCashbackList','adminCashbackGet','adminCashbackCreate','adminCashbackUpdate','adminCashbackDisable'] },
+  { key: 'discounts', label: 'Discounts', icon: 'sell', actionNames: ['adminDiscountsList','adminDiscountsGet','adminDiscountsCreate','adminDiscountsUpdate','adminDiscountsDisable','adminDiscountsPreviewAudienceCount'] },
+  { key: 'notifications', label: 'Notifications', icon: 'notifications', actionNames: ['adminNotificationsSend','adminNotificationsList'] },
+  { key: 'loyaltySettings', label: 'Loyalty Settings', icon: 'tune', actionNames: ['adminLoyaltyGetSettings','adminLoyaltyUpdateSettings','adminLoyaltyAdjustUserPoints'] },
+  { key: 'loyaltyTiers', label: 'Loyalty Tiers', icon: 'military_tech', actionNames: ['adminLoyaltyTiersList','adminLoyaltyTiersCreate','adminLoyaltyTiersUpdate','adminLoyaltyTiersDisable'] },
+  { key: 'reports', label: 'Reports', icon: 'analytics', actionNames: ['reportsOverview','reportsTopProducts','reportsOrdersByStatus','reportsInventorySummary','reportsCustomersSummary','reportsReturnsSummary','reportsLoyaltySummary','reportsCashbackSummary','adminReportsAttributionOverview','adminReportsTopCampaigns'] },
+  { key: 'seo', label: 'SEO', icon: 'travel_explore', actionNames: ['adminSeoGet','adminSeoUpdate','adminSitemapRegenerate'] },
+  { key: 'landingPages', label: 'Landing Pages', icon: 'web', actionNames: ['adminLandingPagesList','adminLandingPagesGet','adminLandingPagesCreate','adminLandingPagesUpdate','adminLandingPagesPublish','adminLandingPagesUnpublish','adminLandingPagesDisable'] },
+  { key: 'riskRules', label: 'Risk Rules', icon: 'gavel', actionNames: ['adminRiskRulesGet','adminRiskRulesUpdate'] },
+  { key: 'flaggedOrders', label: 'Flagged Orders', icon: 'warning', actionNames: ['adminRiskFlaggedOrdersList','adminRiskFlaggedOrdersResolve'] },
+  { key: 'returns', label: 'Returns', icon: 'assignment_return', actionNames: ['adminReturnsList','adminReturnsGet','adminReturnsApprove','adminReturnsReject','adminReturnsRefundPartial','adminReturnsRefundFull','adminReturnsUpdateStatus'] },
+  { key: 'insurance', label: 'Insurance', icon: 'health_and_safety', actionNames: ['adminInsuranceList','adminInsuranceGet','adminInsuranceAddItem','adminInsuranceUpdateItem','adminInsuranceRemoveItem','adminInsuranceLockQuote','adminInsuranceSendQuote','adminInsuranceSetShipmentTracking'] },
+  { key: 'branches', label: 'Branches', icon: 'account_tree', actionNames: ['adminBranchesList','adminBranchesCreate','adminBranchesUpdate','adminBranchesDisable'] },
+  { key: 'devices', label: 'Devices', icon: 'devices', actionNames: ['adminDevicesList','adminDevicesCreate','adminDevicesUpdate','adminDevicesDisable'] },
+  { key: 'employees', label: 'Employees', icon: 'badge', actionNames: ['adminEmployeesList','adminEmployeesCreate','adminEmployeesUpdate','adminEmployeesDisable'] },
+  { key: 'drawers', label: 'Drawers', icon: 'point_of_sale', actionNames: ['adminDrawersList','adminDrawersCreate','adminDrawersUpdate','adminDrawersDisable'] },
+  { key: 'drawerSessions', label: 'Drawer Sessions', icon: 'receipt_long', actionNames: ['adminDrawerSessionsOpen','adminDrawerSessionsClose'] },
+  { key: 'accountingKpis', label: 'Accounting KPIs', icon: 'query_stats', actionNames: ['adminAccountingKpis'] },
+  { key: 'accountingLedger', label: 'Accounting Ledger', icon: 'menu_book', actionNames: ['adminAccountingLedger'] },
+  { key: 'homeBuilder', label: 'Home Builder', icon: 'home', actionNames: ['adminHomeSectionsList','adminHomeSectionsGet','adminHomeSectionsCreate','adminHomeSectionsUpdate','adminHomeSectionsDisable','adminHomeSectionsReorder'] },
+  { key: 'dineInSettings', label: 'Dine-In Settings', icon: 'settings_suggest', actionNames: ['adminDineInSettingsGet','adminDineInSettingsUpdate'] },
+  { key: 'dineInTables', label: 'Dine-In Tables', icon: 'table_restaurant', actionNames: ['adminDineInTablesList','adminDineInTablesGet','adminDineInTablesCreate','adminDineInTablesUpdate','adminDineInTablesDisable','adminDineInTablesGenerateQr','adminDineInTablesRegenerateQr','adminDineInTablesBulkGeneratePdfData'] },
+  { key: 'dineInSessions', label: 'Dine-In Sessions', icon: 'timer', actionNames: ['adminDineInSessionsList','adminDineInSessionsGet','adminDineInSessionsClose'] },
+  { key: 'dineInWaiterCalls', label: 'Dine-In Waiter Calls', icon: 'support_agent', actionNames: ['adminDineInWaiterCallsList','adminDineInWaiterCallsGet','adminDineInWaiterCallsAcknowledge','adminDineInWaiterCallsResolve'] },
+  { key: 'dineInDashboard', label: 'Dine-In Dashboard', icon: 'dashboard', actionNames: ['adminDineInDashboardStats'] },
+  { key: 'liveOrdersBoard', label: 'Live Orders Board', icon: 'view_kanban', actionNames: ['adminOrdersList','adminOrdersGet','adminOrdersUpdateStatus'] },
+];
+
 export async function adminHealthWhoAmI(ctx: ActionContext) {
   return { uid: ctx.uid, gateway: ctx.gateway };
 }
@@ -50,9 +102,26 @@ export async function adminActionsList(ctx: ActionContext) {
       })
     : actions;
 
+  const allowedSet = new Set(allowed);
+  const navigation = ADMIN_MODULES.map((module) => {
+    const availableActions = module.actionNames.filter((name) => allowedSet.has(name));
+    return {
+      key: module.key,
+      label: module.label,
+      icon: module.icon,
+      availableActions,
+      discoverable: availableActions.length > 0,
+    };
+  }).filter((module) => module.discoverable);
+
+  const mapped = new Set(ADMIN_MODULES.flatMap((module) => module.actionNames));
+  const orphanActions = allowed.filter((action) => !mapped.has(action));
+
   return {
     gateway: 'admin',
     allowedActions: allowed,
+    navigation,
+    orphanActions,
   };
 }
 

@@ -52,7 +52,8 @@ async function resetAllTables(ctx: ActionContext) {
 
 function defaultStores(): SeedStoreProfile[] {
   return [
-    { code: 'ecom', name: 'AIO E-Commerce', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
+      { code: '1', name: 'AIO Demo', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
+      { code: 'ecom', name: 'AIO E-Commerce', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
     { code: 'resto', name: 'AIO Bistro', vertical: 'restaurant', supportEmail: 'support@resto.demo', supportPhone: '+15550010002' },
     { code: 'pharma', name: 'AIO Pharmacy', vertical: 'pharmacy', supportEmail: 'support@pharma.demo', supportPhone: '+15550010003' },
   ];

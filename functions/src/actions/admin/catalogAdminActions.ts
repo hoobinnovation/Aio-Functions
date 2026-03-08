@@ -15,6 +15,7 @@ import { LandingPage } from '../../entities/LandingPage';
 import { SitemapRun } from '../../entities/SitemapRun';
 import { AppError } from '../../core/errors';
 import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
+import { normalizeSectionForWrite, publishHomeLayoutForStore } from '../home/homeBuilder';
 
 async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: string) {
   const row = await ctx.db.getRepository(repo).findOneBy({ id });
@@ -97,10 +98,48 @@ export async function adminInventoryLowStockReport(ctx: ActionContext, payload: 
 
 export async function adminHomeSectionsList(ctx: ActionContext, payload: any) { return { sections: await ctx.db.getRepository(HomeSection).find({ where: { storeId: payload.storeId }, order: { sortOrder: 'ASC' as any } }) }; }
 export async function adminHomeSectionsGet(ctx: ActionContext, payload: any) { return { section: await byIdOrThrow(ctx, HomeSection, payload.id, 'Home section not found') }; }
-export async function adminHomeSectionsCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(HomeSection).save(tx.getRepository(HomeSection).create({ id, ...payload }));}); return adminHomeSectionsGet(ctx,{id}); }
-export async function adminHomeSectionsUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(HomeSection).update({id:payload.id},payload);}); return adminHomeSectionsGet(ctx,{id:payload.id}); }
+export async function adminHomeSectionsCreate(ctx: ActionContext, payload: any) {
+  const normalized = normalizeSectionForWrite(payload);
+  const id=uuidv4();
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    await tx.getRepository(HomeSection).save(tx.getRepository(HomeSection).create({ id, ...payload, ...normalized }));
+  });
+  try {
+    await publishHomeLayoutForStore(ctx, payload.storeId, 'live');
+  } catch (error: any) {
+    ctx.logger.error('home publish failed after section create', { storeId: payload.storeId, error: error?.message ?? String(error) });
+  }
+  return adminHomeSectionsGet(ctx,{id});
+}
+export async function adminHomeSectionsUpdate(ctx: ActionContext, payload: any) {
+  const existing = await byIdOrThrow(ctx, HomeSection, payload.id, 'Home section not found');
+  const next = {
+    ...existing,
+    ...payload,
+    type: payload.type ?? existing.type,
+    config: { ...(existing.config ?? {}), ...(payload.config ?? {}) },
+  };
+  const normalized = normalizeSectionForWrite(next);
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    await tx.getRepository(HomeSection).update({id:payload.id},{ ...payload, ...normalized });
+  });
+  try {
+    await publishHomeLayoutForStore(ctx, existing.storeId, 'live');
+  } catch (error: any) {
+    ctx.logger.error('home publish failed after section update', { storeId: existing.storeId, error: error?.message ?? String(error) });
+  }
+  return adminHomeSectionsGet(ctx,{id:payload.id});
+}
 export async function adminHomeSectionsDisable(ctx: ActionContext, payload: any) { return adminHomeSectionsUpdate(ctx,{id:payload.id,enabled:false}); }
-export async function adminHomeSectionsReorder(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ for (let i=0;i<payload.items.length;i+=1){ await tx.getRepository(HomeSection).update({id:payload.items[i]}, { sortOrder:i }); }}); return adminHomeSectionsList(ctx,{storeId:payload.storeId}); }
+export async function adminHomeSectionsReorder(ctx: ActionContext, payload: any) {
+  await ctx.db.transaction(async (tx: EntityManager)=>{ for (let i=0;i<payload.items.length;i+=1){ await tx.getRepository(HomeSection).update({id:payload.items[i]}, { sortOrder:i }); }});
+  try {
+    await publishHomeLayoutForStore(ctx, payload.storeId, 'live');
+  } catch (error: any) {
+    ctx.logger.error('home publish failed after section reorder', { storeId: payload.storeId, error: error?.message ?? String(error) });
+  }
+  return adminHomeSectionsList(ctx,{storeId:payload.storeId});
+}
 
 export async function adminSeoGet(ctx: ActionContext, payload: any) { const row=await ctx.db.getRepository(SeoSetting).findOneBy({ storeId: payload.storeId, pageType: payload.pageType, pageKey: payload.pageKey }); return { seo: row }; }
 export async function adminSeoUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(SeoSetting).upsert({ id: payload.id || uuidv4(), ...payload }, ['id']);}); return adminSeoGet(ctx,payload); }
