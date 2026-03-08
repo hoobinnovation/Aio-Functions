@@ -8,6 +8,20 @@ import { buildHomeLayout } from '../home/homeBuilder';
 import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
 
+const CLIENT_PRODUCT_QUERY_CONTRACT = {
+    allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
+    sortAliases: {
+        newest: { by: 'createdAt', direction: 'desc' as const },
+        oldest: { by: 'createdAt', direction: 'asc' as const },
+        recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
+        nameAsc: { by: 'name', direction: 'asc' as const },
+        nameDesc: { by: 'name', direction: 'desc' as const },
+    },
+    allowedFilterKeys: ['categoryId'],
+    allowedGroupByKeys: ['categoryId'],
+    allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'createdAt', 'updatedAt'],
+};
+
 export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
     return buildHomeLayout(ctx, payload);
 }
@@ -31,7 +45,12 @@ export async function catalogGetCategories(ctx: ActionContext) {
 }
 
 export async function catalogListProducts(ctx: ActionContext, payload: any = {}) {
-    const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+    const q = normalizeListQueryInput(payload, {
+        defaultPageSize: 20,
+        maxPageSize: 200,
+        defaultSort: { by: 'updatedAt', dir: 'desc' },
+        contract: CLIENT_PRODUCT_QUERY_CONTRACT,
+    });
 
     const repo = ctx.db.getRepository(Product);
 
@@ -47,7 +66,7 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
     const [products, total] = await repo.findAndCount({
         where,
         order: {
-            [q.sort.by]: q.sort.dir.toUpperCase() as any,
+            [q.sort.by]: q.sort.direction.toUpperCase() as any,
         },
         skip: q.offset,
         take: q.limit,

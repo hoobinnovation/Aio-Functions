@@ -11,6 +11,34 @@ import {
   normalizeSort,
 } from '../utils/queryNormalization';
 
+const CATALOG_QUERY_CONTRACT = {
+  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug'],
+  sortAliases: {
+    newest: { by: 'createdAt', direction: 'desc' as const },
+    oldest: { by: 'createdAt', direction: 'asc' as const },
+    recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
+    nameAsc: { by: 'name', direction: 'asc' as const },
+    nameDesc: { by: 'name', direction: 'desc' as const },
+  },
+  allowedFilterKeys: ['categoryId', 'status'],
+  allowedGroupByKeys: ['categoryId', 'status'],
+  allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'status', 'createdAt', 'updatedAt'],
+};
+
+const FAVORITES_QUERY_CONTRACT = {
+  allowedSortFields: ['createdAt'],
+  allowedFilterKeys: [] as string[],
+  allowedGroupByKeys: [] as string[],
+  allowedColumns: ['id', 'uid', 'productId', 'storeId', 'createdAt', 'updatedAt'],
+};
+
+const WALLET_LOYALTY_QUERY_CONTRACT = {
+  allowedSortFields: ['createdAt'],
+  allowedFilterKeys: ['type', 'status', 'storeId'],
+  allowedGroupByKeys: ['type', 'status'],
+  allowedColumns: ['id', 'uid', 'storeId', 'type', 'status', 'amountCents', 'createdAt', 'updatedAt'],
+};
+
 const LIST_QUERY_ACTIONS = new Set<string>([
   'catalogListProducts',
   'publicCatalogListProducts',
@@ -68,8 +96,7 @@ function normalizeSettingsPayload(payload: Record<string, unknown>) {
   }
 }
 
-function normalizeListPayload(payload: Record<string, unknown>) {
-  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+function applyNormalizedListPayload(payload: Record<string, unknown>, q: ReturnType<typeof normalizeListQueryInput>) {
   payload.page = q.page;
   payload.pageSize = q.pageSize;
   payload.limit = q.limit;
@@ -80,13 +107,37 @@ function normalizeListPayload(payload: Record<string, unknown>) {
   payload.flags = q.flags;
   payload.groupBy = q.groupBy;
   payload.columns = q.columns;
+  payload.range = q.range;
+  payload.from = q.range.from;
+  payload.to = q.range.to;
   payload.query = q.query;
   payload.q = q.q;
+}
+
+function normalizeListPayload(payload: Record<string, unknown>) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+  applyNormalizedListPayload(payload, q);
+}
+
+function normalizeCatalogListPayload(payload: Record<string, unknown>) {
+  const q = normalizeListQueryInput(payload, {
+    defaultPageSize: 20,
+    maxPageSize: 200,
+    contract: CATALOG_QUERY_CONTRACT,
+    defaultSort: { by: 'updatedAt', dir: 'desc' },
+  });
+  applyNormalizedListPayload(payload, q);
   normalizeCatalogFilters(payload);
 }
 
 function normalizeWalletLoyaltyPayload(payload: Record<string, unknown>) {
-  normalizeListPayload(payload);
+  const q = normalizeListQueryInput(payload, {
+    defaultPageSize: 20,
+    maxPageSize: 200,
+    contract: WALLET_LOYALTY_QUERY_CONTRACT,
+    defaultSort: { by: 'createdAt', dir: 'desc' },
+  });
+  applyNormalizedListPayload(payload, q);
   const range = normalizeDateInput(payload, { allowEmpty: true });
   if (range.from || range.to) {
     payload.from = range.from;
@@ -107,9 +158,9 @@ export function normalizeActionPayload(gateway: Gateway, action: string, inputPa
   }
 
   if (SEARCH_ACTIONS.has(action)) {
-    const query = normalizeSearchInput(payload);
-    payload.query = query;
-    payload.q = query;
+    const search = normalizeSearchInput(payload);
+    payload.query = search.term;
+    payload.q = search.term;
   }
 
   switch (action) {
@@ -119,8 +170,21 @@ export function normalizeActionPayload(gateway: Gateway, action: string, inputPa
       break;
     case 'catalogListProducts':
     case 'publicCatalogListProducts':
-      normalizeCatalogFilters(payload);
+    case 'publicCatalogSearchProducts':
+    case 'publicCatalogGetFilters':
+      normalizeCatalogListPayload(payload);
       break;
+    case 'productFavoritesList':
+    case 'storeFavoritesList': {
+      const q = normalizeListQueryInput(payload, {
+        defaultPageSize: 20,
+        maxPageSize: 200,
+        contract: FAVORITES_QUERY_CONTRACT,
+        defaultSort: { by: 'createdAt', dir: 'desc' },
+      });
+      applyNormalizedListPayload(payload, q);
+      break;
+    }
     case 'legalGetDocs':
       normalizeLegalPayload(payload);
       break;

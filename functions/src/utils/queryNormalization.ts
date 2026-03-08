@@ -8,6 +8,41 @@ export interface NormalizedDateInput {
   source: DateInputSource;
 }
 
+export interface NormalizedSortInput {
+  by: string;
+  direction: 'asc' | 'desc';
+  dir: 'asc' | 'desc';
+}
+
+export interface NormalizedSearchInput {
+  term: string;
+}
+
+export interface NormalizedListQuery {
+  search: NormalizedSearchInput;
+  filters: Record<string, unknown>;
+  sort: NormalizedSortInput;
+  page: number;
+  pageSize: number;
+  fetchAll: boolean;
+  groupBy: string[];
+  range: { from: string | null; to: string | null };
+  flags: Record<string, unknown>;
+  columns: string[] | null;
+  limit: number;
+  offset: number;
+  query: string;
+  q: string;
+}
+
+export interface QueryContractOptions {
+  allowedSortFields?: string[];
+  sortAliases?: Record<string, { by: string; direction: 'asc' | 'desc' }>;
+  allowedFilterKeys?: string[];
+  allowedGroupByKeys?: string[];
+  allowedColumns?: string[];
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -76,11 +111,11 @@ export function normalizeDateInput(
   let to = toIsoOrNull(toRaw);
 
   if ((fromRaw != null && !from) || (toRaw != null && !to)) {
-    throw new AppError('VALIDATION_FAILED', 'Invalid date input');
+    throw new AppError('QUERY_RANGE_INVALID', 'Invalid range date format', { from: fromRaw, to: toRaw });
   }
 
   if (from && to && from > to) {
-    throw new AppError('VALIDATION_FAILED', 'Invalid range');
+    throw new AppError('QUERY_RANGE_INVALID', 'range.from must be before range.to', { from, to });
   }
 
   if (!from && !to && options?.defaultDaysBack) {
@@ -93,7 +128,7 @@ export function normalizeDateInput(
     if (!from && to) from = new Date(new Date(to).getTime() - ((options.defaultDaysBack ?? 30) * 86400000)).toISOString();
     if (from && !to) to = new Date().toISOString();
     if (!from || !to) {
-      throw new AppError('VALIDATION_FAILED', 'Date range is required');
+      throw new AppError('QUERY_RANGE_INVALID', 'Date range is required');
     }
   }
 
@@ -121,6 +156,14 @@ export function normalizePagination(payload: any, defaultPageSize = 20, maxPageS
     page = Math.floor(offset / limit) + 1;
   }
 
+  if (!Number.isFinite(page) || page < 1 || !Number.isInteger(page)) {
+    throw new AppError('QUERY_PAGINATION_INVALID', 'page must be a positive integer');
+  }
+
+  if (!Number.isFinite(pageSize) || pageSize < 1) {
+    throw new AppError('QUERY_PAGINATION_INVALID', 'pageSize must be a positive integer');
+  }
+
   page = Math.max(1, Math.floor(page));
   pageSize = Math.max(1, Math.min(maxPageSize, Math.floor(pageSize)));
 
@@ -132,30 +175,95 @@ export function normalizePagination(payload: any, defaultPageSize = 20, maxPageS
   return { page, pageSize, fetchAll };
 }
 
-export function normalizeSort(payload: any, defaults: { by: string; dir: 'asc' | 'desc' }) {
-  const sortInput = payload?.sort;
+export function normalizeSort(
+  payload: any,
+  defaults: { by: string; dir: 'asc' | 'desc' },
+  options?: Pick<QueryContractOptions, 'allowedSortFields' | 'sortAliases'>,
+): NormalizedSortInput {
+  const sortInput = payload?.sort ?? payload?.sortBy;
   let by: unknown;
   let dir: unknown;
 
   if (typeof sortInput === 'string') {
+    const alias = options?.sortAliases?.[sortInput.trim()];
+    if (alias) {
+      return { by: alias.by, direction: alias.direction, dir: alias.direction };
+    }
     const [byPart, dirPart] = sortInput.split(':');
     by = byPart;
     dir = dirPart;
   } else if (isObject(sortInput)) {
     by = sortInput.by;
-    dir = sortInput.dir;
+    dir = sortInput.dir ?? sortInput.direction;
   }
 
-  const normalizedDir = toStringOrNull(dir)?.toLowerCase();
+  const normalizedBy = toStringOrNull(by) ?? defaults.by;
+  const normalizedDir = (toStringOrNull(dir)?.toLowerCase() ?? defaults.dir);
+
+  if (normalizedDir !== 'asc' && normalizedDir !== 'desc') {
+    throw new AppError('QUERY_SORT_INVALID', 'sort.direction must be asc or desc', { direction: dir });
+  }
+
+  if (options?.allowedSortFields && options.allowedSortFields.length > 0 && !options.allowedSortFields.includes(normalizedBy)) {
+    throw new AppError('QUERY_SORT_INVALID', 'sort.by is not allowed for this action', {
+      by: normalizedBy,
+      allowed: options.allowedSortFields,
+    });
+  }
+
   return {
-    by: toStringOrNull(by) ?? defaults.by,
-    dir: normalizedDir === 'asc' || normalizedDir === 'desc' ? normalizedDir : defaults.dir,
+    by: normalizedBy,
+    direction: normalizedDir,
+    dir: normalizedDir,
   };
 }
 
-export function normalizeFilters(filters: unknown) {
-  if (!isObject(filters)) return {};
-  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined));
+function coerceSimpleFilterValue(value: unknown): unknown {
+  if (value == null) return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.length) return undefined;
+    const bool = toBooleanOrUndefined(trimmed);
+    if (bool !== undefined) return bool;
+    const numeric = toNumberOrUndefined(trimmed);
+    if (numeric !== undefined && /^-?\d+(\.\d+)?$/.test(trimmed)) return numeric;
+    return trimmed;
+  }
+  if (Array.isArray(value)) {
+    return value.map(coerceSimpleFilterValue).filter((entry) => entry !== undefined);
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (isObject(value)) {
+    return value;
+  }
+  return undefined;
+}
+
+export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[]) {
+  if (!isObject(filters)) {
+    if (filters == null) return {};
+    throw new AppError('QUERY_FILTERS_INVALID', 'filters must be an object');
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(filters)
+      .map(([key, value]) => [key, coerceSimpleFilterValue(value)] as const)
+      .filter(([, value]) => value !== undefined),
+  );
+
+  if (allowedFilterKeys?.length) {
+    const unsupported = Object.keys(normalized).filter((key) => !allowedFilterKeys.includes(key));
+    if (unsupported.length) {
+      throw new AppError('QUERY_FILTERS_INVALID', 'Unsupported filter keys for this action', {
+        unsupported,
+        allowed: allowedFilterKeys,
+      });
+    }
+  }
+
+  return normalized;
 }
 
 export function normalizeFlags(flags: unknown) {
@@ -177,18 +285,34 @@ function normalizeStringArray(value: unknown): string[] {
   return raw.split(',').map((entry) => entry.trim()).filter(Boolean);
 }
 
-export function normalizeGroupBy(groupBy: unknown) {
-  return normalizeStringArray(groupBy);
+function enforceAllowedList(values: string[], allowedValues: string[] | undefined, code: string, message: string) {
+  if (!allowedValues?.length || !values.length) return values;
+  const unsupported = values.filter((value) => !allowedValues.includes(value));
+  if (unsupported.length) {
+    throw new AppError(code, message, { unsupported, allowed: allowedValues });
+  }
+  return values;
 }
 
-export function normalizeColumns(columns: unknown) {
+export function normalizeGroupBy(groupBy: unknown, allowedGroupByKeys?: string[]) {
+  const normalized = normalizeStringArray(groupBy);
+  return enforceAllowedList(normalized, allowedGroupByKeys, 'QUERY_GROUP_BY_INVALID', 'Unsupported groupBy keys for this action');
+}
+
+export function normalizeColumns(columns: unknown, allowedColumns?: string[]) {
   const normalized = normalizeStringArray(columns);
-  return normalized.length ? normalized : null;
+  const safeColumns = enforceAllowedList(normalized, allowedColumns, 'QUERY_COLUMNS_INVALID', 'Unsupported columns for this action');
+  return safeColumns.length ? safeColumns : null;
 }
 
-export function normalizeSearchInput(payload: any): string {
-  const raw = payload?.query ?? payload?.q ?? payload?.search;
-  return toStringOrNull(raw) ?? '';
+export function normalizeSearchInput(payload: any): NormalizedSearchInput {
+  const raw = payload?.search?.term ?? payload?.query ?? payload?.q ?? payload?.search;
+  if (raw == null) return { term: '' };
+  const term = toStringOrNull(raw);
+  if (term == null) {
+    throw new AppError('QUERY_SEARCH_INVALID', 'search term must be a string');
+  }
+  return { term };
 }
 
 export function isDevRelaxedValidationEnabled() {
@@ -197,23 +321,41 @@ export function isDevRelaxedValidationEnabled() {
 
 export function normalizeListQueryInput(
   payload: any,
-  options?: { defaultPageSize?: number; maxPageSize?: number; defaultSort?: { by: string; dir: 'asc' | 'desc' } },
-) {
+  options?: {
+    defaultPageSize?: number;
+    maxPageSize?: number;
+    defaultSort?: { by: string; dir: 'asc' | 'desc' };
+    contract?: QueryContractOptions;
+  },
+): NormalizedListQuery {
   const pagination = normalizePagination(payload, options?.defaultPageSize ?? 20, options?.maxPageSize ?? 200);
   const offset = (pagination.page - 1) * pagination.pageSize;
-  const query = normalizeSearchInput(payload);
+  const search = normalizeSearchInput(payload);
+
+  const rangeInput = normalizeDateInput(payload, { allowEmpty: true });
+
+  const sort = normalizeSort(payload, options?.defaultSort ?? { by: 'createdAt', dir: 'desc' }, {
+    allowedSortFields: options?.contract?.allowedSortFields,
+    sortAliases: options?.contract?.sortAliases,
+  });
+
+  const filters = normalizeFilters(payload?.filters, options?.contract?.allowedFilterKeys);
+  const groupBy = normalizeGroupBy(payload?.groupBy, options?.contract?.allowedGroupByKeys);
+  const columns = normalizeColumns(payload?.columns, options?.contract?.allowedColumns);
 
   return {
     ...pagination,
     limit: pagination.pageSize,
     offset,
-    filters: normalizeFilters(payload?.filters),
-    sort: normalizeSort(payload, options?.defaultSort ?? { by: 'createdAt', dir: 'desc' }),
+    filters,
+    sort,
     flags: normalizeFlags(payload?.flags),
-    groupBy: normalizeGroupBy(payload?.groupBy),
-    columns: normalizeColumns(payload?.columns),
-    query,
-    q: query,
+    groupBy,
+    columns,
+    search,
+    range: { from: rangeInput.from, to: rangeInput.to },
+    query: search.term,
+    q: search.term,
   };
 }
 

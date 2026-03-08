@@ -6,8 +6,29 @@ import { SeoSetting } from '../../entities/SeoSetting';
 import { LandingPage } from '../../entities/LandingPage';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
+const PUBLIC_PRODUCT_QUERY_CONTRACT = {
+  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'status'],
+  sortAliases: {
+    newest: { by: 'createdAt', direction: 'desc' as const },
+    oldest: { by: 'createdAt', direction: 'asc' as const },
+    recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
+    nameAsc: { by: 'name', direction: 'asc' as const },
+    nameDesc: { by: 'name', direction: 'desc' as const },
+    priceLowToHigh: { by: 'updatedAt', direction: 'asc' as const },
+    priceHighToLow: { by: 'updatedAt', direction: 'desc' as const },
+  },
+  allowedFilterKeys: ['categoryId', 'status'],
+  allowedGroupByKeys: ['categoryId', 'status'],
+  allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'status', 'createdAt', 'updatedAt'],
+};
+
 function listQuery(payload: any) {
-  return normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100, defaultSort: { by: 'updatedAt', dir: 'desc' } });
+  return normalizeListQueryInput(payload, {
+    defaultPageSize: 20,
+    maxPageSize: 100,
+    defaultSort: { by: 'updatedAt', dir: 'desc' },
+    contract: PUBLIC_PRODUCT_QUERY_CONTRACT,
+  });
 }
 
 function buildPagination(total: number, page: number, pageSize: number) {
@@ -25,7 +46,7 @@ export async function publicCatalogGetHome(ctx: ActionContext, payload: any = {}
     where: { storeId: ctx.storeId, status: 'active' },
     take: q.limit,
     skip: q.offset,
-    order: { [q.sort.by]: q.sort.dir.toUpperCase() as any },
+    order: { [q.sort.by]: q.sort.direction.toUpperCase() as any },
   });
 
   return { sections: [{ type: 'products', items: products }], pagination: buildPagination(total, q.page, q.pageSize) };
@@ -39,26 +60,37 @@ export async function publicCatalogGetCategories(ctx: ActionContext) {
 export async function publicCatalogListProducts(ctx: ActionContext, payload: any = {}) {
   const q = listQuery(payload);
   const where: any = { storeId: ctx.storeId, status: 'active' };
-  if (payload?.categoryId) where.categoryId = payload.categoryId;
+  const categoryId = payload?.categoryId ?? q.filters.categoryId;
+  if (typeof categoryId === 'string' && categoryId.trim()) where.categoryId = categoryId.trim();
   const [products, total] = await ctx.db.getRepository(Product).findAndCount({
     where,
     take: q.limit,
     skip: q.offset,
-    order: { [q.sort.by]: q.sort.dir.toUpperCase() as any },
+    order: { [q.sort.by]: q.sort.direction.toUpperCase() as any },
   });
-  return { products, pagination: buildPagination(total, q.page, q.pageSize) };
+  return { products, pagination: buildPagination(total, q.page, q.pageSize), query: q };
 }
 
 export async function publicCatalogSearchProducts(ctx: ActionContext, payload: any = {}) {
   const qn = listQuery(payload);
-  const q = `%${qn.query || ''}%`;
-  const rows = await ctx.db.query('SELECT * FROM products WHERE storeId=? AND status=\'active\' AND (name LIKE ? OR slug LIKE ?) ORDER BY updatedAt DESC LIMIT ? OFFSET ?', [ctx.storeId, q, q, qn.limit, qn.offset]);
-  return { products: rows, pagination: { page: qn.page, pageSize: qn.pageSize, hasMore: rows.length === qn.limit }, query: qn.query };
+  const queryTerm = qn.search.term;
+  const q = `%${queryTerm}%`;
+  const sortBy = qn.sort.by;
+  const sortDirection = qn.sort.direction === 'asc' ? 'ASC' : 'DESC';
+  const rows = await ctx.db.query(
+    `SELECT * FROM products
+     WHERE storeId=? AND status='active' AND (name LIKE ? OR slug LIKE ?)
+     ORDER BY ${sortBy} ${sortDirection}
+     LIMIT ? OFFSET ?`,
+    [ctx.storeId, q, q, qn.limit, qn.offset],
+  );
+  return { products: rows, pagination: { page: qn.page, pageSize: qn.pageSize, hasMore: rows.length === qn.limit }, query: queryTerm, search: qn.search };
 }
 
-export async function publicCatalogGetFilters(ctx: ActionContext) {
+export async function publicCatalogGetFilters(ctx: ActionContext, payload: any = {}) {
+  const q = listQuery(payload);
   const categories = await ctx.db.getRepository(Category).find({ where: { storeId: ctx.storeId, status: 'active' }, order: { sortOrder: 'ASC' as any } });
-  return { filters: { categories } };
+  return { filters: { categories }, query: { groupBy: q.groupBy, columns: q.columns, flags: q.flags } };
 }
 
 export async function publicProductGetById(ctx: ActionContext, payload: any) {
