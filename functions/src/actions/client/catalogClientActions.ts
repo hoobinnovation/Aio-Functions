@@ -5,49 +5,131 @@ import { UserProductFavorite } from '../../entities/UserProductFavorite';
 import { UserStoreFavorite } from '../../entities/UserStoreFavorite';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { buildHomeLayout } from '../home/homeBuilder';
+import { Category } from '../../entities/Category';
+import { Product } from '../../entities/Product';
 
 export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
-  return buildHomeLayout(ctx, payload);
+    return buildHomeLayout(ctx, payload);
+}
+
+export async function catalogGetCategories(ctx: ActionContext) {
+    const repo = ctx.db.getRepository(Category);
+
+    const categories = await repo.find({
+        where: {
+            storeId: ctx.storeId,
+            isActive: true,
+        } as any,
+        order: {
+            sortOrder: 'ASC' as any,
+        },
+    });
+
+    return {
+        categories,
+    };
+}
+
+export async function catalogListProducts(ctx: ActionContext, payload: any = {}) {
+    const page = Number(payload.page || 1);
+    const limit = Number(payload.limit || 20);
+
+    const repo = ctx.db.getRepository(Product);
+
+    const where: any = {
+        storeId: ctx.storeId,
+        isActive: true,
+    };
+
+    if (payload.categoryId) {
+        where.categoryId = payload.categoryId;
+    }
+
+    const [products, total] = await repo.findAndCount({
+        where,
+        order: {
+            createdAt: 'DESC' as any,
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+    });
+
+    return {
+        products,
+        total,
+        page,
+        limit,
+    };
 }
 
 export async function productFavoritesList(ctx: ActionContext, payload: any = {}) {
-  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
-  const rows = await ctx.db.getRepository(UserProductFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset });
-  return { favorites: rows };
+    const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+    const rows = await ctx.db.getRepository(UserProductFavorite).find({
+        where: { uid: ctx.uid! },
+        order: { createdAt: 'DESC' as any },
+        take: q.limit,
+        skip: q.offset,
+    });
+
+    return { favorites: rows };
 }
 
 export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
-  const repo = ctx.db.getRepository(UserProductFavorite);
-  const existing = await repo.findOneBy({ uid: ctx.uid!, productId: payload.productId });
-  if (existing) {
+    const repo = ctx.db.getRepository(UserProductFavorite);
+    const existing = await repo.findOneBy({ uid: ctx.uid!, productId: payload.productId });
+
+    if (existing) {
+        await ctx.db.transaction(async (tx: EntityManager) => {
+            await tx.getRepository(UserProductFavorite).delete({ id: existing.id });
+        });
+        return { favorited: false };
+    }
+
     await ctx.db.transaction(async (tx: EntityManager) => {
-      await tx.getRepository(UserProductFavorite).delete({ id: existing.id });
+        await tx.getRepository(UserProductFavorite).save(
+            tx.getRepository(UserProductFavorite).create({
+                id: uuidv4(),
+                uid: ctx.uid!,
+                productId: payload.productId,
+            })
+        );
     });
-    return { favorited: false };
-  }
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(UserProductFavorite).save(tx.getRepository(UserProductFavorite).create({ id: uuidv4(), uid: ctx.uid!, productId: payload.productId }));
-  });
-  return { favorited: true };
+
+    return { favorited: true };
 }
 
 export async function storeFavoritesList(ctx: ActionContext, payload: any = {}) {
-  const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
-  const rows = await ctx.db.getRepository(UserStoreFavorite).find({ where: { uid: ctx.uid! }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset });
-  return { favorites: rows };
+    const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
+    const rows = await ctx.db.getRepository(UserStoreFavorite).find({
+        where: { uid: ctx.uid! },
+        order: { createdAt: 'DESC' as any },
+        take: q.limit,
+        skip: q.offset,
+    });
+
+    return { favorites: rows };
 }
 
 export async function storeFavoritesToggle(ctx: ActionContext, payload: any) {
-  const repo = ctx.db.getRepository(UserStoreFavorite);
-  const existing = await repo.findOneBy({ uid: ctx.uid!, storeId: payload.storeId });
-  if (existing) {
+    const repo = ctx.db.getRepository(UserStoreFavorite);
+    const existing = await repo.findOneBy({ uid: ctx.uid!, storeId: payload.storeId });
+
+    if (existing) {
+        await ctx.db.transaction(async (tx: EntityManager) => {
+            await tx.getRepository(UserStoreFavorite).delete({ id: existing.id });
+        });
+        return { favorited: false };
+    }
+
     await ctx.db.transaction(async (tx: EntityManager) => {
-      await tx.getRepository(UserStoreFavorite).delete({ id: existing.id });
+        await tx.getRepository(UserStoreFavorite).save(
+            tx.getRepository(UserStoreFavorite).create({
+                id: uuidv4(),
+                uid: ctx.uid!,
+                storeId: payload.storeId,
+            })
+        );
     });
-    return { favorited: false };
-  }
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(UserStoreFavorite).save(tx.getRepository(UserStoreFavorite).create({ id: uuidv4(), uid: ctx.uid!, storeId: payload.storeId }));
-  });
-  return { favorited: true };
+
+    return { favorited: true };
 }

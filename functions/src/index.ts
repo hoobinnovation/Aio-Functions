@@ -7,7 +7,7 @@ import { adminGateway } from './gateways/adminGateway';
 import { storageThumbnails_onFinalize } from './triggers/storageThumbnails_onFinalize';
 import {getInitializedDataSource} from "./core/db";
 
-adminSdk.initializeApp();
+adminSdk.initializeApp()
 
 export {
   publicGateway as public,
