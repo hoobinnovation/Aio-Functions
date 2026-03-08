@@ -8,6 +8,7 @@ import { ACTION_REGISTRIES } from '../registries/actionRegistries';
 import { enforceAdminRbac } from '../rbac/adminRbac';
 import { ACTION_SPECS } from '../specs/actionSpecs';
 import { mapErrorForContract, normalizeActionPayload, toValidationDetails } from '../protocol/clientApiContract';
+import { assertAdminActionContract, normalizeAdminSmartTableResponse, resolveAdminStoreId } from '../contracts/adminContractCharter';
 
 function toErrorResponse(err: unknown, requestId: string, serverTime: string): UnifiedResponse {
     const rawCode =
@@ -150,18 +151,6 @@ function validatePayload(gateway: Gateway, action: string, payload: unknown): un
     return value;
 }
 
-function getStoreIdForRbac(request: UnifiedRequest, validatedPayload: unknown): string | undefined {
-    if (request.storeId) {
-        return request.storeId;
-    }
-
-    if (validatedPayload && typeof validatedPayload === 'object' && 'storeId' in validatedPayload) {
-        return (validatedPayload as { storeId?: string }).storeId;
-    }
-
-    return undefined;
-}
-
 export async function dispatchAction(
     gateway: Gateway,
     request: UnifiedRequest,
@@ -194,15 +183,29 @@ export async function dispatchAction(
         const payload = validatePayload(gateway, request.action, request.payload);
 
         if (gateway === 'admin') {
-            const rbacStoreId = getStoreIdForRbac(request, payload);
-            enforceAdminRbac(ctx, request.action, rbacStoreId);
+            const contract = assertAdminActionContract(request.action);
+            const payloadRecord = (payload && typeof payload === 'object') ? payload as Record<string, unknown> : undefined;
+            const resolvedStoreId = resolveAdminStoreId({
+                action: request.action,
+                requestStoreId: request.storeId,
+                payloadStoreId: payloadRecord?.storeId,
+                storeScoped: contract.storeScoped,
+            });
+            if (resolvedStoreId) {
+                request.storeId = resolvedStoreId;
+                if (payloadRecord && !payloadRecord.storeId) {
+                    payloadRecord.storeId = resolvedStoreId;
+                }
+            }
+            enforceAdminRbac(ctx, request.action, resolvedStoreId);
         }
 
         const data = await handler(ctx as any, payload as any);
+        const contractData = gateway === 'admin' ? normalizeAdminSmartTableResponse(data, payload) : data;
 
         return {
             ok: true,
-            data,
+            data: contractData,
             meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
         };
     } catch (err) {

@@ -8,6 +8,7 @@ import {
   normalizePagination,
   normalizeSort,
   isDevRelaxedValidationEnabled,
+  QueryContractOptions,
 } from '../../../utils/queryNormalization';
 
 export const MAX_FETCH_ALL = 10000;
@@ -39,23 +40,26 @@ export function normalizeRange(payload: any) {
   return { from: normalized.from, to: normalized.to };
 }
 
-export function normalizeTableQuery(payload: any, defaults: { sortBy: string; sortDir: 'asc' | 'desc'; pageSize: number }, options?: { fallbackStoreId?: string | null }): TableQuery {
+export function normalizeTableQuery(payload: any, defaults: { sortBy: string; sortDir: 'asc' | 'desc'; pageSize: number }, options?: { fallbackStoreId?: string | null; contract?: QueryContractOptions }): TableQuery {
   const range = normalizeRange(payload);
   const pagination = normalizePagination(payload, defaults.pageSize, MAX_FETCH_ALL);
-  const sort = normalizeSort(payload, { by: defaults.sortBy, dir: defaults.sortDir });
+  const sort = normalizeSort(payload, { by: defaults.sortBy, dir: defaults.sortDir }, {
+    allowedSortFields: options?.contract?.allowedSortFields,
+    sortAliases: options?.contract?.sortAliases,
+  });
   const storeId = payload?.storeId ?? options?.fallbackStoreId ?? null;
   if (!storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required');
   return {
     storeId: String(storeId),
     range,
-    filters: normalizeFilters(payload?.filters),
+    filters: normalizeFilters(payload?.filters, options?.contract?.allowedFilterKeys, options?.contract?.filterAliases),
     sort,
     page: pagination.page,
     pageSize: pagination.pageSize,
     fetchAll: pagination.fetchAll,
-    groupBy: normalizeGroupBy(payload?.groupBy),
-    columns: normalizeColumns(payload?.columns),
-    flags: normalizeFlags(payload?.flags),
+    groupBy: normalizeGroupBy(payload?.groupBy, options?.contract?.allowedGroupByKeys, options?.contract?.groupByAliases),
+    columns: normalizeColumns(payload?.columns, options?.contract?.allowedColumns, options?.contract?.columnAliases),
+    flags: normalizeFlags(payload?.flags, options?.contract?.allowedFlagKeys, options?.contract?.flagAliases),
   };
 }
 
@@ -69,14 +73,14 @@ export function sanitizeSort(sort: TableSort, allowedSortFields: string[], defau
 export function sanitizeGroupBy(groupBy: string[] | null, allowedGroupFields: string[]): string[] {
   if (!groupBy || !groupBy.length) return [];
   const invalid = groupBy.filter((g) => !allowedGroupFields.includes(g));
-  if (invalid.length) throw new AppError('VALIDATION_FAILED', 'Invalid groupBy fields', { invalid });
+  if (invalid.length) throw new AppError('QUERY_GROUP_BY_INVALID', 'Invalid groupBy fields', { invalid });
   return groupBy;
 }
 
 export function sanitizeColumns(columns: string[] | null, allowedColumns: string[]): string[] | null {
   if (!columns || !columns.length) return null;
   const invalid = columns.filter((c) => !allowedColumns.includes(c));
-  if (invalid.length) throw new AppError('VALIDATION_FAILED', 'Invalid columns', { invalid });
+  if (invalid.length) throw new AppError('QUERY_COLUMNS_INVALID', 'Invalid columns', { invalid });
   return columns;
 }
 
