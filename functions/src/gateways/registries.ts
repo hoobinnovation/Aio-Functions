@@ -222,7 +222,7 @@ import {
     adminSitemapRegenerate,
 } from '../actions/admin/catalogAdminActions';
 import { ActionHandler } from '../core/protocol';
-import { adminProductsBulkImportFromJson } from '../actions/admin/productsBulkImportAdminActions';
+import { publicProductsBulkImportFromJson } from '../actions/public/productsBulkImportPublicActions';
 import {
     adminInsuranceList,
     adminInsuranceGet,
@@ -340,6 +340,7 @@ add(registryPublic, 'publicCategoryGetById', publicCategoryGetById as ActionHand
 add(registryPublic, 'publicCategoryGetBySlug', publicCategoryGetBySlug as ActionHandler);
 add(registryPublic, 'publicSeoGetPageMeta', publicSeoGetPageMeta as ActionHandler);
 add(registryPublic, 'publicSeoGetLanding', publicSeoGetLanding as ActionHandler);
+add(registryPublic, 'publicProductsBulkImportFromJson', publicProductsBulkImportFromJson as ActionHandler);
 
 export const registryClient = m();
 add(registryClient, 'clientHealthWhoAmI', clientHealthWhoAmI as ActionHandler);
@@ -460,7 +461,6 @@ add(registryAdmin, 'adminProductsGet', adminProductsGet as ActionHandler);
 add(registryAdmin, 'adminProductsCreate', adminProductsCreate as ActionHandler);
 add(registryAdmin, 'adminProductsUpdate', adminProductsUpdate as ActionHandler);
 add(registryAdmin, 'adminProductsDisable', adminProductsDisable as ActionHandler);
-add(registryAdmin, 'adminProductsBulkImportFromJson', adminProductsBulkImportFromJson as ActionHandler);
 add(registryAdmin, 'adminProductImagesList', adminProductImagesList as ActionHandler);
 add(registryAdmin, 'adminProductImagesAdd', adminProductImagesAdd as ActionHandler);
 add(registryAdmin, 'adminProductImagesRemove', adminProductImagesRemove as ActionHandler);

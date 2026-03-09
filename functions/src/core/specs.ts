@@ -772,7 +772,7 @@ ACTION_SPECS.paymentsConfirm = {
   errorCodes: ['PAYMENT_TRANSACTION_NOT_FOUND', 'PAYMENT_ALREADY_CONFIRMED', 'PAYMENT_CONFIRMATION_FAILED'],
 };
 
-ACTION_SPECS.adminProductsBulkImportFromJson = {
+ACTION_SPECS.publicProductsBulkImportFromJson = {
   schema: Joi.object({
     storeId: Joi.any().required(),
     parentCategoryName: Joi.string().min(1).required(),

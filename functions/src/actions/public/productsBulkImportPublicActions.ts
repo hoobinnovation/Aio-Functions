@@ -265,7 +265,7 @@ async function refreshProductImage(
   }
 }
 
-export async function adminProductsBulkImportFromJson(ctx: ActionContext, payload: any) {
+export async function publicProductsBulkImportFromJson(ctx: ActionContext, payload: any) {
   const normalizedStoreIdRaw = normalizeText(payload?.storeId);
   const storeId = normalizedStoreIdRaw && /^\d+$/.test(normalizedStoreIdRaw) ? String(Number(normalizedStoreIdRaw)) : normalizedStoreIdRaw;
   if (!storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required');

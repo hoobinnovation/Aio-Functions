@@ -13,4 +13,5 @@ export const PUBLIC_ACTIONS_SOT = [
   'publicSeoGetPageMeta',
   'publicSeoGetLanding',
   'publicDevSeedDummyData',
+  'publicProductsBulkImportFromJson',
 ] as const;
