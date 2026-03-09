@@ -222,6 +222,7 @@ import {
     adminSitemapRegenerate,
 } from '../actions/admin/catalogAdminActions';
 import { ActionHandler } from '../core/protocol';
+import { adminProductsBulkImportFromJson } from '../actions/admin/productsBulkImportAdminActions';
 import {
     adminInsuranceList,
     adminInsuranceGet,
@@ -459,6 +460,7 @@ add(registryAdmin, 'adminProductsGet', adminProductsGet as ActionHandler);
 add(registryAdmin, 'adminProductsCreate', adminProductsCreate as ActionHandler);
 add(registryAdmin, 'adminProductsUpdate', adminProductsUpdate as ActionHandler);
 add(registryAdmin, 'adminProductsDisable', adminProductsDisable as ActionHandler);
+add(registryAdmin, 'adminProductsBulkImportFromJson', adminProductsBulkImportFromJson as ActionHandler);
 add(registryAdmin, 'adminProductImagesList', adminProductImagesList as ActionHandler);
 add(registryAdmin, 'adminProductImagesAdd', adminProductImagesAdd as ActionHandler);
 add(registryAdmin, 'adminProductImagesRemove', adminProductImagesRemove as ActionHandler);

@@ -90,6 +90,10 @@ import { ReportsMarketingIndexes1727200000000 } from '../migrations/172720000000
 import { AccountingLedgerIndexes1727400000000 } from '../migrations/1727400000000-AccountingLedgerIndexes';
 import { EdgeSyncIngest1728000000000 } from '../migrations/1728000000000-EdgeSyncIngest';
 import { DineInSecureTableSession1728100000000 } from '../migrations/1728100000000-DineInSecureTableSession';
+import { ExplicitDeliveryZoneContract1728200000000 } from '../migrations/1728200000000-ExplicitDeliveryZoneContract';
+import { FawaterkPaymentSessionFields1728300000000 } from '../migrations/1728300000000-FawaterkPaymentSessionFields';
+import { ProductImportReferences1728400000000 } from '../migrations/1728400000000-ProductImportReferences';
+import { ProductImportReference } from '../entities/ProductImportReference';
 import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
@@ -187,8 +191,9 @@ export function getDataSource(sync=false): DataSource {
       DineInSession,
       DineInWaiterCall,
       OrderReview,
+      ProductImportReference,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000, ExplicitDeliveryZoneContract1728200000000, FawaterkPaymentSessionFields1728300000000, ProductImportReferences1728400000000],
   });
 
   return db;

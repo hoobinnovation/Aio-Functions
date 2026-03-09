@@ -771,3 +771,14 @@ ACTION_SPECS.paymentsConfirm = {
   notes: 'payment confirm by provider reference',
   errorCodes: ['PAYMENT_TRANSACTION_NOT_FOUND', 'PAYMENT_ALREADY_CONFIRMED', 'PAYMENT_CONFIRMATION_FAILED'],
 };
+
+ACTION_SPECS.adminProductsBulkImportFromJson = {
+  schema: Joi.object({
+    storeId: Joi.any().required(),
+    parentCategoryName: Joi.string().min(1).required(),
+    categoryName: Joi.string().min(1).required(),
+    data: Joi.array().items(Joi.object().required()).min(1).required(),
+  }).required(),
+  notes: 'admin bulk import products from JSON',
+  errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'],
+};

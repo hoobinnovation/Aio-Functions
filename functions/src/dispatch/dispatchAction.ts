@@ -99,6 +99,15 @@ function mapErrorCode(code: string): string {
         case 'PAYMENT_STATUS_UNKNOWN':
             return 'PAYMENT_STATUS_UNKNOWN';
 
+        case 'PRODUCT_IMPORT_ROW_INVALID':
+            return 'PRODUCT_IMPORT_ROW_INVALID';
+
+        case 'PRODUCT_IMPORT_IMAGE_FAILED':
+            return 'PRODUCT_IMPORT_IMAGE_FAILED';
+
+        case 'PRODUCT_IMPORT_CATEGORY_RESOLVE_FAILED':
+            return 'PRODUCT_IMPORT_CATEGORY_RESOLVE_FAILED';
+
         case 'STORE_ACCESS_REQUIRED':
             return STABLE_ERROR_CODES.STORE_ACCESS_REQUIRED;
 
