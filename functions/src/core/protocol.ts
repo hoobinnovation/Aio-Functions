@@ -42,6 +42,7 @@ export interface ActionContext {
   runtime?: 'cloud';
   auth?: {
     uid?: string;
+    isAnonymous?: boolean;
     admin?: {
       roles: string[];
       status: string;

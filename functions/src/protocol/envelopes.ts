@@ -1,4 +1,5 @@
 export type Gateway = 'public' | 'client' | 'admin';
+export type CloudGateway = Gateway | 'webhook';
 
 export interface UnifiedRequest {
   action: string;

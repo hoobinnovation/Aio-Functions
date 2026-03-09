@@ -26,6 +26,9 @@ export class UserAddress {
   @Column({ type: 'varchar', length: 80 })
   city!: string;
 
+  @Column({ type: 'char', length: 36, nullable: true })
+  zoneId!: string | null;
+
   @Column({ type: 'varchar', length: 120, nullable: true })
   area!: string | null;
 

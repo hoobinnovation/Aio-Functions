@@ -648,3 +648,126 @@ ACTION_SPECS.legalGetDocs = {
   notes: 'legal docs query (stabilized)',
   errorCodes: ['VALIDATION_FAILED'],
 };
+
+const checkoutAddressPayload = Joi.object({
+  label: Joi.string().max(40).optional(),
+  governorate: Joi.string().max(80).required(),
+  city: Joi.string().max(80).required(),
+  area: Joi.string().max(120).allow(null, '').optional(),
+  street: Joi.string().max(160).required(),
+  building: Joi.string().max(60).allow(null, '').optional(),
+  floor: Joi.string().max(30).allow(null, '').optional(),
+  apartment: Joi.string().max(30).allow(null, '').optional(),
+  landmark: Joi.string().max(160).allow(null, '').optional(),
+  lat: Joi.number().required(),
+  lng: Joi.number().required(),
+  notes: Joi.string().max(300).allow(null, '').optional(),
+}).required();
+
+ACTION_SPECS.checkoutCreatePaymentSession = {
+  schema: Joi.object({
+    serviceType: Joi.string().valid('standard', 'delivery', 'pickup', 'dineIn').optional(),
+    branchId: Joi.string().optional(),
+    dineInSessionToken: Joi.string().optional(),
+    displayName: Joi.string().max(80).required(),
+    phone: Joi.string().max(32).required(),
+    shippingAddress: checkoutAddressPayload,
+  }).required(),
+  notes: 'guest-first checkout payment session',
+  errorCodes: ['VALIDATION_ERROR', 'CHECKOUT_CONTACT_REQUIRED', 'DINE_IN_SESSION_REQUIRED'],
+};
+
+ACTION_SPECS.profileGet = { schema: Joi.any().optional(), notes: 'Get own profile', errorCodes: ['ACCOUNT_AUTH_REQUIRED', 'NOT_FOUND'] };
+ACTION_SPECS.profileUpdate = { schema: profileUpdatePayload, notes: 'Update own profile', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED', 'ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.addressesList = { schema: Joi.any().optional(), notes: 'List addresses', errorCodes: ['ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.addressesCreate = { schema: addressPayload.required(), notes: 'Create address', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED', 'ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.addressesUpdate = { schema: addressPayload.keys({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Update address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.addressesDelete = { schema: Joi.object({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Delete address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.addressesSetDefault = { schema: Joi.object({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Set default address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.ordersGet = { schema: Joi.object({ orderId: Joi.string().required() }).required(), notes: 'Get order by session identity', errorCodes: ['ORDER_ACCESS_FORBIDDEN'] };
+ACTION_SPECS.ordersTracking = { schema: Joi.object({ orderId: Joi.string().required() }).required(), notes: 'Track order by session identity', errorCodes: ['ORDER_ACCESS_FORBIDDEN'] };
+ACTION_SPECS.ordersInvoiceUrl = { schema: Joi.object({ orderId: Joi.string().required() }).required(), notes: 'Invoice by session identity', errorCodes: ['ORDER_ACCESS_FORBIDDEN'] };
+ACTION_SPECS.productFavoritesList = { schema: clientFriendlyListQueryPayload, notes: 'product favorites list (account-auth)', errorCodes: ['ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.productFavoritesToggle = { schema: Joi.object({ productId: Joi.string().required() }).required(), notes: 'toggle product favorite (account-auth)', errorCodes: ['ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.storeFavoritesList = { schema: clientFriendlyListQueryPayload, notes: 'store favorites list (account-auth)', errorCodes: ['ACCOUNT_AUTH_REQUIRED'] };
+ACTION_SPECS.storeFavoritesToggle = { schema: Joi.object({ storeId: Joi.string().required() }).required(), notes: 'toggle store favorite (account-auth)', errorCodes: ['ACCOUNT_AUTH_REQUIRED'] };
+
+const explicitDeliveryAddressPayload = Joi.object({
+  zoneId: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required(),
+  label: Joi.string().max(40).required(),
+  recipientName: Joi.string().max(80).required(),
+  phone: Joi.string().max(32).allow(null, ''),
+  governorate: Joi.string().max(80).required(),
+  city: Joi.string().max(80).required(),
+  area: Joi.string().max(120).allow(null, ''),
+  street: Joi.string().max(160).required(),
+  building: Joi.string().max(60).allow(null, ''),
+  floor: Joi.string().max(30).allow(null, ''),
+  apartment: Joi.string().max(30).allow(null, ''),
+  landmark: Joi.string().max(160).allow(null, ''),
+  lat: Joi.number().required(),
+  lng: Joi.number().required(),
+  notes: Joi.string().max(300).allow(null, ''),
+  isDefault: Joi.boolean().optional(),
+}).required();
+
+ACTION_SPECS.addressesCreate = { schema: explicitDeliveryAddressPayload, notes: 'Create address with explicit zone', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED', 'ACCOUNT_AUTH_REQUIRED', 'DELIVERY_ZONE_REQUIRED'] };
+ACTION_SPECS.addressesUpdate = { schema: explicitDeliveryAddressPayload.keys({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Update address with explicit zone', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'ACCOUNT_AUTH_REQUIRED', 'DELIVERY_ZONE_REQUIRED'] };
+ACTION_SPECS.shippingQuoteDelivery = { schema: Joi.object({ zoneId: Joi.string().required(), shippingMethodId: Joi.string().optional() }).required(), notes: 'delivery quote by explicit zone', errorCodes: ['DELIVERY_ZONE_REQUIRED', 'DELIVERY_ZONE_INVALID', 'DELIVERY_ZONE_UNAVAILABLE', 'SHIPPING_METHOD_INVALID', 'SHIPPING_METHOD_UNAVAILABLE'] };
+ACTION_SPECS.checkoutPreview = { schema: Joi.object({ serviceType: Joi.string().valid('standard', 'delivery', 'pickup', 'dineIn').optional(), zoneId: Joi.string().optional(), shippingMethodId: Joi.string().optional() }).optional(), notes: 'preview with explicit delivery zone', errorCodes: ['DELIVERY_ZONE_REQUIRED', 'DELIVERY_ZONE_INVALID', 'DELIVERY_ZONE_UNAVAILABLE'] };
+ACTION_SPECS.checkoutCreatePaymentSession = {
+  schema: Joi.object({
+    serviceType: Joi.string().valid('standard', 'delivery', 'pickup', 'dineIn').optional(),
+    branchId: Joi.string().optional(),
+    dineInSessionToken: Joi.string().optional(),
+    addressId: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).optional(),
+    shippingMethodId: Joi.string().optional(),
+    displayName: Joi.string().max(80).required(),
+    phone: Joi.string().max(32).required(),
+    shippingAddress: Joi.object({
+      zoneId: Joi.string().required(),
+      label: Joi.string().max(40).optional(),
+      governorate: Joi.string().max(80).required(),
+      city: Joi.string().max(80).required(),
+      area: Joi.string().max(120).allow(null, '').optional(),
+      street: Joi.string().max(160).required(),
+      building: Joi.string().max(60).allow(null, '').optional(),
+      floor: Joi.string().max(30).allow(null, '').optional(),
+      apartment: Joi.string().max(30).allow(null, '').optional(),
+      landmark: Joi.string().max(160).allow(null, '').optional(),
+      lat: Joi.number().required(),
+      lng: Joi.number().required(),
+      notes: Joi.string().max(300).allow(null, '').optional(),
+    }).optional(),
+    deliveryQuote: Joi.object({
+      deliveryFeeCents: Joi.number().integer().min(0).required(),
+    }).optional(),
+  }).required(),
+  notes: 'checkout payment with explicit delivery zone contract',
+  errorCodes: ['VALIDATION_ERROR', 'CHECKOUT_CONTACT_REQUIRED', 'DELIVERY_ZONE_REQUIRED', 'DELIVERY_ZONE_INVALID', 'DELIVERY_ZONE_UNAVAILABLE', 'ADDRESS_ZONE_REQUIRED', 'DELIVERY_QUOTE_MISMATCH', 'DINE_IN_SESSION_REQUIRED'],
+};
+
+ACTION_SPECS.checkoutCreatePaymentSession = {
+  schema: ACTION_SPECS.checkoutCreatePaymentSession.schema.keys({
+    redirectUrl: Joi.string().max(2048).optional(),
+  }).required(),
+  notes: 'checkout payment session with provider redirect',
+  errorCodes: ['VALIDATION_ERROR', 'CHECKOUT_CONTACT_REQUIRED', 'DELIVERY_ZONE_REQUIRED', 'DELIVERY_ZONE_INVALID', 'DELIVERY_ZONE_UNAVAILABLE', 'ADDRESS_ZONE_REQUIRED', 'DELIVERY_QUOTE_MISMATCH', 'DINE_IN_SESSION_REQUIRED', 'PAYMENT_PROVIDER_ERROR', 'PAYMENT_SESSION_CREATE_FAILED'],
+};
+
+ACTION_SPECS.paymentsStatus = {
+  schema: Joi.object({
+    orderId: Joi.string().required(),
+  }).required(),
+  notes: 'payment status by order',
+  errorCodes: ['PAYMENT_TRANSACTION_NOT_FOUND', 'PAYMENT_STATUS_UNKNOWN'],
+};
+
+ACTION_SPECS.paymentsConfirm = {
+  schema: Joi.object({
+    providerSessionId: Joi.string().optional(),
+    invoiceKey: Joi.string().optional(),
+  }).required(),
+  notes: 'payment confirm by provider reference',
+  errorCodes: ['PAYMENT_TRANSACTION_NOT_FOUND', 'PAYMENT_ALREADY_CONFIRMED', 'PAYMENT_CONFIRMATION_FAILED'],
+};
