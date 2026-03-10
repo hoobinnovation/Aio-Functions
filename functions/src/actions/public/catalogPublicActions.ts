@@ -7,19 +7,21 @@ import { LandingPage } from '../../entities/LandingPage';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 const PUBLIC_PRODUCT_QUERY_CONTRACT = {
-  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'status',],
+  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'status', 'ratingAverage', 'popularityScore'],
   sortAliases: {
     newest: { by: 'createdAt', direction: 'desc' as const },
     oldest: { by: 'createdAt', direction: 'asc' as const },
     recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
     nameAsc: { by: 'name', direction: 'asc' as const },
     nameDesc: { by: 'name', direction: 'desc' as const },
+    topRated: { by: 'ratingAverage', direction: 'desc' as const },
+    mostPopular: { by: 'popularityScore', direction: 'desc' as const },
     priceLowToHigh: { by: 'updatedAt', direction: 'asc' as const },
     priceHighToLow: { by: 'updatedAt', direction: 'desc' as const },
   },
   allowedFilterKeys: ['categoryId', 'status'],
   allowedGroupByKeys: ['categoryId', 'status'],
-  allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'status', 'createdAt', 'updatedAt'],
+  allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'status', 'ratingAverage', 'ratingCount', 'favoriteCount', 'completedOrderQty', 'popularityScore', 'createdAt', 'updatedAt'],
 };
 
 function listQuery(payload: any) {
@@ -58,8 +60,7 @@ export async function publicCatalogGetCategories(ctx: ActionContext) {
 }
 
 export async function publicCatalogListProducts(ctx: ActionContext, payload: any = {}) {
-    console.log(payload)
-    const q = listQuery(payload);
+  const q = listQuery(payload);
   const where: any = { storeId: ctx.storeId, status: 'active' };
   const categoryId = payload?.categoryId ?? q.filters.categoryId;
   if (typeof categoryId === 'string' && categoryId.trim()) where.categoryId = categoryId.trim();

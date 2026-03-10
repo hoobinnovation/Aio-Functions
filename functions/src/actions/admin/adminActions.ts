@@ -30,7 +30,7 @@ const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
   { key: 'categories', label: 'Categories', icon: 'category', actionNames: ['adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable'] },
   { key: 'banners', label: 'Banners', icon: 'image', actionNames: ['adminBannersList','adminBannersGet','adminBannersCreate','adminBannersUpdate','adminBannersDisable'] },
   { key: 'featuredProducts', label: 'Featured Products', icon: 'star', actionNames: ['adminFeaturedList','adminFeaturedSearchProducts','adminFeaturedSet'] },
-  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable'] },
+  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable','adminCatalogRebuildProductMetrics'] },
   { key: 'productImages', label: 'Product Images', icon: 'collections', actionNames: ['adminProductImagesList','adminProductImagesAdd','adminProductImagesRemove','adminProductImagesReorder'] },
   { key: 'productSpecs', label: 'Product Specs', icon: 'fact_check', actionNames: ['adminProductSpecsList','adminProductSpecsCreate','adminProductSpecsUpdate','adminProductSpecsDelete'] },
   { key: 'productVariants', label: 'Product Variants', icon: 'view_module', actionNames: ['adminProductVariantsList','adminProductVariantsCreate','adminProductVariantsUpdate','adminProductVariantsDelete','adminProductVariantsBulkStockUpdate'] },

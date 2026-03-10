@@ -9,6 +9,11 @@ export class Product {
   @Column({ type: 'varchar', length: 200 }) slug!: string;
   @Column({ type: 'text', nullable: true }) description!: string | null;
   @Column({ type: 'varchar', length: 24, default: 'active' }) status!: string;
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 }) ratingAverage!: string;
+  @Column({ type: 'int', default: 0 }) ratingCount!: number;
+  @Column({ type: 'int', default: 0 }) favoriteCount!: number;
+  @Column({ type: 'int', default: 0 }) completedOrderQty!: number;
+  @Column({ type: 'int', default: 0 }) popularityScore!: number;
   @CreateDateColumn({ type: 'datetime' }) createdAt!: Date;
   @UpdateDateColumn({ type: 'datetime' }) updatedAt!: Date;
 }

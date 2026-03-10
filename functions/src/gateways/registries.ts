@@ -183,6 +183,7 @@ import {
     adminFeaturedList,
     adminFeaturedSearchProducts,
     adminFeaturedSet,
+    adminCatalogRebuildProductMetrics,
     adminProductsList,
     adminProductsGet,
     adminProductsCreate,
@@ -456,6 +457,7 @@ add(registryAdmin, 'adminBannersDisable', adminBannersDisable as ActionHandler);
 add(registryAdmin, 'adminFeaturedList', adminFeaturedList as ActionHandler);
 add(registryAdmin, 'adminFeaturedSearchProducts', adminFeaturedSearchProducts as ActionHandler);
 add(registryAdmin, 'adminFeaturedSet', adminFeaturedSet as ActionHandler);
+add(registryAdmin, 'adminCatalogRebuildProductMetrics', adminCatalogRebuildProductMetrics as ActionHandler);
 add(registryAdmin, 'adminProductsList', adminProductsList as ActionHandler);
 add(registryAdmin, 'adminProductsGet', adminProductsGet as ActionHandler);
 add(registryAdmin, 'adminProductsCreate', adminProductsCreate as ActionHandler);
