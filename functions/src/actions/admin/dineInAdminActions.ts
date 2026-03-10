@@ -14,7 +14,7 @@ import { normalizeDateInput, normalizeListQueryInput } from '../../utils/queryNo
 async function getSettingsRow(ctx: ActionContext) {
   let row = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId! });
   if (!row) {
-    row = ctx.db.getRepository(StoreSettings).create({ storeId: ctx.storeId!, currency: 'USD', taxMode: 'exclusive', supportWhatsApp: null, supportEmail: null, pickupEnabled: true, deliveryEnabled: true, dineInConfigJson: null });
+    row = ctx.db.getRepository(StoreSettings).create({ storeId: ctx.storeId!, currency: 'USD', taxMode: 'exclusive', supportWhatsApp: null, supportEmail: null, pickupEnabled: true, deliveryEnabled: true, dineInConfigJson: null, featureVisibilityJson: null });
     await ctx.db.getRepository(StoreSettings).save(row);
   }
   return row;

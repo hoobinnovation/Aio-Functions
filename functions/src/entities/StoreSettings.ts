@@ -26,6 +26,9 @@ export class StoreSettings {
   @Column({ type: 'text', nullable: true })
   dineInConfigJson!: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  featureVisibilityJson!: string | null;
+
   @UpdateDateColumn({ type: 'datetime' })
   updatedAt!: Date;
 }

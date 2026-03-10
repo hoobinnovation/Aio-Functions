@@ -13,6 +13,7 @@ import { UserProfile } from '../../entities/UserProfile';
 import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsListForGateway } from '../../health/actionsHealth';
 import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
+import { buildFeatureVisibilityResponse, serializeFeatureVisibility } from './storeFeatureVisibility';
 
 
 type AdminModuleDescriptor = {
@@ -128,10 +129,40 @@ export async function adminActionsList(ctx: ActionContext) {
 export async function adminMe(ctx: ActionContext) {
   const user = await ctx.db.getRepository(AdminUser).findOneBy({ uid: ctx.uid! });
   const roles = await ctx.db.getRepository(AdminRole).findBy({ adminUid: ctx.uid! });
+
+  let storeBootstrap: Record<string, unknown> | null = null;
+  if (ctx.storeId) {
+    if (!ctx.auth?.admin?.storeAccess.includes(ctx.storeId)) {
+      throw new AppError('STORE_ACCESS_REQUIRED', 'Missing store access');
+    }
+    const store = await ctx.db.getRepository(Store).findOneBy({ id: ctx.storeId });
+    if (!store) throw new AppError('NOT_FOUND', 'Store not found');
+    const settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId });
+    if (!settings) throw new AppError('NOT_FOUND', 'Store settings not found');
+    storeBootstrap = {
+      storeId: store.id,
+      store: {
+        id: store.id,
+        name: store.name,
+        status: store.status,
+      },
+      settings: {
+        currency: settings.currency,
+        taxMode: settings.taxMode,
+        supportWhatsApp: settings.supportWhatsApp,
+        supportEmail: settings.supportEmail,
+        pickupEnabled: settings.pickupEnabled,
+        deliveryEnabled: settings.deliveryEnabled,
+      },
+      ...buildFeatureVisibilityResponse(settings.featureVisibilityJson),
+    };
+  }
+
   return {
     uid: ctx.uid,
     status: user?.status ?? null,
     roles: roles.map((r: AdminRole) => r.role),
+    storeBootstrap,
   };
 }
 
@@ -166,6 +197,7 @@ export async function adminStoresCreate(ctx: ActionContext, payload: any) {
       supportEmail: payload.supportEmail ?? null,
       pickupEnabled: payload.pickupEnabled ?? true,
       deliveryEnabled: payload.deliveryEnabled ?? true,
+      featureVisibilityJson: null,
     }));
   });
   return adminStoresGet(ctx, { storeId: payload.storeId });
@@ -195,11 +227,23 @@ export async function adminStoresDisable(ctx: ActionContext, payload: any) {
 export async function adminStoreSettingsGet(ctx: ActionContext, payload: any) {
   const settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: payload.storeId });
   if (!settings) throw new AppError('NOT_FOUND', 'Store settings not found');
-  return { settings };
+  return {
+    settings: {
+      storeId: settings.storeId,
+      currency: settings.currency,
+      taxMode: settings.taxMode,
+      supportWhatsApp: settings.supportWhatsApp,
+      supportEmail: settings.supportEmail,
+      pickupEnabled: settings.pickupEnabled,
+      deliveryEnabled: settings.deliveryEnabled,
+      ...buildFeatureVisibilityResponse(settings.featureVisibilityJson),
+    },
+  };
 }
 
 export async function adminStoreSettingsUpdate(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
+    const existing = await tx.getRepository(StoreSettings).findOneBy({ storeId: payload.storeId });
     await tx.getRepository(StoreSettings).upsert({
       storeId: payload.storeId,
       currency: payload.currency,
@@ -208,6 +252,9 @@ export async function adminStoreSettingsUpdate(ctx: ActionContext, payload: any)
       supportEmail: payload.supportEmail ?? null,
       pickupEnabled: payload.pickupEnabled,
       deliveryEnabled: payload.deliveryEnabled,
+      featureVisibilityJson: payload.featureVisibility === undefined
+        ? existing?.featureVisibilityJson ?? null
+        : serializeFeatureVisibility(payload.featureVisibility),
     }, ['storeId']);
   });
   return adminStoreSettingsGet(ctx, { storeId: payload.storeId });
