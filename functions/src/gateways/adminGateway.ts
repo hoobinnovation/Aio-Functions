@@ -6,6 +6,17 @@ import { UnifiedRequest } from '../protocol/envelopes';
 import { resolveAdminAuth } from '../rbac/adminRbac';
 import { toValidationDetails } from '../protocol/clientApiContract';
 
+
+function resolveStoreIdFromClaims(request: { auth?: { token?: Record<string, unknown> } }): string | undefined {
+  const token = request.auth?.token;
+  const claimStoreId = typeof token?.storeId === 'string'
+    ? token.storeId
+    : typeof token?.store_id === 'string'
+      ? token.store_id
+      : undefined;
+  return claimStoreId?.trim() || undefined;
+}
+
 const requestSchema = Joi.object({
   action: Joi.string().required(),
   storeId: Joi.string().optional(),
@@ -16,7 +27,10 @@ const requestSchema = Joi.object({
 export const adminGateway = onCall(async (request) => {
   const envelope = requestSchema.validate(request.data, { abortEarly: false, allowUnknown: false, stripUnknown: false });
   const req = envelope.value as UnifiedRequest;
-  const ctx = await buildCloudContext('admin', request, req?.storeId, req?.meta);
+  const storeIdFromClaims = resolveStoreIdFromClaims(request as any);
+  const resolvedStoreId = storeIdFromClaims ?? req?.storeId;
+  if (resolvedStoreId) req.storeId = resolvedStoreId;
+  const ctx = await buildCloudContext('admin', request, resolvedStoreId, req?.meta);
 
   if (envelope.error) {
     return {

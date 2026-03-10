@@ -12,10 +12,10 @@ import { InventoryAdjustment } from '../../entities/InventoryAdjustment';
 import { HomeSection } from '../../entities/HomeSection';
 import { SeoSetting } from '../../entities/SeoSetting';
 import { LandingPage } from '../../entities/LandingPage';
-import { SitemapRun } from '../../entities/SitemapRun';
 import { AppError } from '../../core/errors';
 import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
 import { normalizeSectionForWrite, publishHomeLayoutForStore } from '../home/homeBuilder';
+import { exportStoreSeoArtifacts } from './seoExportArtifacts';
 
 async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: string) {
   const row = await ctx.db.getRepository(repo).findOneBy({ id });
@@ -153,11 +153,5 @@ export async function adminLandingPagesUnpublish(ctx: ActionContext, payload: an
 export async function adminLandingPagesDisable(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,status:'disabled'}); }
 
 export async function adminSitemapRegenerate(ctx: ActionContext, payload: any) {
-  const id = uuidv4();
-  const countRows = await ctx.db.query('SELECT COUNT(*) as c FROM products WHERE storeId=? AND status=\'active\'', [payload.storeId]);
-  const urlsCount = Number(countRows[0]?.c || 0);
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(SitemapRun).save(tx.getRepository(SitemapRun).create({ id, storeId: payload.storeId, status: 'completed', urlsCount }));
-  });
-  return { run: await ctx.db.getRepository(SitemapRun).findOneByOrFail({ id }) };
+  return exportStoreSeoArtifacts(ctx, payload);
 }
