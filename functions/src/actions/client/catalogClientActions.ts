@@ -10,7 +10,7 @@ import { Product } from '../../entities/Product';
 import { requireAccountIdentity } from '../../core/identity';
 
 const CLIENT_PRODUCT_QUERY_CONTRACT = {
-    allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
+    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
     sortAliases: {
         newest: { by: 'createdAt', direction: 'desc' as const },
         oldest: { by: 'createdAt', direction: 'asc' as const },

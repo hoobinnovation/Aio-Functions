@@ -12,7 +12,7 @@ import {
 } from '../utils/queryNormalization';
 
 const CATALOG_QUERY_CONTRACT = {
-  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug'],
+  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug',"sort.by"],
   sortAliases: {
     newest: { by: 'createdAt', direction: 'desc' as const },
     oldest: { by: 'createdAt', direction: 'asc' as const },

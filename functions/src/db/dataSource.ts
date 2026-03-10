@@ -12,7 +12,8 @@ export interface AppDataSourceConfig {
 export function createAppDataSource(config: AppDataSourceConfig = {}): DataSource {
   const driver = config.driver ?? 'mysql';
   if (driver === 'mysql') {
-    return getDataSource(config.synchronize ?? !PROD);
+      return getDataSource(config.synchronize);
+      // return getDataSource(config.synchronize ?? !PROD);
   }
 
   throw new Error('SQLite driver is not configured yet.');

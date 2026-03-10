@@ -6,7 +6,7 @@ import { adminGateway } from './gateways/adminGateway';
 import { webhookGateway } from './gateways/webhookGateway';
 import { storageThumbnails_onFinalize } from './triggers/storageThumbnails_onFinalize';
 
-adminSdk.initializeApp();
+adminSdk.initializeApp()
 
 export {
   publicGateway as public,

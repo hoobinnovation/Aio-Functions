@@ -7,7 +7,7 @@ import { LandingPage } from '../../entities/LandingPage';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 
 const PUBLIC_PRODUCT_QUERY_CONTRACT = {
-  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'status'],
+  allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'status',],
   sortAliases: {
     newest: { by: 'createdAt', direction: 'desc' as const },
     oldest: { by: 'createdAt', direction: 'asc' as const },
@@ -58,7 +58,8 @@ export async function publicCatalogGetCategories(ctx: ActionContext) {
 }
 
 export async function publicCatalogListProducts(ctx: ActionContext, payload: any = {}) {
-  const q = listQuery(payload);
+    console.log(payload)
+    const q = listQuery(payload);
   const where: any = { storeId: ctx.storeId, status: 'active' };
   const categoryId = payload?.categoryId ?? q.filters.categoryId;
   if (typeof categoryId === 'string' && categoryId.trim()) where.categoryId = categoryId.trim();

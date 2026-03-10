@@ -203,8 +203,11 @@ export function normalizeSort(
   if (normalizedDir !== 'asc' && normalizedDir !== 'desc') {
     throw new AppError('QUERY_SORT_INVALID', 'sort.direction must be asc or desc', { direction: dir });
   }
-
-  if (options?.allowedSortFields && options.allowedSortFields.length > 0 && !options.allowedSortFields.includes(normalizedBy)) {
+    console.log(options?.allowedSortFields,normalizedBy)
+  if (options?.allowedSortFields &&
+      options.allowedSortFields.length > 0 &&
+      !options.allowedSortFields.includes(normalizedBy)
+  ) {
     throw new AppError('QUERY_SORT_INVALID', 'sort.by is not allowed for this action', {
       by: normalizedBy,
       allowed: options.allowedSortFields,
@@ -307,7 +310,7 @@ export function normalizeColumns(columns: unknown, allowedColumns?: string[]) {
 
 export function normalizeSearchInput(payload: any): NormalizedSearchInput {
   const raw = payload?.search?.term ?? payload?.query ?? payload?.q ?? payload?.search;
-  if (raw == null) return { term: '' };
+  if (raw == null || raw === '') return { term: '' };
   const term = toStringOrNull(raw);
   if (term == null) {
     throw new AppError('QUERY_SEARCH_INVALID', 'search term must be a string');
