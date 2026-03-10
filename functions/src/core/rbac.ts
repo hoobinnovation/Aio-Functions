@@ -59,6 +59,7 @@ export const ACTION_ROLE_MAP: Record<string, { module: string; rolesAllowed: str
   adminFeaturedList: { module: 'home', rolesAllowed: ['superadmin', 'ops', 'home_manager'], storeAccessRequired: true },
   adminFeaturedSearchProducts: { module: 'products', rolesAllowed: ['superadmin', 'ops', 'product_manager'], storeAccessRequired: true },
   adminFeaturedSet: { module: 'home', rolesAllowed: ['superadmin', 'ops', 'home_manager'], storeAccessRequired: true },
+  adminCatalogRebuildProductMetrics: { module: 'products', rolesAllowed: ['superadmin', 'ops', 'product_manager'], storeAccessRequired: true },
   adminProductsList: { module: 'products', rolesAllowed: ['superadmin', 'ops', 'product_manager'], storeAccessRequired: true },
   adminProductsGet: { module: 'products', rolesAllowed: ['superadmin', 'ops', 'product_manager'], storeAccessRequired: true },
   adminProductsCreate: { module: 'products', rolesAllowed: ['superadmin', 'ops', 'product_manager'], storeAccessRequired: true },

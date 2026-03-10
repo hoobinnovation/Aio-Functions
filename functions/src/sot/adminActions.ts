@@ -5,6 +5,7 @@ export const ADMIN_ACTIONS_SOT = [
   'adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable',
   'adminBannersList','adminBannersGet','adminBannersCreate','adminBannersUpdate','adminBannersDisable',
   'adminFeaturedList','adminFeaturedSearchProducts','adminFeaturedSet',
+  'adminCatalogRebuildProductMetrics',
   'adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable',
   'adminProductImagesList','adminProductImagesAdd','adminProductImagesRemove','adminProductImagesReorder',
   'adminProductSpecsList','adminProductSpecsCreate','adminProductSpecsUpdate','adminProductSpecsDelete',

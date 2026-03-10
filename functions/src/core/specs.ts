@@ -536,6 +536,7 @@ ACTION_SPECS.adminInsuranceList = { schema: listQueryPayload, notes: 'admin insu
 ACTION_SPECS.adminRiskFlaggedOrdersList = { schema: listQueryPayload, notes: 'admin risk list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminReturnsList = { schema: listQueryPayload, notes: 'admin returns list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminProductsList = { schema: listQueryPayload, notes: 'admin products list query', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminCatalogRebuildProductMetrics = { schema: Joi.object({ storeId: Joi.string().optional() }).optional(), notes: 'rebuild persisted product metrics', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminCategoriesList = { schema: listQueryPayload, notes: 'admin categories list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminBannersList = { schema: listQueryPayload, notes: 'admin banners list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminLandingPagesList = { schema: listQueryPayload, notes: 'admin landing pages list query', errorCodes: ['VALIDATION_ERROR'] };
@@ -568,8 +569,8 @@ ACTION_SPECS.dineInCloseSession={schema:Joi.object({sessionToken:Joi.string().re
 ACTION_SPECS.dineInCallWaiter={schema:Joi.object({sessionToken:Joi.string().required(),callType:Joi.string().valid('callWaiter','requestBill','needHelp','cleanup').required(),note:Joi.string().max(1000).allow('',null),orderId:Joi.string().optional()}).required(),notes:'dine in waiter call',errorCodes:['VALIDATION_FAILED']};
 ACTION_SPECS.dineInRequestBill={schema:Joi.object({sessionToken:Joi.string().required(),orderId:Joi.string().optional(),note:Joi.string().max(1000).allow('',null)}).required(),notes:'dine in request bill',errorCodes:['VALIDATION_FAILED']};
 
-ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
-ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
 
 ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.string().valid('standard','delivery','pickup','dineIn').optional(),branchId:Joi.string().optional(),dineInSessionToken:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','DINE_IN_SESSION_REQUIRED']};
 

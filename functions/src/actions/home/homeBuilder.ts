@@ -374,6 +374,8 @@ function buildProductRailPayload(section: NormalizedHomeSection, dataCtx: BuildH
         compareAtPrice: Number.isFinite(compareAt) ? compareAt : null,
         currency: dataCtx.storeSettings?.currency ?? 'USD',
         inStock: variant ? variant.stockQty > 0 : false,
+        ratingAverage: Number(p.ratingAverage ?? 0),
+        popularityScore: Number(p.popularityScore ?? 0),
         favorite: {
           supported: true,
           toggleAction: 'productFavoritesToggle',

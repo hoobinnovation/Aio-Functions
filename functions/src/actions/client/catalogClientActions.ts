@@ -8,19 +8,22 @@ import { buildHomeLayout } from '../home/homeBuilder';
 import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
 import { requireAccountIdentity } from '../../core/identity';
+import { recomputeProductMetrics } from '../productMetrics';
 
 const CLIENT_PRODUCT_QUERY_CONTRACT = {
-    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
+    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'ratingAverage', 'popularityScore'],
     sortAliases: {
         newest: { by: 'createdAt', direction: 'desc' as const },
         oldest: { by: 'createdAt', direction: 'asc' as const },
         recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
         nameAsc: { by: 'name', direction: 'asc' as const },
         nameDesc: { by: 'name', direction: 'desc' as const },
+        topRated: { by: 'ratingAverage', direction: 'desc' as const },
+        mostPopular: { by: 'popularityScore', direction: 'desc' as const },
     },
     allowedFilterKeys: ['categoryId'],
     allowedGroupByKeys: ['categoryId'],
-    allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'createdAt', 'updatedAt'],
+    allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'ratingAverage', 'ratingCount', 'favoriteCount', 'completedOrderQty', 'popularityScore', 'createdAt', 'updatedAt'],
 };
 
 export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
@@ -33,7 +36,7 @@ export async function catalogGetCategories(ctx: ActionContext) {
     const categories = await repo.find({
         where: {
             storeId: ctx.storeId,
-            isActive: true,
+            status: 'active',
         } as any,
         order: {
             sortOrder: 'ASC' as any,
@@ -57,7 +60,7 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
 
     const where: any = {
         storeId: ctx.storeId,
-        isActive: true,
+        status: 'active',
     };
 
     if (payload.categoryId) {
@@ -108,6 +111,7 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
     if (existing) {
         await ctx.db.transaction(async (tx: EntityManager) => {
             await tx.getRepository(UserProductFavorite).delete({ id: existing.id });
+            await recomputeProductMetrics(tx, payload.productId);
         });
         return { favorited: false };
     }
@@ -120,6 +124,7 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
                 productId: payload.productId,
             })
         );
+        await recomputeProductMetrics(tx, payload.productId);
     });
 
     return { favorited: true };
