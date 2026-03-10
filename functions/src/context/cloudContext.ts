@@ -1,10 +1,10 @@
 import { createLogger } from '../core/logging';
 import { getInitializedDataSource } from '../db/dataSource';
-import { Gateway } from '../protocol/envelopes';
+import { CloudGateway } from '../protocol/envelopes';
 import { createRequestMeta } from '../protocol/requestId';
 import { RequestContext } from './requestContext';
 
-export async function buildCloudContext(gateway: Gateway, request: any, storeId?: string, requestMeta?: Record<string, unknown>): Promise<RequestContext> {
+export async function buildCloudContext(gateway: CloudGateway, request: any, storeId?: string, requestMeta?: Record<string, unknown>): Promise<RequestContext> {
   const requestInfo = createRequestMeta();
   return {
     ...requestInfo,
@@ -15,9 +15,10 @@ export async function buildCloudContext(gateway: Gateway, request: any, storeId?
     uid: request.auth?.uid,
     auth: {
       uid: request.auth?.uid,
+      isAnonymous: request.auth?.token?.firebase?.sign_in_provider === 'anonymous',
     },
-    ip: request.rawRequest?.ip,
-    userAgent: request.rawRequest?.get?.('user-agent') ?? undefined,
+    ip: request.rawRequest?.ip ?? request.ip,
+    userAgent: request.rawRequest?.get?.('user-agent') ?? request.get?.('user-agent') ?? undefined,
     db: await getInitializedDataSource(),
     logger: createLogger(`${gateway}:${requestInfo.requestId}`),
   };

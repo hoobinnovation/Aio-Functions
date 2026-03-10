@@ -7,6 +7,7 @@ import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { buildHomeLayout } from '../home/homeBuilder';
 import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
+import { requireAccountIdentity } from '../../core/identity';
 
 const CLIENT_PRODUCT_QUERY_CONTRACT = {
     allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
@@ -87,9 +88,10 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
 }
 
 export async function productFavoritesList(ctx: ActionContext, payload: any = {}) {
+    const uid = requireAccountIdentity(ctx);
     const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
     const rows = await ctx.db.getRepository(UserProductFavorite).find({
-        where: { uid: ctx.uid! },
+        where: { uid },
         order: { createdAt: 'DESC' as any },
         take: q.limit,
         skip: q.offset,
@@ -100,7 +102,8 @@ export async function productFavoritesList(ctx: ActionContext, payload: any = {}
 
 export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
     const repo = ctx.db.getRepository(UserProductFavorite);
-    const existing = await repo.findOneBy({ uid: ctx.uid!, productId: payload.productId });
+    const uid = requireAccountIdentity(ctx);
+    const existing = await repo.findOneBy({ uid, productId: payload.productId });
 
     if (existing) {
         await ctx.db.transaction(async (tx: EntityManager) => {
@@ -113,7 +116,7 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
         await tx.getRepository(UserProductFavorite).save(
             tx.getRepository(UserProductFavorite).create({
                 id: uuidv4(),
-                uid: ctx.uid!,
+                uid,
                 productId: payload.productId,
             })
         );
@@ -123,9 +126,10 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
 }
 
 export async function storeFavoritesList(ctx: ActionContext, payload: any = {}) {
+    const uid = requireAccountIdentity(ctx);
     const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
     const rows = await ctx.db.getRepository(UserStoreFavorite).find({
-        where: { uid: ctx.uid! },
+        where: { uid },
         order: { createdAt: 'DESC' as any },
         take: q.limit,
         skip: q.offset,
@@ -136,7 +140,8 @@ export async function storeFavoritesList(ctx: ActionContext, payload: any = {}) 
 
 export async function storeFavoritesToggle(ctx: ActionContext, payload: any) {
     const repo = ctx.db.getRepository(UserStoreFavorite);
-    const existing = await repo.findOneBy({ uid: ctx.uid!, storeId: payload.storeId });
+    const uid = requireAccountIdentity(ctx);
+    const existing = await repo.findOneBy({ uid, storeId: payload.storeId });
 
     if (existing) {
         await ctx.db.transaction(async (tx: EntityManager) => {
@@ -149,7 +154,7 @@ export async function storeFavoritesToggle(ctx: ActionContext, payload: any) {
         await tx.getRepository(UserStoreFavorite).save(
             tx.getRepository(UserStoreFavorite).create({
                 id: uuidv4(),
-                uid: ctx.uid!,
+                uid,
                 storeId: payload.storeId,
             })
         );

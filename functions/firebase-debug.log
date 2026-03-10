@@ -4803,3 +4803,295 @@ Issues? Report them at https://github.com/firebase/firebase-tools/issues and att
 [debug] [2026-03-08T03:14:40.430Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"message":"Finishing up request with event=finish"}}
 [debug] [2026-03-08T03:14:40.430Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"message":"Finishing up request with event=close"}}
 [debug] [2026-03-08T03:14:40.430Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T05:27:36.020Z] ----------------------------------------------------------------------
+[debug] [2026-03-10T05:27:36.023Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Ziyad Mohammed\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only storage,functions,firestore,auth,database,ui --inspect-functions --import=./local_emulator --export-on-exit
+[debug] [2026-03-10T05:27:36.024Z] CLI Version:   14.20.0
+[debug] [2026-03-10T05:27:36.026Z] Platform:      win32
+[debug] [2026-03-10T05:27:36.026Z] Node Version:  v22.20.0
+[debug] [2026-03-10T05:27:36.027Z] Time:          Tue Mar 10 2026 07:27:36 GMT+0200 (Eastern European Standard Time)
+[debug] [2026-03-10T05:27:36.027Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-10T05:27:36.563Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-10T05:27:36.563Z] > authorizing via signed-in user (codoproworld@gmail.com)
+[debug] [2026-03-10T05:27:37.008Z] java version "25" 2025-09-16 LTS
+
+[debug] [2026-03-10T05:27:37.008Z] Java(TM) SE Runtime Environment (build 25+37-LTS-3491)
+Java HotSpot(TM) 64-Bit Server VM (build 25+37-LTS-3491, mixed mode, sharing)
+
+[debug] [2026-03-10T05:27:37.051Z] Parsed Java major version: 25
+[info] i  emulators: Starting emulators: auth, functions, firestore, database, storage {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth, functions, firestore, database, storage"}}
+[warn] !  ui: Not starting the ui emulator, make sure you have run firebase init. {"metadata":{"emulator":{"name":"ui"},"message":"Not starting the \u001b[1mui\u001b[22m emulator, make sure you have run \u001b[1mfirebase init\u001b[22m."}}
+[debug] [2026-03-10T05:27:37.074Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.074Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.075Z] [firestore] Firestore Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.075Z] [firestore.websocket] websocket server for firestore only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.075Z] [database] Database Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.075Z] [storage] Storage Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.075Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":1000}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}],"storage":[{"address":"127.0.0.1","family":"IPv4","port":9199}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-03-10T05:27:37.081Z] Emulator locator file path: C:\Users\ZIYADM~1\AppData\Local\Temp\hub-aio-erp-sys.json
+[warn] !  emulators: It seems that you are running multiple instances of the emulator suite for project aio-erp-sys. This may result in unexpected behavior. 
+[debug] [2026-03-10T05:27:37.088Z] [hub] writing locator at C:\Users\ZIYADM~1\AppData\Local\Temp\hub-aio-erp-sys.json
+[debug] [2026-03-10T05:27:37.106Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.107Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.107Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-03-10T05:27:37.107Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":1000}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"database":[{"address":"127.0.0.1","family":"IPv4","port":9000}],"storage":[{"address":"127.0.0.1","family":"IPv4","port":9199}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: You are running the Functions emulator in debug mode. This means that functions will execute in sequence rather than in parallel. {"metadata":{"emulator":{"name":"functions"},"message":"You are running the Functions emulator in debug mode. This means that functions will execute in sequence rather than in parallel."}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, hosting, pubsub, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, hosting, pubsub, dataconnect\u001b[22m"}}
+[debug] [2026-03-10T05:27:37.154Z] defaultcredentials: writing to file C:\Users\Ziyad Mohammed\AppData\Roaming\firebase\codoproworld_gmail_com_application_default_credentials.json
+[debug] [2026-03-10T05:27:37.188Z] Setting GAC to C:\Users\Ziyad Mohammed\AppData\Roaming\firebase\codoproworld_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\Ziyad Mohammed\\AppData\\Roaming\\firebase\\codoproworld_gmail_com_application_default_credentials.json"}}
+[debug] [2026-03-10T05:27:37.189Z] Checked if tokens are valid: false, expires at: 1773041704414
+[debug] [2026-03-10T05:27:37.190Z] Checked if tokens are valid: false, expires at: 1773041704414
+[debug] [2026-03-10T05:27:37.190Z] > refreshing access token with scopes: []
+[debug] [2026-03-10T05:27:37.192Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-10T05:27:37.192Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-10T05:27:37.426Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-10T05:27:37.427Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-10T05:27:37.435Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys/adminSdkConfig [none]
+[debug] [2026-03-10T05:27:38.474Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys/adminSdkConfig 200
+[debug] [2026-03-10T05:27:38.474Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys/adminSdkConfig {"projectId":"aio-erp-sys","databaseURL":"https://aio-erp-sys-default-rtdb.firebaseio.com","storageBucket":"aio-erp-sys.appspot.com","locationId":"us-central"}
+[info] i  firestore: Importing data from D:\Programming\Aio\server\functions\local_emulator\firestore_export\firestore_export.overall_export_metadata {"metadata":{"emulator":{"name":"firestore"},"message":"Importing data from D:\\Programming\\Aio\\server\\functions\\local_emulator\\firestore_export\\firestore_export.overall_export_metadata"}}
+[debug] [2026-03-10T05:27:38.509Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2026-03-10T05:27:38.509Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
+[debug] [2026-03-10T05:27:38.509Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","C:\\Users\\Ziyad Mohammed\\.cache\\firebase\\emulators\\cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",1000,"--websocket_port",9150,"--project_id","aio-erp-sys","--seed_from_export","D:\\Programming\\Aio\\server\\functions\\local_emulator\\firestore_export\\firestore_export.overall_export_metadata","--rules","D:\\Programming\\Aio\\firestore.rules","--single_project_mode",true,"--functions_emulator","127.0.0.1:5001"],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":1000} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\Ziyad Mohammed\\\\.cache\\\\firebase\\\\emulators\\\\cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",1000,\"--websocket_port\",9150,\"--project_id\",\"aio-erp-sys\",\"--seed_from_export\",\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\local_emulator\\\\firestore_export\\\\firestore_export.overall_export_metadata\",\"--rules\",\"D:\\\\Programming\\\\Aio\\\\firestore.rules\",\"--single_project_mode\",true,\"--functions_emulator\",\"127.0.0.1:5001\"],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":1000}"}}
+[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
+[info] +  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
+[debug] [2026-03-10T05:27:41.050Z] Checked if tokens are valid: true, expires at: 1773124056427
+[debug] [2026-03-10T05:27:41.051Z] Checked if tokens are valid: true, expires at: 1773124056427
+[debug] [2026-03-10T05:27:41.051Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys [none]
+[debug] [2026-03-10T05:27:41.383Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys 200
+[debug] [2026-03-10T05:27:41.384Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/aio-erp-sys {"projectId":"aio-erp-sys","projectNumber":"704989440398","displayName":"aio-erp","name":"projects/aio-erp-sys","resources":{"hostingSite":"aio-erp-sys","realtimeDatabaseInstance":"aio-erp-sys-default-rtdb","locationId":"us-central"},"state":"ACTIVE","etag":"1_e394439a-ac87-439a-acb5-77cf31e0375a"}
+[debug] [2026-03-10T05:27:41.384Z] database rules config:  [{"instance":"aio-erp-sys-default-rtdb","rules":"D:\\Programming\\Aio\\database.rules.json"}]
+[debug] [2026-03-10T05:27:41.413Z] Ignoring unsupported arg: projectId {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: projectId"}}
+[debug] [2026-03-10T05:27:41.413Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2026-03-10T05:27:41.413Z] Ignoring unsupported arg: rules {"metadata":{"emulator":{"name":"database"},"message":"Ignoring unsupported arg: rules"}}
+[debug] [2026-03-10T05:27:41.414Z] Starting Database Emulator with command {"binary":"java","args":["-Duser.language=en","-jar","C:\\Users\\Ziyad Mohammed\\.cache\\firebase\\emulators\\firebase-database-emulator-v4.11.2.jar","--host","127.0.0.1","--port",9000,"--single_project_mode","Warning","--functions_emulator_host","127.0.0.1","--functions_emulator_port",5001],"optionalArgs":["port","host","functions_emulator_port","functions_emulator_host","single_project_mode"],"joinArgs":false,"shell":false,"port":9000} {"metadata":{"emulator":{"name":"database"},"message":"Starting Database Emulator with command {\"binary\":\"java\",\"args\":[\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\Ziyad Mohammed\\\\.cache\\\\firebase\\\\emulators\\\\firebase-database-emulator-v4.11.2.jar\",\"--host\",\"127.0.0.1\",\"--port\",9000,\"--single_project_mode\",\"Warning\",\"--functions_emulator_host\",\"127.0.0.1\",\"--functions_emulator_port\",5001],\"optionalArgs\":[\"port\",\"host\",\"functions_emulator_port\",\"functions_emulator_host\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":9000}"}}
+[info] i  database: Database Emulator logging to database-debug.log {"metadata":{"emulator":{"name":"database"},"message":"Database Emulator logging to \u001b[1mdatabase-debug.log\u001b[22m"}}
+[info] i  auth: Importing config from D:\Programming\Aio\server\functions\local_emulator\auth_export\config.json {"metadata":{"emulator":{"name":"auth"},"message":"Importing config from D:\\Programming\\Aio\\server\\functions\\local_emulator\\auth_export\\config.json"}}
+[info] i  auth: Importing accounts from D:\Programming\Aio\server\functions\local_emulator\auth_export\accounts.json {"metadata":{"emulator":{"name":"auth"},"message":"Importing accounts from D:\\Programming\\Aio\\server\\functions\\local_emulator\\auth_export\\accounts.json"}}
+[debug] [2026-03-10T05:27:56.738Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"storage"},"message":"Ignoring unsupported arg: port"}}
+[warn] !  Unexpected rules runtime error: WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::arrayBaseOffset has been called by com.google.protobuf.UnsafeUtil$MemoryAccessor (file:/C:/Users/Ziyad%20Mohammed/.cache/firebase/emulators/cloud-storage-rules-runtime-v1.1.3.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.protobuf.UnsafeUtil$MemoryAccessor
+WARNING: sun.misc.Unsafe::arrayBaseOffset will be removed in a future release
+ {"metadata":{"emulator":{"name":"storage"},"message":"Unexpected rules runtime error: WARNING: A terminally deprecated method in sun.misc.Unsafe has been called\nWARNING: sun.misc.Unsafe::arrayBaseOffset has been called by com.google.protobuf.UnsafeUtil$MemoryAccessor (file:/C:/Users/Ziyad%20Mohammed/.cache/firebase/emulators/cloud-storage-rules-runtime-v1.1.3.jar)\nWARNING: Please consider reporting this to the maintainers of class com.google.protobuf.UnsafeUtil$MemoryAccessor\nWARNING: sun.misc.Unsafe::arrayBaseOffset will be removed in a future release\r\n"}}
+[debug] [2026-03-10T05:27:57.890Z] Temp file directory for storage emulator: C:\Users\ZIYADM~1\AppData\Local\Temp/firebase/storage/blobs {"metadata":{"emulator":{"name":"storage"},"message":"Temp file directory for storage emulator: C:\\Users\\ZIYADM~1\\AppData\\Local\\Temp/firebase/storage/blobs"}}
+[info] i  functions: Watching "D:\Programming\Aio\server\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"D:\\Programming\\Aio\\server\\functions\" for Cloud Functions..."}}
+[debug] [2026-03-10T05:27:57.912Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-03-10T05:27:59.372Z] > [functions] package.json contents: {
+  "name": "functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf lib",
+    "watch": "tsc -w",
+    "emulators": "firebase emulators:start --only storage,functions,firestore,auth,database,ui --inspect-functions --import=./local_emulator --export-on-exit"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.14.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.1",
+    "joi": "^17.13.3",
+    "mysql2": "^3.11.3",
+    "sharp": "^0.33.5",
+    "typeorm": "^0.3.20",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^22.7.4"
+  }
+}
+[debug] [2026-03-10T05:27:59.372Z] Building nodejs source
+[debug] [2026-03-10T05:27:59.372Z] Failed to find version of module node: reached end of search path D:\Programming\Aio\server\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[debug] [2026-03-10T05:27:59.375Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-03-10T05:27:59.394Z] Found firebase-functions binary at 'D:\Programming\Aio\server\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8312
+
+[error] !!  functions: Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization' {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'"}}
+[debug] [2026-03-10T05:28:24.613Z] >>> [apiv2][query] PUT http://127.0.0.1:9000/.settings/rules.json ns=aio-erp-sys-default-rtdb
+[debug] [2026-03-10T05:28:24.613Z] >>> [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json "{\n  \"rules\": {\n    \".read\": \"true\",  // 2024-3-11\n    \".write\": \"true\"  // 2024-3-11\n  }\n}\n"
+[debug] [2026-03-10T05:28:25.582Z] <<< [apiv2][status] PUT http://127.0.0.1:9000/.settings/rules.json 200
+[debug] [2026-03-10T05:28:25.582Z] <<< [apiv2][body] PUT http://127.0.0.1:9000/.settings/rules.json {"status":"ok"}
+[debug] [2026-03-10T05:28:25.601Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┬─────────────────────────────────┐
+│ Emulator       │ Host:Port      │ View in Emulator UI             │
+├────────────────┼────────────────┼─────────────────────────────────┤
+│ Authentication │ 127.0.0.1:9099 │ http://127.0.0.1:4000/auth      │
+├────────────────┼────────────────┼─────────────────────────────────┤
+│ Functions      │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+├────────────────┼────────────────┼─────────────────────────────────┤
+│ Firestore      │ 127.0.0.1:1000 │ http://127.0.0.1:4000/firestore │
+├────────────────┼────────────────┼─────────────────────────────────┤
+│ Database       │ 127.0.0.1:9000 │ http://127.0.0.1:4000/database  │
+├────────────────┼────────────────┼─────────────────────────────────┤
+│ Storage        │ 127.0.0.1:9199 │ http://127.0.0.1:4000/storage   │
+└────────────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500, 9150
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-03-10T06:07:44.960Z] >>> [apiv2][query] POST http://127.0.0.1:5001/functions/projects/aio-erp-sys/trigger_multicast [none]
+[debug] [2026-03-10T06:07:44.960Z] >>> [apiv2][body] POST http://127.0.0.1:5001/functions/projects/aio-erp-sys/trigger_multicast {"eventId":"514f34f1-5693-4610-b0c2-6feada4e7648","eventType":"providers/firebase.auth/eventTypes/user.create","resource":{"name":"projects/aio-erp-sys","service":"firebaseauth.googleapis.com"},"params":{},"timestamp":"2026-03-10T06:07:44.959Z","data":{"uid":"oLdNaNJbPA8IDOCC7kz2eEQJireV","metadata":{"creationTime":"2026-03-10T06:07:44.958Z","lastSignInTime":"2026-03-10T06:07:44.958Z"},"customClaims":{}}}
+[debug] [2026-03-10T06:07:44.973Z] <<< [apiv2][status] POST http://127.0.0.1:5001/functions/projects/aio-erp-sys/trigger_multicast 200
+[debug] [2026-03-10T06:07:44.974Z] <<< [apiv2][body] POST http://127.0.0.1:5001/functions/projects/aio-erp-sys/trigger_multicast {"status":"multicast_acknowledged"}
+[debug] [2026-03-10T06:07:47.241Z] [work-queue] {"queuedWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.240Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:47.241Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.240Z"],"workRunningCount":1}
+[debug] [2026-03-10T06:07:47.242Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:47.243Z] [work-queue] {"queuedWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.243Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:47.243Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.243Z"],"workRunningCount":1}
+[debug] [2026-03-10T06:07:47.244Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:47.501Z] [work-queue] {"queuedWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.500Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:47.501Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:47.500Z"],"workRunningCount":1}
+[debug] [2026-03-10T06:07:47.501Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:48.038Z] [work-queue] {"queuedWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:48.038Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:07:48.038Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/aio-erp-sys/us-central1/public-2026-03-10T06:07:48.038Z"],"workRunningCount":1}
+[debug] [2026-03-10T06:07:48.039Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-10T06:08:05.051Z] File D:\Programming\Aio\server\functions\src\index.ts changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\Programming\\Aio\\server\\functions\\src\\index.ts changed, reloading triggers"}}
+[debug] [2026-03-10T06:08:05.621Z] File D:\Programming\Aio\server\functions\lib\index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\Programming\\Aio\\server\\functions\\lib\\index.js changed, reloading triggers"}}
+[debug] [2026-03-10T06:08:06.635Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-03-10T06:08:08.159Z] > [functions] package.json contents: {
+  "name": "functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf lib",
+    "watch": "tsc -w",
+    "emulators": "firebase emulators:start --only storage,functions,firestore,auth,database,ui --inspect-functions --import=./local_emulator --export-on-exit"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.14.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.1",
+    "joi": "^17.13.3",
+    "mysql2": "^3.11.3",
+    "sharp": "^0.33.5",
+    "typeorm": "^0.3.20",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^22.7.4"
+  }
+}
+[debug] [2026-03-10T06:08:08.159Z] Building nodejs source
+[debug] [2026-03-10T06:08:08.159Z] Failed to find version of module node: reached end of search path D:\Programming\Aio\server\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[debug] [2026-03-10T06:08:08.161Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-03-10T06:08:08.167Z] Found firebase-functions binary at 'D:\Programming\Aio\server\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8180
+
+[debug] [2026-03-10T06:08:09.469Z] Got response from /__/functions.yaml {"endpoints":{"public":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"public"},"client":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"client"},"admin":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"admin"},"webhook":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"webhook"},"storageThumbnails_onFinalize":{"platform":"gcfv2","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"labels":{},"eventTrigger":{"eventType":"google.cloud.storage.object.v1.finalized","eventFilters":{"bucket":"aio-erp-sys.appspot.com"},"retry":false},"entryPoint":"storageThumbnails_onFinalize"},"init":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"httpsTrigger":{},"entryPoint":"init"},"init2":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"httpsTrigger":{},"entryPoint":"init2"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] +  functions: Loaded functions definitions from source: public, client, admin, webhook, storageThumbnails_onFinalize, init, init2. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: public, client, admin, webhook, storageThumbnails_onFinalize, init, init2."}}
+[info] +  functions[us-central1-public]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/public). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/public)."}}
+[info] +  functions[us-central1-client]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/client). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/client)."}}
+[info] +  functions[us-central1-admin]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/admin). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/admin)."}}
+[info] +  functions[us-central1-webhook]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/webhook). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/webhook)."}}
+[debug] [2026-03-10T06:08:13.522Z] addStorageTrigger {"eventTrigger":{"eventType":"google.cloud.storage.object.v1.finalized","resource":"aio-erp-sys.appspot.com","eventFilters":{"bucket":"aio-erp-sys.appspot.com"}}}
+[info] +  functions[us-central1-storageThumbnails_onFinalize]: storage function initialized. {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mstorage\u001b[22m function initialized."}}
+[info] +  functions[us-central1-init]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/init). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/init)."}}
+[info] +  functions[us-central1-init2]: http function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/init2). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/aio-erp-sys/us-central1/init2)."}}
+[info] +  functions: Using debug port 9229 for functions codebase default {"metadata":{"emulator":{"name":"functions"},"message":"Using debug port 9229 for functions codebase default"}}
+[debug] [2026-03-10T06:08:13.543Z] [worker-pool] addWorker(~shared~) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(~shared~)"}}
+[debug] [2026-03-10T06:08:13.543Z] [worker-pool] Adding worker with key ~free~, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key ~free~, total=1"}}
+[info] >  Debugger listening on ws://127.0.0.1:9229/d98fe677-efa0-42a4-878d-563d722ca6f5 {"user":"Debugger listening on ws://127.0.0.1:9229/d98fe677-efa0-42a4-878d-563d722ca6f5\r","metadata":{"emulator":{"name":"functions"},"message":"\u001b[90m> \u001b[39m Debugger listening on ws://127.0.0.1:9229/d98fe677-efa0-42a4-878d-563d722ca6f5\r"}}
+[info] >  For help, see: https://nodejs.org/en/docs/inspector {"user":"For help, see: https://nodejs.org/en/docs/inspector\r","metadata":{"emulator":{"name":"functions"},"message":"\u001b[90m> \u001b[39m For help, see: https://nodejs.org/en/docs/inspector\r"}}
+[debug] [2026-03-10T06:08:15.146Z] [runtime-status] [18248] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:15.147Z] [runtime-status] [18248] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:15.147Z] [runtime-status] [18248] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-03-10T06:08:15.148Z] [runtime-status] [18248] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:16.537Z] [runtime-status] [18248] Checked functions.config() {"config":{}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Checked functions.config() {\"config\":{}}"}}
+[debug] [2026-03-10T06:08:16.538Z] [runtime-status] [18248] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}}"}}
+[debug] [2026-03-10T06:08:16.539Z] [runtime-status] [18248] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:16.541Z] [runtime-status] [18248] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:16.544Z] [runtime-status] [18248] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:16.544Z] [runtime-status] [18248] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-03-10T06:08:19.123Z] [runtime-status] [18248] initializeApp(DEFAULT) {"storageBucket":"aio-erp-sys.appspot.com","databaseURL":"http://127.0.0.1:9000/?ns=aio-erp-sys-default-rtdb","projectId":"aio-erp-sys"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] initializeApp(DEFAULT) {\"storageBucket\":\"aio-erp-sys.appspot.com\",\"databaseURL\":\"http://127.0.0.1:9000/?ns=aio-erp-sys-default-rtdb\",\"projectId\":\"aio-erp-sys\"}"}}
+[debug] [2026-03-10T06:08:19.216Z] [runtime-status] [18248] Functions runtime initialized. {"cwd":"D:\\Programming\\Aio\\server\\functions","node_version":"22.20.0"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Functions runtime initialized. {\"cwd\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\",\"node_version\":\"22.20.0\"}"}}
+[debug] [2026-03-10T06:08:19.217Z] [runtime-status] [18248] Listening to port: \\?\pipe\fire_emu_c312eac8e1e11272 {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [18248] Listening to port: \\\\?\\pipe\\fire_emu_c312eac8e1e11272"}}
+[debug] [2026-03-10T06:08:19.274Z] [worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: IDLE {"metadata":{"emulator":{"name":"functions"},"message":"[worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: IDLE"}}
+[debug] [2026-03-10T06:08:33.150Z] File D:\Programming\Aio\server\functions\src\index.ts changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\Programming\\Aio\\server\\functions\\src\\index.ts changed, reloading triggers"}}
+[debug] [2026-03-10T06:08:33.627Z] File D:\Programming\Aio\server\functions\lib\index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File D:\\Programming\\Aio\\server\\functions\\lib\\index.js changed, reloading triggers"}}
+[debug] [2026-03-10T06:08:34.631Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-03-10T06:08:35.756Z] > [functions] package.json contents: {
+  "name": "functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf lib",
+    "watch": "tsc -w",
+    "emulators": "firebase emulators:start --only storage,functions,firestore,auth,database,ui --inspect-functions --import=./local_emulator --export-on-exit"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.14.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.1",
+    "joi": "^17.13.3",
+    "mysql2": "^3.11.3",
+    "sharp": "^0.33.5",
+    "typeorm": "^0.3.20",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^22.7.4"
+  }
+}
+[debug] [2026-03-10T06:08:35.756Z] Building nodejs source
+[debug] [2026-03-10T06:08:35.756Z] Failed to find version of module node: reached end of search path D:\Programming\Aio\server\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[debug] [2026-03-10T06:08:35.758Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-03-10T06:08:35.764Z] Found firebase-functions binary at 'D:\Programming\Aio\server\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8501
+
+[debug] [2026-03-10T06:08:37.160Z] Got response from /__/functions.yaml {"endpoints":{"public":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"public"},"client":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"client"},"admin":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"admin"},"webhook":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"webhook"},"storageThumbnails_onFinalize":{"platform":"gcfv2","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"labels":{},"eventTrigger":{"eventType":"google.cloud.storage.object.v1.finalized","eventFilters":{"bucket":"aio-erp-sys.appspot.com"},"retry":false},"entryPoint":"storageThumbnails_onFinalize"},"init":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"httpsTrigger":{},"entryPoint":"init"},"init2":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"httpsTrigger":{},"entryPoint":"init2"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] +  functions: Loaded functions definitions from source: public, client, admin, webhook, storageThumbnails_onFinalize, init, init2. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: public, client, admin, webhook, storageThumbnails_onFinalize, init, init2."}}
+[info] +  functions: Using debug port 9229 for functions codebase default {"metadata":{"emulator":{"name":"functions"},"message":"Using debug port 9229 for functions codebase default"}}
+[debug] [2026-03-10T06:08:41.219Z] [worker-pool] addWorker(~shared~) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(~shared~)"}}
+[debug] [2026-03-10T06:08:41.220Z] [worker-pool] Adding worker with key ~free~, total=2 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key ~free~, total=2"}}
+[debug] [2026-03-10T06:08:41.236Z] [worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: exited {"metadata":{"emulator":{"name":"functions"},"message":"[worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: exited"}}
+[debug] [2026-03-10T06:08:41.237Z] [worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: FINISHED {"metadata":{"emulator":{"name":"functions"},"message":"[worker-~free~-ae21fc94-7cb9-4141-9463-fd589d392b1f]: FINISHED"}}
+[info] >  Debugger listening on ws://127.0.0.1:9229/1e819890-259f-493f-85c3-9a83f40056b9 {"user":"Debugger listening on ws://127.0.0.1:9229/1e819890-259f-493f-85c3-9a83f40056b9\r","metadata":{"emulator":{"name":"functions"},"message":"\u001b[90m> \u001b[39m Debugger listening on ws://127.0.0.1:9229/1e819890-259f-493f-85c3-9a83f40056b9\r"}}
+[info] >  For help, see: https://nodejs.org/en/docs/inspector {"user":"For help, see: https://nodejs.org/en/docs/inspector\r","metadata":{"emulator":{"name":"functions"},"message":"\u001b[90m> \u001b[39m For help, see: https://nodejs.org/en/docs/inspector\r"}}
+[debug] [2026-03-10T06:08:42.538Z] [runtime-status] [12348] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.539Z] [runtime-status] [12348] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.540Z] [runtime-status] [12348] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-03-10T06:08:42.542Z] [runtime-status] [12348] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.894Z] [runtime-status] [12348] Checked functions.config() {"config":{}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Checked functions.config() {\"config\":{}}"}}
+[debug] [2026-03-10T06:08:42.894Z] [runtime-status] [12348] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}}"}}
+[debug] [2026-03-10T06:08:42.895Z] [runtime-status] [12348] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.896Z] [runtime-status] [12348] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.899Z] [runtime-status] [12348] Resolved module firebase-functions {"declared":true,"installed":true,"version":"5.1.1","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-functions\\lib\\v1\\index.js"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"5.1.1\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v1\\\\index.js\"}"}}
+[debug] [2026-03-10T06:08:42.899Z] [runtime-status] [12348] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"12.7.0","resolution":"D:\\Programming\\Aio\\server\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"12.7.0\",\"resolution\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-03-10T06:08:43.799Z] [runtime-status] [12348] initializeApp(DEFAULT) {"storageBucket":"aio-erp-sys.appspot.com","databaseURL":"http://127.0.0.1:9000/?ns=aio-erp-sys-default-rtdb","projectId":"aio-erp-sys"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] initializeApp(DEFAULT) {\"storageBucket\":\"aio-erp-sys.appspot.com\",\"databaseURL\":\"http://127.0.0.1:9000/?ns=aio-erp-sys-default-rtdb\",\"projectId\":\"aio-erp-sys\"}"}}
+[debug] [2026-03-10T06:08:43.815Z] [runtime-status] [12348] Functions runtime initialized. {"cwd":"D:\\Programming\\Aio\\server\\functions","node_version":"22.20.0"} {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Functions runtime initialized. {\"cwd\":\"D:\\\\Programming\\\\Aio\\\\server\\\\functions\",\"node_version\":\"22.20.0\"}"}}
+[debug] [2026-03-10T06:08:43.815Z] [runtime-status] [12348] Listening to port: \\?\pipe\fire_emu_8f4b7cbbb2066c87 {"metadata":{"emulator":{"name":"functions"},"message":"[runtime-status] [12348] Listening to port: \\\\?\\pipe\\fire_emu_8f4b7cbbb2066c87"}}
+[debug] [2026-03-10T06:08:43.865Z] [worker-~free~-3dda8aa8-baed-43dd-8938-9410fec6fcf9]: IDLE {"metadata":{"emulator":{"name":"functions"},"message":"[worker-~free~-3dda8aa8-baed-43dd-8938-9410fec6fcf9]: IDLE"}}

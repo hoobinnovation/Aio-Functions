@@ -222,6 +222,7 @@ import {
     adminSitemapRegenerate,
 } from '../actions/admin/catalogAdminActions';
 import { ActionHandler } from '../core/protocol';
+import { publicProductsBulkImportFromJson } from '../actions/public/productsBulkImportPublicActions';
 import {
     adminInsuranceList,
     adminInsuranceGet,
@@ -339,6 +340,7 @@ add(registryPublic, 'publicCategoryGetById', publicCategoryGetById as ActionHand
 add(registryPublic, 'publicCategoryGetBySlug', publicCategoryGetBySlug as ActionHandler);
 add(registryPublic, 'publicSeoGetPageMeta', publicSeoGetPageMeta as ActionHandler);
 add(registryPublic, 'publicSeoGetLanding', publicSeoGetLanding as ActionHandler);
+add(registryPublic, 'publicProductsBulkImportFromJson', publicProductsBulkImportFromJson as ActionHandler);
 
 export const registryClient = m();
 add(registryClient, 'clientHealthWhoAmI', clientHealthWhoAmI as ActionHandler);

@@ -39,6 +39,75 @@ function mapErrorCode(code: string): string {
         case 'PERMISSION_DENIED':
             return STABLE_ERROR_CODES.FORBIDDEN;
 
+        case 'ACCOUNT_AUTH_REQUIRED':
+            return 'ACCOUNT_AUTH_REQUIRED';
+
+        case 'SESSION_IDENTITY_REQUIRED':
+            return 'SESSION_IDENTITY_REQUIRED';
+
+        case 'CHECKOUT_CONTACT_REQUIRED':
+            return 'CHECKOUT_CONTACT_REQUIRED';
+
+        case 'CUSTOMER_DATA_REQUIRED':
+            return 'CUSTOMER_DATA_REQUIRED';
+
+        case 'ORDER_ACCESS_FORBIDDEN':
+            return 'ORDER_ACCESS_FORBIDDEN';
+
+        case 'DELIVERY_ZONE_REQUIRED':
+            return 'DELIVERY_ZONE_REQUIRED';
+
+        case 'DELIVERY_ZONE_INVALID':
+            return 'DELIVERY_ZONE_INVALID';
+
+        case 'DELIVERY_ZONE_UNAVAILABLE':
+            return 'DELIVERY_ZONE_UNAVAILABLE';
+
+        case 'ADDRESS_ZONE_REQUIRED':
+            return 'ADDRESS_ZONE_REQUIRED';
+
+        case 'SHIPPING_METHOD_INVALID':
+            return 'SHIPPING_METHOD_INVALID';
+
+        case 'SHIPPING_METHOD_UNAVAILABLE':
+            return 'SHIPPING_METHOD_UNAVAILABLE';
+
+        case 'DELIVERY_QUOTE_MISMATCH':
+            return 'DELIVERY_QUOTE_MISMATCH';
+
+        case 'PAYMENT_PROVIDER_ERROR':
+            return 'PAYMENT_PROVIDER_ERROR';
+
+        case 'PAYMENT_SESSION_CREATE_FAILED':
+            return 'PAYMENT_SESSION_CREATE_FAILED';
+
+        case 'PAYMENT_WEBHOOK_INVALID':
+            return 'PAYMENT_WEBHOOK_INVALID';
+
+        case 'PAYMENT_TRANSACTION_NOT_FOUND':
+            return 'PAYMENT_TRANSACTION_NOT_FOUND';
+
+        case 'PAYMENT_ORDER_LINK_INVALID':
+            return 'PAYMENT_ORDER_LINK_INVALID';
+
+        case 'PAYMENT_ALREADY_CONFIRMED':
+            return 'PAYMENT_ALREADY_CONFIRMED';
+
+        case 'PAYMENT_CONFIRMATION_FAILED':
+            return 'PAYMENT_CONFIRMATION_FAILED';
+
+        case 'PAYMENT_STATUS_UNKNOWN':
+            return 'PAYMENT_STATUS_UNKNOWN';
+
+        case 'PRODUCT_IMPORT_ROW_INVALID':
+            return 'PRODUCT_IMPORT_ROW_INVALID';
+
+        case 'PRODUCT_IMPORT_IMAGE_FAILED':
+            return 'PRODUCT_IMPORT_IMAGE_FAILED';
+
+        case 'PRODUCT_IMPORT_CATEGORY_RESOLVE_FAILED':
+            return 'PRODUCT_IMPORT_CATEGORY_RESOLVE_FAILED';
+
         case 'STORE_ACCESS_REQUIRED':
             return STABLE_ERROR_CODES.STORE_ACCESS_REQUIRED;
 

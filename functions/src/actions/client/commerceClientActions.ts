@@ -5,8 +5,8 @@ import { Cart } from '../../entities/Cart';
 import { CartItem } from '../../entities/CartItem';
 import { ProductVariant } from '../../entities/ProductVariant';
 import { Coupon } from '../../entities/Coupon';
-import { DeliveryZone } from '../../entities/DeliveryZone';
 import { ShippingMethod } from '../../entities/ShippingMethod';
+import { resolveDeliveryQuote } from '../../utils/deliveryQuote';
 import { NotificationToken } from '../../entities/NotificationToken';
 import { Notification } from '../../entities/Notification';
 import { LoyaltyTransaction } from '../../entities/LoyaltyTransaction';
@@ -44,10 +44,10 @@ export async function cartApplyCoupon(ctx:ActionContext,p:any){const c=await car
 export async function cartRemoveCoupon(ctx:ActionContext){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:null});});return cartView(ctx);} 
 
 export async function shippingListMethods(ctx:ActionContext){return {methods:await ctx.db.getRepository(ShippingMethod).find({where:{storeId:ctx.storeId!,status:'active'}})};} 
-export async function shippingQuoteDelivery(ctx:ActionContext,p:any){const zones=await ctx.db.getRepository(DeliveryZone).find({where:{storeId:ctx.storeId!,status:'active'}});if(!zones.length) throw new AppError('NOT_FOUND','No zones');let best=zones[0];let dist=Infinity;for(const z of zones){const d=hav(Number(z.lat),Number(z.lng),p.lat,p.lng);if(d<dist){dist=d;best=z;}}return {zone:best,distanceKm:dist,priceCents:Number(best.priceCents)};} 
+export async function shippingQuoteDelivery(ctx:ActionContext,p:any){const quote=await ctx.db.transaction(async(tx:EntityManager)=>resolveDeliveryQuote(tx,{storeId:ctx.storeId!,zoneId:p.zoneId,shippingMethodId:p.shippingMethodId,serviceType:'delivery'}));return {quote};}
 
 function computeTotals(items:CartItem[], coupon:Coupon|null){const sub=items.reduce((a,i)=>a+Number(i.unitPriceCents)*i.qty,0);let discount=0;if(coupon){discount=coupon.discountType==='percent'?Math.floor(sub*Number(coupon.discountValue)/100):Math.min(sub,Number(coupon.discountValue));}const total=sub-discount;const cashback=Math.floor(total*0.02);return {subtotalCents:sub,discountCents:discount,totalCents:total,cashbackPreviewCents:cashback};}
-export async function checkoutPreview(ctx:ActionContext){const v=await cartView(ctx);let coupon:null|Coupon=null;if(v.cart.couponCode) coupon=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:v.cart.couponCode,status:'active'});return {cart:v,...computeTotals(v.items,coupon)};} 
+export async function checkoutPreview(ctx:ActionContext,p:any={}){const v=await cartView(ctx);let coupon:null|Coupon=null;if(v.cart.couponCode) coupon=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:v.cart.couponCode,status:'active'});const base=computeTotals(v.items,coupon);const serviceType=p.serviceType??'standard';const quote=await ctx.db.transaction(async(tx:EntityManager)=>resolveDeliveryQuote(tx,{storeId:ctx.storeId!,zoneId:p.zoneId,shippingMethodId:p.shippingMethodId,serviceType}));const totalCents=base.totalCents+quote.deliveryFeeCents;return {cart:v,serviceType,deliveryQuote:quote,subtotalCents:base.subtotalCents,discountCents:base.discountCents,shippingCents:quote.deliveryFeeCents,totalCents,cashbackPreviewCents:Math.floor(totalCents*0.02)};}
 
 export async function notificationsRegisterToken(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const ex=await tx.getRepository(NotificationToken).findOneBy({uid:ctx.uid!,token:p.token});if(!ex) await tx.getRepository(NotificationToken).save(tx.getRepository(NotificationToken).create({id:uuidv4(),uid:ctx.uid!,token:p.token,platform:p.platform??null}));});return {registered:true};}
 export async function notificationsList(ctx:ActionContext,payload:any={}){const q=normalizeListQueryInput(payload,{defaultPageSize:20,maxPageSize:200});return {notifications:await ctx.db.getRepository(Notification).find({where:{uid:ctx.uid!},order:{createdAt:'DESC' as any},take:q.limit,skip:q.offset})};}

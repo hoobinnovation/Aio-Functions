@@ -1,16 +1,17 @@
 import { DataSource } from 'typeorm';
-import { Gateway } from '../protocol/envelopes';
+import { CloudGateway } from '../protocol/envelopes';
 
 export interface RequestContext {
   requestId: string;
   serverTime: string;
-  gateway: Gateway;
+  gateway: CloudGateway;
   storeId?: string;
   meta?: Record<string, unknown>;
   runtime: 'cloud';
   uid?: string;
   auth: {
     uid?: string;
+    isAnonymous?: boolean;
     admin?: {
       roles: string[];
       status: string;

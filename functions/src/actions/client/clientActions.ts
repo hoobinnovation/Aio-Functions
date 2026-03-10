@@ -10,13 +10,15 @@ import { UserAddress } from '../../entities/UserAddress';
 import { UserAccountDeleteRequest } from '../../entities/UserAccountDeleteRequest';
 import { Store } from '../../entities/Store';
 import { UserStoreContext } from '../../entities/UserStoreContext';
+import { ensureUserProfileForUid, requireAccountIdentity, requireSessionIdentity } from '../../core/identity';
 
 function extSafe(ext: string) {
   return ext.replace(/^\./, '').toLowerCase();
 }
 
 async function requireProfile(ctx: ActionContext): Promise<UserProfile> {
-  const p = await ctx.db.getRepository(UserProfile).findOneBy({ uid: ctx.uid! });
+  const uid = requireSessionIdentity(ctx);
+  const p = await ctx.db.getRepository(UserProfile).findOneBy({ uid });
   if (!p) throw new AppError('NOT_FOUND', 'User profile not found');
   return p;
 }
@@ -28,7 +30,7 @@ async function requireActiveProfileForWrite(ctx: ActionContext): Promise<UserPro
 }
 
 export async function clientHealthWhoAmI(ctx: ActionContext) {
-  return { uid: ctx.uid, gateway: ctx.gateway };
+  return { uid: ctx.uid, gateway: ctx.gateway, identityType: ctx.auth?.isAnonymous ? 'guestAnonymous' : 'authenticatedCustomer' };
 }
 
 export async function clientActionsList() {
@@ -39,25 +41,25 @@ export async function clientActionsList() {
 }
 
 export async function authEnsureUserProfile(ctx: ActionContext) {
-  let profile = await ctx.db.getRepository(UserProfile).findOneBy({ uid: ctx.uid! });
-  if (!profile) {
-    await ctx.db.transaction(async (tx: EntityManager) => {
-      profile = tx.getRepository(UserProfile).create({ uid: ctx.uid!, status: 'active' });
-      await tx.getRepository(UserProfile).save(profile);
-    });
-  }
-  return { profile };
+  const uid = requireSessionIdentity(ctx);
+  const profile = await ctx.db.transaction(async (tx: EntityManager) => ensureUserProfileForUid(tx, uid));
+  return {
+    profile,
+    identityType: ctx.auth?.isAnonymous ? 'guestAnonymous' : 'authenticatedCustomer',
+  };
 }
 
 export async function profileGet(ctx: ActionContext) {
+  requireAccountIdentity(ctx);
   const profile = await requireProfile(ctx);
   return { profile };
 }
 
 export async function profileUpdate(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireActiveProfileForWrite(ctx);
   await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(UserProfile).update({ uid: ctx.uid! }, {
+    await tx.getRepository(UserProfile).update({ uid }, {
       phone: payload.phone ?? null,
       email: payload.email ?? null,
       displayName: payload.displayName ?? null,
@@ -69,17 +71,18 @@ export async function profileUpdate(ctx: ActionContext, payload: any) {
 }
 
 export async function accountDeleteRequest(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireProfile(ctx);
   const repo = ctx.db.getRepository(UserAccountDeleteRequest);
-  const existing = await repo.findOne({ where: { uid: ctx.uid!, status: 'pending' } })
-    || await repo.findOne({ where: { uid: ctx.uid!, status: 'approved' } });
+  const existing = await repo.findOne({ where: { uid, status: 'pending' } })
+    || await repo.findOne({ where: { uid, status: 'approved' } });
   if (existing) return { request: existing, idempotent: true };
 
   const id = uuidv4();
   await ctx.db.transaction(async (tx: EntityManager) => {
     const req = tx.getRepository(UserAccountDeleteRequest).create({
       id,
-      uid: ctx.uid!,
+      uid,
       reason: payload.reason ?? null,
       status: 'pending',
       requestedAt: new Date(),
@@ -87,59 +90,64 @@ export async function accountDeleteRequest(ctx: ActionContext, payload: any) {
       reviewedByUid: null,
     });
     await tx.getRepository(UserAccountDeleteRequest).save(req);
-    await tx.getRepository(UserProfile).update({ uid: ctx.uid! }, { status: 'deleted_pending' });
+    await tx.getRepository(UserProfile).update({ uid }, { status: 'deleted_pending' });
   });
   const created = await repo.findOneByOrFail({ id });
   return { request: created, idempotent: false };
 }
 
 export async function addressesList(ctx: ActionContext) {
-  const rows = await ctx.db.getRepository(UserAddress).find({ where: { uid: ctx.uid! }, order: { updatedAt: 'DESC' as any } });
+  const uid = requireAccountIdentity(ctx);
+  const rows = await ctx.db.getRepository(UserAddress).find({ where: { uid }, order: { updatedAt: 'DESC' as any } });
   return { addresses: rows };
 }
 
 export async function addressesCreate(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireActiveProfileForWrite(ctx);
   const id = uuidv4();
   await ctx.db.transaction(async (tx: EntityManager) => {
     if (payload.isDefault) {
-      await tx.getRepository(UserAddress).update({ uid: ctx.uid! }, { isDefault: false });
+      await tx.getRepository(UserAddress).update({ uid }, { isDefault: false });
     }
-    const row = tx.getRepository(UserAddress).create({ ...payload, id, uid: ctx.uid!, isDefault: !!payload.isDefault });
+    const row = tx.getRepository(UserAddress).create({ ...payload, id, uid, isDefault: !!payload.isDefault });
     await tx.getRepository(UserAddress).save(row);
   });
   return { address: await ctx.db.getRepository(UserAddress).findOneByOrFail({ id }) };
 }
 
 export async function addressesUpdate(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireActiveProfileForWrite(ctx);
-  const existing = await ctx.db.getRepository(UserAddress).findOneBy({ id: payload.id, uid: ctx.uid! });
+  const existing = await ctx.db.getRepository(UserAddress).findOneBy({ id: payload.id, uid });
   if (!existing) throw new AppError('NOT_FOUND', 'Address not found');
   await ctx.db.transaction(async (tx: EntityManager) => {
     if (payload.isDefault) {
-      await tx.getRepository(UserAddress).update({ uid: ctx.uid! }, { isDefault: false });
+      await tx.getRepository(UserAddress).update({ uid }, { isDefault: false });
     }
-    await tx.getRepository(UserAddress).update({ id: payload.id, uid: ctx.uid! }, { ...payload, isDefault: payload.isDefault ?? existing.isDefault });
+    await tx.getRepository(UserAddress).update({ id: payload.id, uid }, { ...payload, isDefault: payload.isDefault ?? existing.isDefault });
   });
   return { address: await ctx.db.getRepository(UserAddress).findOneByOrFail({ id: payload.id }) };
 }
 
 export async function addressesDelete(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireActiveProfileForWrite(ctx);
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(UserAddress).delete({ id: payload.id, uid: ctx.uid! });
+    const res = await tx.getRepository(UserAddress).delete({ id: payload.id, uid });
     if (!res.affected) throw new AppError('NOT_FOUND', 'Address not found');
   });
   return { deleted: true };
 }
 
 export async function addressesSetDefault(ctx: ActionContext, payload: any) {
+  const uid = requireAccountIdentity(ctx);
   await requireActiveProfileForWrite(ctx);
-  const existing = await ctx.db.getRepository(UserAddress).findOneBy({ id: payload.id, uid: ctx.uid! });
+  const existing = await ctx.db.getRepository(UserAddress).findOneBy({ id: payload.id, uid });
   if (!existing) throw new AppError('NOT_FOUND', 'Address not found');
   await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(UserAddress).update({ uid: ctx.uid! }, { isDefault: false });
-    await tx.getRepository(UserAddress).update({ id: payload.id, uid: ctx.uid! }, { isDefault: true });
+    await tx.getRepository(UserAddress).update({ uid }, { isDefault: false });
+    await tx.getRepository(UserAddress).update({ id: payload.id, uid }, { isDefault: true });
   });
   return { defaultAddressId: payload.id };
 }
