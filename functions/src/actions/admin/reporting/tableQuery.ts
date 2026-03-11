@@ -61,6 +61,7 @@ export function normalizeTableQuery(payload: any, defaults: { sortBy: string; so
 
 export function sanitizeSort(
     sort: TableSort | undefined,
+    allowedSortFields: string[],
     defaultSort: TableSort,
 ): TableSort {
     return {
