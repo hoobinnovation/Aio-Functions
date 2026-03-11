@@ -1,6 +1,8 @@
 import { ActionContext } from '../../core/protocol';
 import { AppError } from '../../core/errors';
 import { normalizeTableQuery, pickColumns, applyPaginationOrFetchAll, sanitizeSort, sanitizeGroupBy } from './reporting/tableQuery';
+import { buildBalanceSheet, buildCashFlowFoundation, buildGeneralLedger, buildProfitAndLoss, buildTrialBalance } from '../../core/accounting/financialStatements';
+import { closeAccountingPeriod, reopenAccountingPeriod, validatePeriodClose } from '../../core/accounting/closeWorkflows';
 
 type LedgerFilters = {
   channel?: string;
@@ -165,4 +167,58 @@ export async function adminAccountingLedger(ctx: ActionContext, payload: any) {
     aggregates: ag[0],
     capabilities: { canEdit: false, canDelete: false },
   };
+}
+
+export async function adminAccountingGeneralLedger(ctx: ActionContext, payload: any) {
+  const storeId = payload?.storeId ?? ctx.storeId ?? null;
+  const from = String(payload?.from ?? new Date().toISOString().slice(0, 10));
+  const to = String(payload?.to ?? from);
+  const items = await buildGeneralLedger(ctx.db, { storeId, from, to });
+  return { items };
+}
+
+export async function adminAccountingTrialBalance(ctx: ActionContext, payload: any) {
+  const storeId = payload?.storeId ?? ctx.storeId ?? null;
+  const from = String(payload?.from ?? new Date().toISOString().slice(0, 10));
+  const to = String(payload?.to ?? from);
+  const items = await buildTrialBalance(ctx.db, { storeId, from, to });
+  return { items };
+}
+
+export async function adminAccountingProfitAndLoss(ctx: ActionContext, payload: any) {
+  const storeId = payload?.storeId ?? ctx.storeId ?? null;
+  const from = String(payload?.from ?? new Date().toISOString().slice(0, 10));
+  const to = String(payload?.to ?? from);
+  const items = await buildProfitAndLoss(ctx.db, { storeId, from, to });
+  return { items };
+}
+
+export async function adminAccountingBalanceSheet(ctx: ActionContext, payload: any) {
+  const storeId = payload?.storeId ?? ctx.storeId ?? null;
+  const to = String(payload?.to ?? new Date().toISOString().slice(0, 10));
+  const items = await buildBalanceSheet(ctx.db, { storeId, from: to, to });
+  return { items };
+}
+
+export async function adminAccountingCashFlowFoundation(ctx: ActionContext, payload: any) {
+  const storeId = payload?.storeId ?? ctx.storeId ?? null;
+  const from = String(payload?.from ?? new Date().toISOString().slice(0, 10));
+  const to = String(payload?.to ?? from);
+  const items = await buildCashFlowFoundation(ctx.db, { storeId, from, to });
+  return { items };
+}
+
+export async function adminAccountingPeriodCloseValidate(ctx: ActionContext, payload: any) {
+  const result = await validatePeriodClose(ctx.db, payload.periodId);
+  return { period: result.period, draftEntries: result.draftEntries, canClose: result.draftEntries === 0 };
+}
+
+export async function adminAccountingPeriodClose(ctx: ActionContext, payload: any) {
+  const period = await closeAccountingPeriod(ctx.db, payload.periodId, ctx.uid ?? null);
+  return { period };
+}
+
+export async function adminAccountingPeriodReopen(ctx: ActionContext, payload: any) {
+  const period = await reopenAccountingPeriod(ctx.db, payload.periodId);
+  return { period };
 }
