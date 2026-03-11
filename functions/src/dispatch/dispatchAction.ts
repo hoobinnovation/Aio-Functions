@@ -275,6 +275,7 @@ export async function dispatchAction(
             meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
         };
     } catch (err) {
+        console.error(err
         return toErrorResponse(err, ctx.requestId, ctx.serverTime);
     }
 }

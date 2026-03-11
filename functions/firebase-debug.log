@@ -4803,3 +4803,37 @@ Issues? Report them at https://github.com/firebase/firebase-tools/issues and att
 [debug] [2026-03-08T03:14:40.430Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"message":"Finishing up request with event=finish"}}
 [debug] [2026-03-08T03:14:40.430Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"message":"Finishing up request with event=close"}}
 [debug] [2026-03-08T03:14:40.430Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-03-11T22:17:39.588Z] ----------------------------------------------------------------------
+[debug] [2026-03-11T22:17:39.593Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Ziyad Mohammed\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2026-03-11T22:17:39.593Z] CLI Version:   14.20.0
+[debug] [2026-03-11T22:17:39.593Z] Platform:      win32
+[debug] [2026-03-11T22:17:39.594Z] Node Version:  v22.20.0
+[debug] [2026-03-11T22:17:39.594Z] Time:          Thu Mar 12 2026 00:17:39 GMT+0200 (Eastern European Standard Time)
+[debug] [2026-03-11T22:17:39.594Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-11T22:17:39.963Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-11T22:17:39.963Z] > authorizing via signed-in user (codoproworld@gmail.com)
+[debug] [2026-03-11T22:17:39.964Z] [iam] checking project aio-erp-sys for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-03-11T22:17:39.966Z] Checked if tokens are valid: false, expires at: 1773251567283
+[debug] [2026-03-11T22:17:39.966Z] Checked if tokens are valid: false, expires at: 1773251567283
+[debug] [2026-03-11T22:17:39.966Z] > refreshing access token with scopes: []
+[debug] [2026-03-11T22:17:39.969Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-11T22:17:39.969Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-11T22:17:40.249Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-11T22:17:40.250Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-11T22:17:40.263Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/aio-erp-sys:testIamPermissions [none]
+[debug] [2026-03-11T22:17:40.263Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/aio-erp-sys:testIamPermissions x-goog-quota-user=projects/aio-erp-sys
+[debug] [2026-03-11T22:17:40.263Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/aio-erp-sys:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-03-11T22:17:41.086Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/aio-erp-sys:testIamPermissions 200
+[debug] [2026-03-11T22:17:41.086Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/aio-erp-sys:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-03-11T22:17:41.086Z] Checked if tokens are valid: true, expires at: 1773271059250
+[debug] [2026-03-11T22:17:41.086Z] Checked if tokens are valid: true, expires at: 1773271059250
+[debug] [2026-03-11T22:17:41.087Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/aio-erp-sys/serviceAccounts/aio-erp-sys@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-03-11T22:17:41.087Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/aio-erp-sys/serviceAccounts/aio-erp-sys@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-03-11T22:17:41.953Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/aio-erp-sys/serviceAccounts/aio-erp-sys@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-03-11T22:17:41.953Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/aio-erp-sys/serviceAccounts/aio-erp-sys@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'aio-erp-sys'...
+[info] 
+[info] i  deploying functions 
+[info] Running command: npm --prefix "$RESOURCE_DIR" run build
