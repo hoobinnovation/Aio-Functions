@@ -264,7 +264,34 @@ import {
     adminReportsAttributionOverview,
     adminReportsTopCampaigns,
 } from '../actions/admin/reportsMarketingAdminActions';
-import { adminAccountingKpis, adminAccountingLedger } from '../actions/admin/accountingAdminActions';
+import {
+    adminAccountingKpis,
+    adminAccountingLedger,
+    adminAccountingGeneralLedger,
+    adminAccountingTrialBalance,
+    adminAccountingProfitAndLoss,
+    adminAccountingBalanceSheet,
+    adminAccountingCashFlowFoundation,
+    adminAccountingPeriodCloseValidate,
+    adminAccountingPeriodClose,
+    adminAccountingPeriodReopen,
+} from '../actions/admin/accountingAdminActions';
+import {
+    adminApDocumentsCreate,
+    adminApDocumentsList,
+    adminApDocumentsSettle,
+    adminArDocumentsCreate,
+    adminArDocumentsList,
+    adminArDocumentsSettle,
+    adminFinancialAccountsCreate,
+    adminFinancialAccountsList,
+    adminReconciliationSessionsCreate,
+    adminReconciliationTransactionsMatch,
+    adminReconciliationTransactionsRegister,
+    adminTaxAssignmentsCreate,
+    adminTaxCodesCreate,
+    adminTaxCodesList,
+} from '../actions/admin/financeAdminActions';
 import {
     adminSuppliersList,
     adminSuppliersCreate,
@@ -602,6 +629,28 @@ add(registryAdmin, 'adminDrawerSessionsOpen', adminDrawerSessionsOpen as ActionH
 add(registryAdmin, 'adminDrawerSessionsClose', adminDrawerSessionsClose as ActionHandler);
 add(registryAdmin, 'adminAccountingKpis', adminAccountingKpis as ActionHandler);
 add(registryAdmin, 'adminAccountingLedger', adminAccountingLedger as ActionHandler);
+add(registryAdmin, 'adminAccountingGeneralLedger', adminAccountingGeneralLedger as ActionHandler);
+add(registryAdmin, 'adminAccountingTrialBalance', adminAccountingTrialBalance as ActionHandler);
+add(registryAdmin, 'adminAccountingProfitAndLoss', adminAccountingProfitAndLoss as ActionHandler);
+add(registryAdmin, 'adminAccountingBalanceSheet', adminAccountingBalanceSheet as ActionHandler);
+add(registryAdmin, 'adminAccountingCashFlowFoundation', adminAccountingCashFlowFoundation as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodCloseValidate', adminAccountingPeriodCloseValidate as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodClose', adminAccountingPeriodClose as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodReopen', adminAccountingPeriodReopen as ActionHandler);
+add(registryAdmin, 'adminArDocumentsList', adminArDocumentsList as ActionHandler);
+add(registryAdmin, 'adminArDocumentsCreate', adminArDocumentsCreate as ActionHandler);
+add(registryAdmin, 'adminArDocumentsSettle', adminArDocumentsSettle as ActionHandler);
+add(registryAdmin, 'adminApDocumentsList', adminApDocumentsList as ActionHandler);
+add(registryAdmin, 'adminApDocumentsCreate', adminApDocumentsCreate as ActionHandler);
+add(registryAdmin, 'adminApDocumentsSettle', adminApDocumentsSettle as ActionHandler);
+add(registryAdmin, 'adminTaxCodesList', adminTaxCodesList as ActionHandler);
+add(registryAdmin, 'adminTaxCodesCreate', adminTaxCodesCreate as ActionHandler);
+add(registryAdmin, 'adminTaxAssignmentsCreate', adminTaxAssignmentsCreate as ActionHandler);
+add(registryAdmin, 'adminFinancialAccountsList', adminFinancialAccountsList as ActionHandler);
+add(registryAdmin, 'adminFinancialAccountsCreate', adminFinancialAccountsCreate as ActionHandler);
+add(registryAdmin, 'adminReconciliationSessionsCreate', adminReconciliationSessionsCreate as ActionHandler);
+add(registryAdmin, 'adminReconciliationTransactionsRegister', adminReconciliationTransactionsRegister as ActionHandler);
+add(registryAdmin, 'adminReconciliationTransactionsMatch', adminReconciliationTransactionsMatch as ActionHandler);
 add(registryAdmin, 'adminAccountingCreateExpense', adminAccountingCreateExpense as ActionHandler);
 add(registryAdmin, 'adminAccountingCreateAdjustment', adminAccountingCreateAdjustment as ActionHandler);
 add(registryAdmin, 'adminAccountingCreatePOSSale', adminAccountingCreatePOSSale as ActionHandler);
