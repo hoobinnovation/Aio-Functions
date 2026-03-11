@@ -11,7 +11,7 @@ import { requireAccountIdentity } from '../../core/identity';
 import { recomputeProductMetrics } from '../productMetrics';
 
 const CLIENT_PRODUCT_QUERY_CONTRACT = {
-    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'ratingAverage', 'popularityScore'],
+    allowedSortFields: ['createdAt', 'updatedAt', 'name', 'slug', 'categoryId',"ratingAverage","popularityScore"],
     sortAliases: {
         newest: { by: 'createdAt', direction: 'desc' as const },
         oldest: { by: 'createdAt', direction: 'asc' as const },

@@ -203,7 +203,6 @@ export function normalizeSort(
   if (normalizedDir !== 'asc' && normalizedDir !== 'desc') {
     throw new AppError('QUERY_SORT_INVALID', 'sort.direction must be asc or desc', { direction: dir });
   }
-    console.log(options?.allowedSortFields,normalizedBy)
   if (options?.allowedSortFields &&
       options.allowedSortFields.length > 0 &&
       !options.allowedSortFields.includes(normalizedBy)

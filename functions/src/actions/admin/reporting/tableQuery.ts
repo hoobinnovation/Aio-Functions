@@ -59,13 +59,17 @@ export function normalizeTableQuery(payload: any, defaults: { sortBy: string; so
   };
 }
 
-export function sanitizeSort(sort: TableSort, allowedSortFields: string[], defaultSort: TableSort): TableSort {
-  return {
-    by: allowedSortFields.includes(sort.by) ? sort.by : defaultSort.by,
-    dir: sort.dir === 'asc' || sort.dir === 'desc' ? sort.dir : defaultSort.dir,
-  };
-}
 
+export function sanitizeSort(
+    sort: TableSort | undefined,
+    allowedSortFields: string[],
+    defaultSort: TableSort,
+): TableSort {
+    return {
+        by: sort?.by && allowedSortFields.includes(sort.by) ? sort.by : defaultSort.by,
+        dir: sort?.dir === 'asc' || sort?.dir === 'desc' ? sort.dir : defaultSort.dir,
+    };
+}
 export function sanitizeGroupBy(groupBy: string[] | null, allowedGroupFields: string[]): string[] {
   if (!groupBy || !groupBy.length) return [];
   const invalid = groupBy.filter((g) => !allowedGroupFields.includes(g));
@@ -100,9 +104,15 @@ export async function applyPaginationOrFetchAll(arg1: any, query: TableQuery) {
   return { page: query.page, pageSize: query.pageSize, total };
 }
 
-export function applySort(qb: any, query: TableQuery, allowedSortFields: Record<string, string>, defaultSort: { by: string; dir: 'asc' | 'desc' }) {
-  const sort = sanitizeSort(query.sort, Object.keys(allowedSortFields), defaultSort);
-  qb.orderBy(allowedSortFields[sort.by], sort.dir);
+export function applySort(
+    qb: any,
+    query: TableQuery,
+    allowedSortFields: Record<string, string>,
+    defaultSort: { by: string; dir: 'asc' | 'desc' },
+) {
+    const sort = sanitizeSort(query?.sort ?? defaultSort, Object.keys(allowedSortFields), defaultSort);
+    const direction: 'ASC' | 'DESC' = sort.dir === 'asc' ? 'ASC' : 'DESC';
+    qb.orderBy(allowedSortFields[sort.by], direction);
 }
 
 export async function applyGroupBySummary(qbBase: any, query: TableQuery, allowedGroupFields: Record<string, string>) {

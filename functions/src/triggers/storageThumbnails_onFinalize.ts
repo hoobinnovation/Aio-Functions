@@ -1,6 +1,5 @@
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { EntityManager } from 'typeorm';
-import sharp from 'sharp';
 import { getInitializedDataSource } from '../core/db';
 import { MediaAsset } from '../entities/MediaAsset';
 import { getBucketName, getStorage } from '../utils/storage';
@@ -24,6 +23,7 @@ export const storageThumbnails_onFinalize = onObjectFinalized(async (event: any)
   try {
     const bucket = getStorage().bucket(bucketName);
     const [raw] = await bucket.file(object.name).download();
+    const sharp = require('sharp');
     const thumb = await sharp(raw).resize(512, 512, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
     await bucket.file(thumbPath).save(thumb, { contentType: 'image/jpeg' });
     await db.transaction(async (tx: EntityManager) => {

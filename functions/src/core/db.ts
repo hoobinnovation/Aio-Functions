@@ -107,11 +107,11 @@ export function getDataSource(sync=false): DataSource {
 
   db = new DataSource({
     type: 'mysql',
-    host: PROD ?'' :'localhost',
-    port: Number(PROD ? '':3306),
-    username: PROD?'':'root',
-    password: PROD?'':'',
-    database: PROD?'':'aio',
+    host: PROD ?'mysql-190437-0.cloudclusters.net' :'localhost',
+    port: Number(PROD ? '10090':3306),
+    username: PROD?'cloud_functions':'root',
+    password: PROD?'WNb2cN&PY,$65U-jWA^JdBZ5S7(y]7E`tY=^ztfaK<9NGgF@fV`FV[]y':'',
+    database: PROD?'aio':'aio',
     synchronize: sync,
     logging: !PROD,
     entities: [
