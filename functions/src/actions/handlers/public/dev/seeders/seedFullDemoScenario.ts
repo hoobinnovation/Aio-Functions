@@ -680,6 +680,7 @@ async function seedDineIn(ctx: SeedContext, store: SeedStoreProfile, customers: 
       id: scopedId(store.code, 'orv', i + 1),
       storeId: sid,
       orderId,
+      productId: scopedId(store.code, 'prd', ((i * 3) % 15) + 1),
       uid: customers[i % customers.length].uid,
       rating: (i % 5) + 1,
       comment: `Dine-in review #${i + 1}`,

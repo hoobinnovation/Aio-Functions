@@ -24,6 +24,7 @@ import { UserAddress } from '../../entities/UserAddress';
 import { resolveDeliveryQuote } from '../../utils/deliveryQuote';
 import { createFawaterkInvoice } from '../../utils/fawaterk';
 import { UserProfile } from '../../entities/UserProfile';
+import { recomputeProductMetrics } from '../productMetrics';
 
 async function getCart(ctx: ActionContext) {
   const uid = requireSessionIdentity(ctx);
@@ -342,6 +343,10 @@ export async function paymentsConfirm(ctx: ActionContext, payload: any) {
     await tx.getRepository(PaymentSession).update({ id: session.id }, { status: 'paid' });
     await tx.getRepository(Order).update({ id: order.id }, { paymentStatus: 'paid', status: 'placed' });
     await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({ id: uuidv4(), orderId: order.id, status: 'placed', note: 'payment confirmed', createdByUid: uid }));
+    const rows = await tx.getRepository(Order).query('SELECT DISTINCT productId FROM order_items WHERE orderId=?', [order.id]);
+    for (const row of rows) {
+      if (typeof row?.productId === 'string' && row.productId) await recomputeProductMetrics(tx, row.productId);
+    }
   });
 
   return { order: await ctx.db.getRepository(Order).findOneByOrFail({ id: order.id }), idempotent: false };

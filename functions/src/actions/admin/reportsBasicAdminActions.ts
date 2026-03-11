@@ -6,51 +6,120 @@ import { AppError } from '../../core/errors';
 function capabilities() { return { canEdit: false, canDelete: false }; }
 
 export async function reportsOverview(ctx: ActionContext, payload: any) {
-  const q = normalizeTableQuery(payload, { sortBy: 'date', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
-  const aggregatesRows = await ctx.db.query(
-    `SELECT COUNT(*) ordersCount, COALESCE(SUM(subtotalCents),0) grossRevenueCents, COALESCE(SUM(discountCents),0) discountsCents,
-            COALESCE(SUM(totalCents),0) netRevenueCents, COALESCE(AVG(totalCents),0) avgOrderValueCents,
-            COUNT(DISTINCT CASE WHEN x.cnt = 1 THEN uid END) newCustomersCount,
-            COUNT(DISTINCT CASE WHEN x.cnt > 1 THEN uid END) returningCustomersCount
-     FROM orders o
-     JOIN (SELECT uid, COUNT(*) cnt FROM orders WHERE storeId=? AND createdAt BETWEEN ? AND ? GROUP BY uid) x ON x.uid=o.uid
-     WHERE o.storeId=? AND o.createdAt BETWEEN ? AND ?`,
-    [q.storeId, q.range.from, q.range.to, q.storeId, q.range.from, q.range.to],
-  );
+    const q = normalizeTableQuery(
+        payload,
+        { sortBy: 'date', sortDir: 'desc', pageSize: 50 },
+        { fallbackStoreId: ctx.storeId },
+    );
 
-  const qb = ctx.db.getRepository(Order).createQueryBuilder('o')
-    .select('DATE(o.createdAt)', 'date')
-    .addSelect('COUNT(*)', 'ordersCount')
-    .addSelect('COALESCE(SUM(o.totalCents),0)', 'netRevenueCents')
-    .where('o.storeId=:storeId AND o.createdAt BETWEEN :from AND :to', { storeId: q.storeId, from: q.range.from, to: q.range.to })
-    .groupBy('DATE(o.createdAt)');
-  applySort(qb as any, q, { date: 'DATE(o.createdAt)', netRevenueCents: 'netRevenueCents', ordersCount: 'ordersCount' }, { by: 'date', dir: 'desc' });
-  const pageInfo = await applyPaginationOrFetchAll(qb as any, q);
-  const items = await qb.getRawMany();
-  const grouped = await applyGroupBySummary(ctx.db.getRepository(Order).createQueryBuilder('o').where('o.storeId=:storeId AND o.createdAt BETWEEN :from AND :to', { storeId: q.storeId, from: q.range.from, to: q.range.to }), q, { day: 'DATE(o.createdAt)', channel: 'o.channel', status: 'o.status' });
+    const aggregatesRows = await ctx.db.query(
+        `SELECT
+             COUNT(*) ordersCount,
+             COALESCE(SUM(o.subtotalCents),0) grossRevenueCents,
+             COALESCE(SUM(o.discountCents),0) discountsCents,
+             COALESCE(SUM(o.totalCents),0) netRevenueCents,
+             COALESCE(AVG(o.totalCents),0) avgOrderValueCents,
+             COUNT(DISTINCT CASE WHEN x.cnt = 1 AND o.uid IS NOT NULL THEN o.uid END) newCustomersCount,
+             COUNT(DISTINCT CASE WHEN x.cnt > 1 AND o.uid IS NOT NULL THEN o.uid END) returningCustomersCount
+         FROM orders o
+                  JOIN (
+             SELECT uid, COUNT(*) cnt
+             FROM orders
+             WHERE storeId = ? AND createdAt BETWEEN ? AND ?
+             GROUP BY uid
+         ) x ON x.uid = o.uid
+         WHERE o.storeId = ? AND o.createdAt BETWEEN ? AND ?`,
+        [q.storeId, q.range.from, q.range.to, q.storeId, q.range.from, q.range.to],
+    );
 
-  const professional = payload.flags?.includeProfessional ? await (async () => {
-    const refunds = await ctx.db.query(`SELECT COALESCE(SUM(ref.amountCents),0) refundsCents FROM refunds ref JOIN returns r ON r.id=ref.returnId WHERE r.storeId=? AND ref.createdAt BETWEEN ? AND ?`, [q.storeId, q.range.from, q.range.to]);
-    const cashback = await ctx.db.query(`SELECT COALESCE(SUM(CASE WHEN wt.type='cashback_issue' THEN wt.amountCents ELSE 0 END),0) cashbackCents FROM wallet_transactions wt JOIN orders o ON o.uid=wt.uid AND o.storeId=? WHERE wt.createdAt BETWEEN ? AND ?`, [q.storeId, q.range.from, q.range.to]);
-    const discountsCents = Number(aggregatesRows[0]?.discountsCents ?? 0);
-    const shippingFeesCents = await ctx.db.query(`SELECT COALESCE(SUM(shippingCents),0) shippingFeesCents FROM orders WHERE storeId=? AND createdAt BETWEEN ? AND ?`, [q.storeId, q.range.from, q.range.to]);
-    const netRevenue = Number(aggregatesRows[0]?.netRevenueCents ?? 0);
-    const refundsCents = Number(refunds[0]?.refundsCents ?? 0);
-    const cashbackCents = Number(cashback[0]?.cashbackCents ?? 0);
-    const shippingCents = Number(shippingFeesCents[0]?.shippingFeesCents ?? 0);
+    const qb = ctx.db
+        .getRepository(Order)
+        .createQueryBuilder('o')
+        .select('DATE(o.createdAt)', 'date')
+        .addSelect('COUNT(*)', 'ordersCount')
+        .addSelect('COALESCE(SUM(o.totalCents),0)', 'netRevenueCents')
+        .where('o.storeId=:storeId AND o.createdAt BETWEEN :from AND :to', {
+            storeId: q.storeId,
+            from: q.range.from,
+            to: q.range.to,
+        })
+        .groupBy('DATE(o.createdAt)');
+
+    applySort(
+        qb as any,
+        q,
+        { date: 'DATE(o.createdAt)', netRevenueCents: 'netRevenueCents', ordersCount: 'ordersCount' },
+        { by: 'date', dir: 'desc' },
+    );
+
+    const pageInfo = await applyPaginationOrFetchAll(qb as any, q);
+    const items = await qb.getRawMany();
+
+    const grouped = await applyGroupBySummary(
+        ctx.db
+            .getRepository(Order)
+            .createQueryBuilder('o')
+            .where('o.storeId=:storeId AND o.createdAt BETWEEN :from AND :to', {
+                storeId: q.storeId,
+                from: q.range.from,
+                to: q.range.to,
+            }),
+        q,
+        { day: 'DATE(o.createdAt)', channel: 'o.channel', status: 'o.status' },
+    );
+
+    const professional = payload.flags?.includeProfessional
+        ? await (async () => {
+            const refunds = await ctx.db.query(
+                `SELECT COALESCE(SUM(ref.amountCents),0) refundsCents
+                 FROM refunds ref
+                          JOIN returns r ON r.id = ref.returnId
+                 WHERE r.storeId = ? AND ref.createdAt BETWEEN ? AND ?`,
+                [q.storeId, q.range.from, q.range.to],
+            );
+
+            const cashback = await ctx.db.query(
+                `SELECT COALESCE(SUM(CASE WHEN wt.type='cashback_issue' THEN wt.amountCents ELSE 0 END),0) cashbackCents
+                 FROM wallet_transactions wt
+                          JOIN orders o ON o.uid = wt.uid AND o.storeId = ?
+                 WHERE wt.createdAt BETWEEN ? AND ?`,
+                [q.storeId, q.range.from, q.range.to],
+            );
+
+            const discountsCents = Number(aggregatesRows[0]?.discountsCents ?? 0);
+
+            const shippingFeesCents = await ctx.db.query(
+                `SELECT COALESCE(SUM(shippingCents),0) shippingFeesCents
+                 FROM orders
+                 WHERE storeId = ? AND createdAt BETWEEN ? AND ?`,
+                [q.storeId, q.range.from, q.range.to],
+            );
+
+            const netRevenue = Number(aggregatesRows[0]?.netRevenueCents ?? 0);
+            const refundsCents = Number(refunds[0]?.refundsCents ?? 0);
+            const cashbackCents = Number(cashback[0]?.cashbackCents ?? 0);
+            const shippingCents = Number(shippingFeesCents[0]?.shippingFeesCents ?? 0);
+
+            return {
+                contributionCents: netRevenue - refundsCents - cashbackCents,
+                refundsCents,
+                shippingFeesCents: shippingCents,
+                cashbackCents,
+                discountsCents,
+                cogsCents: null,
+                cogsAvailable: false,
+            };
+        })()
+        : null;
+
     return {
-      contributionCents: netRevenue - refundsCents - cashbackCents,
-      refundsCents,
-      shippingFeesCents: shippingCents,
-      cashbackCents,
-      discountsCents,
-      cogsCents: null,
-      cogsAvailable: false,
+        items: pickColumns(items, ['date', 'ordersCount', 'netRevenueCents'], q.columns),
+        pageInfo,
+        grouped,
+        aggregates: { ...aggregatesRows[0], ...(professional ?? {}) },
+        capabilities: capabilities(),
     };
-  })() : null;
-  return { items: pickColumns(items, ['date', 'ordersCount', 'netRevenueCents'], q.columns), pageInfo, grouped, aggregates: { ...aggregatesRows[0], ...(professional ?? {}) }, capabilities: capabilities() };
 }
-
 export async function reportsOrdersByStatus(ctx: ActionContext, payload: any) {
   const q = normalizeTableQuery(payload, { sortBy: 'ordersCount', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
   const qb = ctx.db.getRepository(Order).createQueryBuilder('o')
@@ -61,7 +130,10 @@ export async function reportsOrdersByStatus(ctx: ActionContext, payload: any) {
     .addSelect('COALESCE(AVG(o.totalCents),0)', 'avgOrderValueCents')
     .where('o.storeId=:storeId AND o.createdAt BETWEEN :from AND :to', { storeId: q.storeId, from: q.range.from, to: q.range.to })
     .groupBy('o.status');
-  applySort(qb as any, q, { ordersCount: 'ordersCount', netRevenueCents: 'netRevenueCents', status: 'o.status' }, { by: 'ordersCount', dir: 'desc' });
+  applySort(qb as any, q,
+      { ordersCount: 'ordersCount',
+          netRevenueCents: 'netRevenueCents',
+          status: 'o.status' }, { by: 'ordersCount', dir: 'desc' });
   const pageInfo = await applyPaginationOrFetchAll(qb as any, q);
   const items = await qb.getRawMany();
 

@@ -14,6 +14,7 @@ import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsLi
 import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { buildFeatureVisibilityResponse, serializeFeatureVisibility } from './storeFeatureVisibility';
+import PROD from "../../utils/PROD";
 
 
 type AdminModuleDescriptor = {
@@ -30,7 +31,7 @@ const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
   { key: 'categories', label: 'Categories', icon: 'category', actionNames: ['adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable'] },
   { key: 'banners', label: 'Banners', icon: 'image', actionNames: ['adminBannersList','adminBannersGet','adminBannersCreate','adminBannersUpdate','adminBannersDisable'] },
   { key: 'featuredProducts', label: 'Featured Products', icon: 'star', actionNames: ['adminFeaturedList','adminFeaturedSearchProducts','adminFeaturedSet'] },
-  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable'] },
+  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable','adminCatalogRebuildProductMetrics'] },
   { key: 'productImages', label: 'Product Images', icon: 'collections', actionNames: ['adminProductImagesList','adminProductImagesAdd','adminProductImagesRemove','adminProductImagesReorder'] },
   { key: 'productSpecs', label: 'Product Specs', icon: 'fact_check', actionNames: ['adminProductSpecsList','adminProductSpecsCreate','adminProductSpecsUpdate','adminProductSpecsDelete'] },
   { key: 'productVariants', label: 'Product Variants', icon: 'view_module', actionNames: ['adminProductVariantsList','adminProductVariantsCreate','adminProductVariantsUpdate','adminProductVariantsDelete','adminProductVariantsBulkStockUpdate'] },
@@ -137,8 +138,18 @@ export async function adminMe(ctx: ActionContext) {
     }
     const store = await ctx.db.getRepository(Store).findOneBy({ id: ctx.storeId });
     if (!store) throw new AppError('NOT_FOUND', 'Store not found');
-    const settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId });
-    if (!settings) throw new AppError('NOT_FOUND', 'Store settings not found');
+    let settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId });
+    if (!settings){
+        if (PROD){
+            throw new AppError('NOT_FOUND', 'Store settings not found');
+        }
+        settings = {
+            currency: 'جنيه مصري',
+            taxMode: 'tax',
+            pickupEnabled: true,
+            deliveryEnabled: true,
+        }
+    }
     storeBootstrap = {
       storeId: store.id,
       store: {
