@@ -8,3 +8,4 @@ export { DineInTable } from '../entities/DineInTable';
 export { DineInSession } from '../entities/DineInSession';
 export { DineInWaiterCall } from '../entities/DineInWaiterCall';
 export { OrderReview } from '../entities/OrderReview';
+export { AuthPhonePasswordCredential } from '../entities/AuthPhonePasswordCredential';

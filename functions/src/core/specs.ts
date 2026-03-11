@@ -69,6 +69,39 @@ const profileUpdatePayload = Joi.object({
 });
 
 ACTION_SPECS.profileUpdate = { schema: profileUpdatePayload, notes: 'Update own profile', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
+ACTION_SPECS.authPhonePasswordRegister = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+    displayName: Joi.string().max(80).allow(null, ''),
+    email: Joi.string().max(255).allow(null, ''),
+    locale: Joi.string().max(10).allow(null, ''),
+    marketingOptIn: Joi.boolean().optional(),
+  }).required(),
+  notes: 'Register or upgrade account with phone+password',
+  errorCodes: ['VALIDATION_ERROR', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authPhonePasswordLogin = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Phone+password login',
+  errorCodes: ['VALIDATION_ERROR', 'INVALID_PHONE_PASSWORD_CREDENTIALS', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authProvidersGet = {
+  schema: Joi.any().optional(),
+  notes: 'Get attached account providers',
+  errorCodes: ['VALIDATION_ERROR', 'PROVIDER_STATE_UNAVAILABLE'],
+};
+ACTION_SPECS.authSetPhonePassword = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Attach or update phone+password credentials for authenticated account',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
 ACTION_SPECS.accountDeleteRequest = { schema: Joi.object({ reason: Joi.string().max(500).allow(null, '') }).required(), notes: 'Create delete request', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.addressesCreate = { schema: addressPayload.required(), notes: 'Create address', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
 ACTION_SPECS.addressesUpdate = { schema: addressPayload.keys({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Update address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };

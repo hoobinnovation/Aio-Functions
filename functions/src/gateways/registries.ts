@@ -16,6 +16,12 @@ import {
     publicSeoGetLanding,
 } from '../actions/public/catalogPublicActions';
 import {
+    authPhonePasswordRegister,
+    authPhonePasswordLogin,
+    authProvidersGet,
+    authSetPhonePassword,
+} from '../actions/client/authClientActions';
+import {
     clientHealthWhoAmI,
     clientActionsList,
     authEnsureUserProfile,
@@ -351,6 +357,10 @@ export const registryClient = m();
 add(registryClient, 'clientHealthWhoAmI', clientHealthWhoAmI as ActionHandler);
 add(registryClient, 'clientActionsList', clientActionsList as ActionHandler);
 add(registryClient, 'authEnsureUserProfile', authEnsureUserProfile as ActionHandler);
+add(registryClient, 'authPhonePasswordRegister', authPhonePasswordRegister as ActionHandler);
+add(registryClient, 'authPhonePasswordLogin', authPhonePasswordLogin as ActionHandler);
+add(registryClient, 'authProvidersGet', authProvidersGet as ActionHandler);
+add(registryClient, 'authSetPhonePassword', authSetPhonePassword as ActionHandler);
 add(registryClient, 'profileGet', profileGet as ActionHandler);
 add(registryClient, 'profileUpdate', profileUpdate as ActionHandler);
 add(registryClient, 'accountDeleteRequest', accountDeleteRequest as ActionHandler);

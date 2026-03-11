@@ -17,6 +17,36 @@ Unified protocol:
 - Success: `{"ok":true,"data":{"profile":{...}},"meta":{...}}`
 - Errors: `UNAUTHENTICATED`, `VALIDATION_ERROR`, `INTERNAL`
 
+### authPhonePasswordRegister
+- Gateway: client
+- Envelope: action=`authPhonePasswordRegister`
+- Payload: `{"phone":"...","password":"...","displayName?":"...","email?":"...","locale?":"...","marketingOptIn?":true}`
+- Validation: phone required, password required with minimum strength
+- Steps: require session uid; create phone/password credential on same uid; upsert profile; return firebase custom token + providers snapshot
+- Tables: `auth_phone_password_credentials`,`user_profiles`
+
+### authPhonePasswordLogin
+- Gateway: client
+- Envelope: action=`authPhonePasswordLogin`
+- Payload: `{"phone":"...","password":"..."}`
+- Validation: phone required, password required
+- Steps: verify credential; if current session is anonymous and uid differs, merge safe guest state into target uid; mint firebase custom token
+- Tables: `auth_phone_password_credentials`,`carts`,`cart_items`,`user_store_context`,`user_profiles`,`user_addresses`
+
+### authProvidersGet
+- Gateway: client
+- Envelope: action=`authProvidersGet`
+- Payload: `null`
+- Steps: require session uid; return account methods snapshot for current uid
+
+### authSetPhonePassword
+- Gateway: client
+- Envelope: action=`authSetPhonePassword`
+- Payload: `{"phone":"...","password":"..."}`
+- Validation: account-auth required, phone required, password required with minimum strength
+- Steps: create/update local phone/password credential for current intentional account; return provider snapshot
+- Tables: `auth_phone_password_credentials`,`user_profiles`
+
 ### profileGet
 - Gateway: client
 - Envelope: action=`profileGet`, storeId optional/ignored
