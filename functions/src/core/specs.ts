@@ -69,6 +69,39 @@ const profileUpdatePayload = Joi.object({
 });
 
 ACTION_SPECS.profileUpdate = { schema: profileUpdatePayload, notes: 'Update own profile', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
+ACTION_SPECS.authPhonePasswordRegister = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+    displayName: Joi.string().max(80).allow(null, ''),
+    email: Joi.string().max(255).allow(null, ''),
+    locale: Joi.string().max(10).allow(null, ''),
+    marketingOptIn: Joi.boolean().optional(),
+  }).required(),
+  notes: 'Register or upgrade account with phone+password',
+  errorCodes: ['VALIDATION_ERROR', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authPhonePasswordLogin = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Phone+password login',
+  errorCodes: ['VALIDATION_ERROR', 'INVALID_PHONE_PASSWORD_CREDENTIALS', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authProvidersGet = {
+  schema: Joi.any().optional(),
+  notes: 'Get attached account providers',
+  errorCodes: ['VALIDATION_ERROR', 'PROVIDER_STATE_UNAVAILABLE'],
+};
+ACTION_SPECS.authSetPhonePassword = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Attach or update phone+password credentials for authenticated account',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
 ACTION_SPECS.accountDeleteRequest = { schema: Joi.object({ reason: Joi.string().max(500).allow(null, '') }).required(), notes: 'Create delete request', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.addressesCreate = { schema: addressPayload.required(), notes: 'Create address', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
 ACTION_SPECS.addressesUpdate = { schema: addressPayload.keys({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Update address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
@@ -107,24 +140,26 @@ ACTION_SPECS.publicProductGetBySlug={schema:Joi.object({slug:Joi.string().requir
 ACTION_SPECS.publicCategoryGetById={schema:Joi.object({categoryId:Joi.string().required()}).required(),notes:'Category by id',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicCategoryGetBySlug={schema:Joi.object({slug:Joi.string().required()}).required(),notes:'Category by slug',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicSeoGetPageMeta={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO meta',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.publicSeoGetPageSettings={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO page settings',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.publicSeoSettingsGet={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO settings get',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicSeoGetLanding={schema:Joi.object({slug:Joi.string().required()}).required(),notes:'Landing',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.productFavoritesToggle={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'Toggle favorite product',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.storeFavoritesToggle={schema:Joi.object({storeId:Joi.string().required()}).required(),notes:'Toggle favorite store',errorCodes:['VALIDATION_ERROR']};
 
 ['adminCategoriesList','adminBannersList','adminFeaturedList','adminProductsList','adminHomeSectionsList','adminLandingPagesList','adminInventoryLowStockReport'].forEach((n)=>{ACTION_SPECS[n]={schema:storeScoped,notes:'Store scoped list',errorCodes:['VALIDATION_ERROR']};});
 ['adminCategoriesGet','adminCategoriesDisable','adminBannersGet','adminBannersDisable','adminProductsGet','adminProductsDisable','adminHomeSectionsGet','adminHomeSectionsDisable','adminLandingPagesGet','adminLandingPagesPublish','adminLandingPagesUnpublish','adminLandingPagesDisable'].forEach((n)=>{ACTION_SPECS[n]={schema:idSchema,notes:'By id',errorCodes:['VALIDATION_ERROR']};});
-ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({storeId:Joi.string().required(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminCategoriesUpdate={schema:Joi.object({id:Joi.string().required(),name:Joi.string().optional(),slug:Joi.string().optional(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update category',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersCreate={schema:Joi.object({storeId:Joi.string().required(),title:Joi.string().required(),mediaAssetId:Joi.string().required(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersUpdate={schema:Joi.object({id:Joi.string().required(),title:Joi.string().optional(),mediaAssetId:Joi.string().optional(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminFeaturedSearchProducts={schema:Joi.object({storeId:Joi.string().required(),query:Joi.string().allow('',null),limit:Joi.number().integer().min(1).max(100).optional()}).required(),notes:'Search products for featured',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminFeaturedSet={schema:Joi.object({storeId:Joi.string().required(),productIds:Joi.any().required()}).required(),notes:'Set featured',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductsCreate={schema:Joi.object({storeId:Joi.string().required(),categoryId:Joi.string().required(),name:Joi.string().required(),slug:Joi.string().required(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Create product',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductsUpdate={schema:Joi.object({id:Joi.string().required(),categoryId:Joi.string().optional(),name:Joi.string().optional(),slug:Joi.string().optional(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Update product',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesList={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'list images',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesAdd={schema:Joi.object({productId:Joi.string().required(),mediaAssetId:Joi.string().required(),sortOrder:Joi.number().integer().optional()}).required(),notes:'add image',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesRemove={schema:idSchema,notes:'remove image',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesReorder={schema:Joi.object({productId:Joi.string().required(),items:Joi.any().required()}).required(),notes:'reorder images',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductsCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),categoryId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Create product',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductsUpdate={schema:Joi.object({id:Joi.string().required(),mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),categoryId:Joi.string().allow(null,'').optional(),categoryIds:Joi.array().items(Joi.string()).optional(),name:Joi.string().optional(),slug:Joi.string().optional(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Update product',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesList={schema:Joi.object({productId:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'list images',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesAdd={schema:Joi.object({productId:Joi.string().required(),mediaAssetId:Joi.string().required(),sortOrder:Joi.number().integer().optional(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'add image',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesRemove={schema:Joi.object({id:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional()}).required(),notes:'remove image',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesReorder={schema:Joi.object({productId:Joi.string().required(),items:Joi.any().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'reorder images',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsList={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'list specs',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsCreate={schema:Joi.object({productId:Joi.string().required(),specKey:Joi.string().required(),specValue:Joi.string().required(),sortOrder:Joi.number().integer().optional()}).required(),notes:'create spec',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsUpdate={schema:Joi.object({id:Joi.string().required(),productId:Joi.string().required(),specKey:Joi.string().optional(),specValue:Joi.string().optional(),sortOrder:Joi.number().integer().optional()}).required(),notes:'update spec',errorCodes:['VALIDATION_ERROR']};
@@ -536,6 +571,7 @@ ACTION_SPECS.adminInsuranceList = { schema: listQueryPayload, notes: 'admin insu
 ACTION_SPECS.adminRiskFlaggedOrdersList = { schema: listQueryPayload, notes: 'admin risk list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminReturnsList = { schema: listQueryPayload, notes: 'admin returns list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminProductsList = { schema: listQueryPayload, notes: 'admin products list query', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminCatalogRebuildProductMetrics = { schema: Joi.object({ storeId: Joi.string().optional() }).optional(), notes: 'rebuild persisted product metrics', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminCategoriesList = { schema: listQueryPayload, notes: 'admin categories list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminBannersList = { schema: listQueryPayload, notes: 'admin banners list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminLandingPagesList = { schema: listQueryPayload, notes: 'admin landing pages list query', errorCodes: ['VALIDATION_ERROR'] };
@@ -568,8 +604,8 @@ ACTION_SPECS.dineInCloseSession={schema:Joi.object({sessionToken:Joi.string().re
 ACTION_SPECS.dineInCallWaiter={schema:Joi.object({sessionToken:Joi.string().required(),callType:Joi.string().valid('callWaiter','requestBill','needHelp','cleanup').required(),note:Joi.string().max(1000).allow('',null),orderId:Joi.string().optional()}).required(),notes:'dine in waiter call',errorCodes:['VALIDATION_FAILED']};
 ACTION_SPECS.dineInRequestBill={schema:Joi.object({sessionToken:Joi.string().required(),orderId:Joi.string().optional(),note:Joi.string().max(1000).allow('',null)}).required(),notes:'dine in request bill',errorCodes:['VALIDATION_FAILED']};
 
-ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
-ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
 
 ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.string().valid('standard','delivery','pickup','dineIn').optional(),branchId:Joi.string().optional(),dineInSessionToken:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','DINE_IN_SESSION_REQUIRED']};
 
@@ -775,7 +811,10 @@ ACTION_SPECS.paymentsConfirm = {
 
 ACTION_SPECS.publicProductsBulkImportFromJson = {
   schema: Joi.object({
-    storeId: Joi.any().required(),
+    storeId: Joi.any().optional(),
+    productMode: Joi.string().valid('global', 'store').optional(),
+    categoryMode: Joi.string().valid('global', 'store').optional(),
+    mediaScope: Joi.string().valid('base', 'storeOverride').optional(),
     parentCategoryName: Joi.string().min(1).required(),
     categoryName: Joi.string().min(1).required(),
     data: Joi.array().items(Joi.object().required()).min(1).required(),
@@ -783,3 +822,31 @@ ACTION_SPECS.publicProductsBulkImportFromJson = {
   notes: 'admin bulk import products from JSON',
   errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'],
 };
+
+
+ACTION_SPECS.adminSuppliersList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersDisable={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesDisable={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersGet={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersSubmit={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersApprove={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersCancel={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersReceive={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+
+
+ACTION_SPECS.adminPosSessionsOpen={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSessionsClose={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSessionsList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesCreate={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesGet={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsCreate={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsGet={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};

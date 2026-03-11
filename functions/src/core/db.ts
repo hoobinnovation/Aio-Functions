@@ -94,7 +94,45 @@ import { ExplicitDeliveryZoneContract1728200000000 } from '../migrations/1728200
 import { FawaterkPaymentSessionFields1728300000000 } from '../migrations/1728300000000-FawaterkPaymentSessionFields';
 import { ProductImportReferences1728400000000 } from '../migrations/1728400000000-ProductImportReferences';
 import { StoreFeatureVisibility1728500000000 } from '../migrations/1728500000000-StoreFeatureVisibility';
+import { ProductMetricsAndProductReviews1728600000000 } from '../migrations/1728600000000-ProductMetricsAndProductReviews';
+import { PhonePasswordAuthFoundation1728700000000 } from '../migrations/1728700000000-PhonePasswordAuthFoundation';
+import { HybridCatalogFoundation1728800000000 } from '../migrations/1728800000000-HybridCatalogFoundation';
+import { HybridCatalogIntegrity1728900000000 } from '../migrations/1728900000000-HybridCatalogIntegrity';
 import { ProductImportReference } from '../entities/ProductImportReference';
+import { AuthPhonePasswordCredential } from '../entities/AuthPhonePasswordCredential';
+import { ProductCategory } from '../entities/ProductCategory';
+import { ProductBaseMedia } from '../entities/ProductBaseMedia';
+import { StoreProductMediaOverride } from '../entities/StoreProductMediaOverride';
+import { AccountingAccount } from '../entities/AccountingAccount';
+import { AccountingPeriod } from '../entities/AccountingPeriod';
+import { AccountingJournalEntry } from '../entities/AccountingJournalEntry';
+import { AccountingJournalEntryLine } from '../entities/AccountingJournalEntryLine';
+import { AccountingPostingRule } from '../entities/AccountingPostingRule';
+import { AccountingPostingEvent } from '../entities/AccountingPostingEvent';
+import { AccountingFoundation1729000000000 } from '../migrations/1729000000000-AccountingFoundation';
+import { AccountingPostingEvents1729100000000 } from '../migrations/1729100000000-AccountingPostingEvents';
+import { Supplier } from '../entities/Supplier';
+import { SupplierContact } from '../entities/SupplierContact';
+import { SupplierVariant } from '../entities/SupplierVariant';
+import { Warehouse } from '../entities/Warehouse';
+import { WarehouseLocation } from '../entities/WarehouseLocation';
+import { PurchaseOrder } from '../entities/PurchaseOrder';
+import { PurchaseOrderItem } from '../entities/PurchaseOrderItem';
+import { GoodsReceipt } from '../entities/GoodsReceipt';
+import { GoodsReceiptItem } from '../entities/GoodsReceiptItem';
+import { StockMovement } from '../entities/StockMovement';
+import { InventoryLot } from '../entities/InventoryLot';
+import { InventoryTransfer } from '../entities/InventoryTransfer';
+import { InventoryTransferItem } from '../entities/InventoryTransferItem';
+import { InventoryReservation } from '../entities/InventoryReservation';
+import { ProcurementInventoryFoundation1729200000000 } from '../migrations/1729200000000-ProcurementInventoryFoundation';
+import { POSSession } from '../entities/POSSession';
+import { POSSale } from '../entities/POSSale';
+import { POSSaleItem } from '../entities/POSSaleItem';
+import { POSSalePayment } from '../entities/POSSalePayment';
+import { POSReturn } from '../entities/POSReturn';
+import { POSReturnItem } from '../entities/POSReturnItem';
+import { POSCashierFoundation1729300000000 } from '../migrations/1729300000000-POSCashierFoundation';
 import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
@@ -127,6 +165,9 @@ export function getDataSource(sync=false): DataSource {
       ProductVariant,
       ProductSpec,
       ProductImage,
+      ProductCategory,
+      ProductBaseMedia,
+      StoreProductMediaOverride,
       InventoryAdjustment,
       ProductPrefixMapping,
       InventoryImportBatch,
@@ -192,9 +233,36 @@ export function getDataSource(sync=false): DataSource {
       DineInSession,
       DineInWaiterCall,
       OrderReview,
+      AuthPhonePasswordCredential,
       ProductImportReference,
+      AccountingAccount,
+      AccountingPeriod,
+      AccountingJournalEntry,
+      AccountingJournalEntryLine,
+      AccountingPostingRule,
+      AccountingPostingEvent,
+      Supplier,
+      SupplierContact,
+      SupplierVariant,
+      Warehouse,
+      WarehouseLocation,
+      PurchaseOrder,
+      PurchaseOrderItem,
+      GoodsReceipt,
+      GoodsReceiptItem,
+      StockMovement,
+      InventoryLot,
+      InventoryTransfer,
+      InventoryTransferItem,
+      InventoryReservation,
+      POSSession,
+      POSSale,
+      POSSaleItem,
+      POSSalePayment,
+      POSReturn,
+      POSReturnItem,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000, ExplicitDeliveryZoneContract1728200000000, FawaterkPaymentSessionFields1728300000000, ProductImportReferences1728400000000, StoreFeatureVisibility1728500000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000, ExplicitDeliveryZoneContract1728200000000, FawaterkPaymentSessionFields1728300000000, ProductImportReferences1728400000000, StoreFeatureVisibility1728500000000, ProductMetricsAndProductReviews1728600000000, PhonePasswordAuthFoundation1728700000000, HybridCatalogFoundation1728800000000, HybridCatalogIntegrity1728900000000, AccountingFoundation1729000000000, AccountingPostingEvents1729100000000, ProcurementInventoryFoundation1729200000000, POSCashierFoundation1729300000000],
   });
 
   return db;

@@ -119,11 +119,11 @@ export async function reportsInventorySummary(ctx: ActionContext, payload: any) 
   const filters = q.filters as { lowStockOnly?: boolean; deadStockDays?: number; categoryId?: string };
   const deadStockDays = Number(filters.deadStockDays ?? 0);
   const params: any[] = [q.storeId];
-  const whereParts = ['p.storeId=?'];
-  if (filters.categoryId) { whereParts.push('p.categoryId=?'); params.push(filters.categoryId); }
+  const whereParts = ["((p.mode='global' AND p.storeId IS NULL) OR (p.mode='store' AND p.storeId=?))"];
+  if (filters.categoryId) { whereParts.push('(p.categoryId=? OR EXISTS (SELECT 1 FROM product_categories pc WHERE pc.productId=p.id AND pc.categoryId=?))'); params.push(filters.categoryId, filters.categoryId); }
   if (filters.lowStockOnly) whereParts.push('COALESCE(ib.onHandQty,0) <= 5');
 
-  const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM products p LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=p.storeId WHERE ${whereParts.join(' AND ')}`, params);
+  const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM products p LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=? WHERE ${whereParts.join(' AND ')}`, [q.storeId, ...params]);
   const total = Number(totalRows[0]?.total ?? 0);
   if (q.fetchAll && total > 10000) throw new AppError('FETCH_ALL_LIMIT_EXCEEDED', 'Fetch all limit exceeded', { limit: 10000, total });
   const limit = q.fetchAll ? 10000 : q.pageSize;
@@ -135,13 +135,13 @@ export async function reportsInventorySummary(ctx: ActionContext, payload: any) 
             (COALESCE(ib.onHandQty,0) <= 5) lowStock,
             MAX(ia.createdAt) lastMovementAt
       FROM products p
-      LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=p.storeId
-      LEFT JOIN inventory_adjustments ia ON ia.productId=p.id AND ia.storeId=p.storeId
+      LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=?
+      LEFT JOIN inventory_adjustments ia ON ia.productId=p.id AND ia.storeId=?
       WHERE ${whereParts.join(' AND ')}
       GROUP BY p.id,p.name,ib.onHandQty
       ORDER BY ${sortExpr} ${q.sort.dir === 'asc' ? 'ASC' : 'DESC'}
       LIMIT ? OFFSET ?`,
-    [...params, limit, offset],
+    [q.storeId, q.storeId, ...params, limit, offset],
   );
   const deadStockBoundary = deadStockDays > 0 ? `DATE_SUB(NOW(), INTERVAL ${deadStockDays} DAY)` : null;
   const aggr = await ctx.db.query(
@@ -149,12 +149,12 @@ export async function reportsInventorySummary(ctx: ActionContext, payload: any) 
             SUM(CASE WHEN COALESCE(ib.onHandQty,0) <= 5 THEN 1 ELSE 0 END) lowStockCount,
             SUM(CASE WHEN COALESCE(ib.onHandQty,0) > 0 ${deadStockBoundary ? `AND (MAX_IA.lastMovementAt IS NULL OR MAX_IA.lastMovementAt < ${deadStockBoundary})` : 'AND 1=0'} THEN 1 ELSE 0 END) deadStockCount
      FROM products p
-     LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=p.storeId
+     LEFT JOIN inventory_balances ib ON ib.productId=p.id AND ib.storeId=?
      LEFT JOIN (
        SELECT storeId, productId, MAX(createdAt) lastMovementAt FROM inventory_adjustments GROUP BY storeId, productId
      ) MAX_IA ON MAX_IA.storeId=p.storeId AND MAX_IA.productId=p.id
      WHERE ${whereParts.join(' AND ')}`,
-    params,
+    [q.storeId, ...params],
   );
 
   const extraAggregates: Record<string, unknown> = {};

@@ -8,19 +8,23 @@ import { buildHomeLayout } from '../home/homeBuilder';
 import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
 import { requireAccountIdentity } from '../../core/identity';
+import { recomputeProductMetrics } from '../productMetrics';
+import { resolveStoreVisibleCategories, resolveStoreVisibleProducts } from '../catalogResolver';
 
 const CLIENT_PRODUCT_QUERY_CONTRACT = {
-    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId'],
+    allowedSortFields: ['sort.by','createdAt', 'updatedAt', 'name', 'slug', 'categoryId', 'ratingAverage', 'popularityScore'],
     sortAliases: {
         newest: { by: 'createdAt', direction: 'desc' as const },
         oldest: { by: 'createdAt', direction: 'asc' as const },
         recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
         nameAsc: { by: 'name', direction: 'asc' as const },
         nameDesc: { by: 'name', direction: 'desc' as const },
+        topRated: { by: 'ratingAverage', direction: 'desc' as const },
+        mostPopular: { by: 'popularityScore', direction: 'desc' as const },
     },
     allowedFilterKeys: ['categoryId'],
     allowedGroupByKeys: ['categoryId'],
-    allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'createdAt', 'updatedAt'],
+    allowedColumns: ['id', 'storeId', 'categoryId', 'name', 'slug', 'description', 'ratingAverage', 'ratingCount', 'favoriteCount', 'completedOrderQty', 'popularityScore', 'createdAt', 'updatedAt'],
 };
 
 export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
@@ -28,17 +32,7 @@ export async function homeGetLayout(ctx: ActionContext, payload: any = {}) {
 }
 
 export async function catalogGetCategories(ctx: ActionContext) {
-    const repo = ctx.db.getRepository(Category);
-
-    const categories = await repo.find({
-        where: {
-            storeId: ctx.storeId,
-            isActive: true,
-        } as any,
-        order: {
-            sortOrder: 'ASC' as any,
-        },
-    });
+    const categories = await resolveStoreVisibleCategories(ctx.db, ctx.storeId!, false);
 
     return {
         categories,
@@ -53,24 +47,13 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
         contract: CLIENT_PRODUCT_QUERY_CONTRACT,
     });
 
-    const repo = ctx.db.getRepository(Product);
-
-    const where: any = {
-        storeId: ctx.storeId,
-        isActive: true,
-    };
-
-    if (payload.categoryId) {
-        where.categoryId = payload.categoryId;
-    }
-
-    const [products, total] = await repo.findAndCount({
-        where,
-        order: {
-            [q.sort.by]: q.sort.direction.toUpperCase() as any,
-        },
-        skip: q.offset,
-        take: q.limit,
+    const { rows: products, total } = await resolveStoreVisibleProducts(ctx.db, ctx.storeId!, {
+        includeDisabled: false,
+        categoryId: typeof payload.categoryId === 'string' && payload.categoryId.trim() ? payload.categoryId : undefined,
+        sortBy: q.sort.by,
+        sortDirection: q.sort.direction === 'asc' ? 'ASC' : 'DESC',
+        limit: q.limit,
+        offset: q.offset,
     });
 
     return {
@@ -108,6 +91,7 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
     if (existing) {
         await ctx.db.transaction(async (tx: EntityManager) => {
             await tx.getRepository(UserProductFavorite).delete({ id: existing.id });
+            await recomputeProductMetrics(tx, payload.productId, ctx.storeId!);
         });
         return { favorited: false };
     }
@@ -120,6 +104,7 @@ export async function productFavoritesToggle(ctx: ActionContext, payload: any) {
                 productId: payload.productId,
             })
         );
+        await recomputeProductMetrics(tx, payload.productId, ctx.storeId!);
     });
 
     return { favorited: true };

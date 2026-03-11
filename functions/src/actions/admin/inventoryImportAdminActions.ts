@@ -10,6 +10,7 @@ import { Product } from '../../entities/Product';
 import { InventoryBalance } from '../../entities/InventoryBalance';
 import { InventoryAdjustment } from '../../entities/InventoryAdjustment';
 import { Category } from '../../entities/Category';
+import { ProductCategory } from '../../entities/ProductCategory';
 import { getStorage, getBucketName } from '../../utils/storage';
 
 function makeIdempotencyKey(input: string): string {
@@ -62,7 +63,7 @@ export async function adminInventoryImportCreateBatch(ctx: ActionContext, payloa
 export async function adminInventoryImportPreview(ctx: ActionContext, payload: any) { const batch = await getBatchOrThrow(ctx, payload.storeId, payload.batchId); const rows = await ctx.db.getRepository(InventoryImportRow).find({ where: { batchId: batch.id }, order: { rowIndex: 'ASC' as any }, take: payload.maxRows ?? 100 }); const unmappedPrefixes = await computeUnmapped(ctx, batch.id, payload.storeId); return { batch, previewRows: rows, unmappedPrefixes, counts: { totalRows: batch.totalRows, parsedRows: batch.parsedRows, parseErrorsCount: batch.parseErrorsCount, unmappedPrefixesCount: batch.unmappedPrefixesCount }, parseErrors: rows.filter((r: InventoryImportRow) => r.parseStatus === 'error') }; }
 export async function adminInventoryImportGetUnmappedPrefixes(ctx: ActionContext, payload: any) { await getBatchOrThrow(ctx, payload.storeId, payload.batchId); const prefixes = await computeUnmapped(ctx, payload.batchId, payload.storeId); const rows = await ctx.db.getRepository(InventoryImportRow).find({ where: { batchId: payload.batchId, parseStatus: 'ok' } }); return { unmappedPrefixes: prefixes.map((p: { prefix: string; count: number }) => ({ prefix: p.prefix, count: p.count, sampleRows: rows.filter((r: InventoryImportRow) => r.prefix === p.prefix).slice(0, 3) })) }; }
 
-async function ensureCategory(tx: EntityManager, storeId: string) { let category = await tx.getRepository(Category).findOne({ where: { storeId }, order: { createdAt: 'ASC' as any } }); if (!category) category = await tx.getRepository(Category).save(tx.getRepository(Category).create({ id: uuidv4(), storeId, name: 'Uncategorized', slug: `uncategorized-${storeId.toLowerCase()}`, sortOrder: 0, status: 'active', parentId: null })); return category; }
+async function ensureCategory(tx: EntityManager, storeId: string) { let category = await tx.getRepository(Category).findOne({ where: [{ mode: 'store', storeId }, { mode: 'global', storeId: null }] as any, order: { createdAt: 'ASC' as any } }); if (!category) category = await tx.getRepository(Category).save(tx.getRepository(Category).create({ id: uuidv4(), mode: 'store', storeId, name: 'Uncategorized', slug: `uncategorized-${storeId.toLowerCase()}`, sortOrder: 0, status: 'active', parentId: null })); return category; }
 
 export async function adminInventoryImportResolvePrefixes(ctx: ActionContext, payload: any) {
   const batch = await getBatchOrThrow(ctx, payload.storeId, payload.batchId);
@@ -76,11 +77,12 @@ export async function adminInventoryImportResolvePrefixes(ctx: ActionContext, pa
       let productId: string = resolution.productId;
       if (resolution.mode === 'createNew') {
         const id = uuidv4();
-        await tx.getRepository(Product).save(tx.getRepository(Product).create({ id, storeId: payload.storeId, categoryId: category.id, name: resolution.product.name, slug: `${resolution.product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 6)}`, description: [resolution.product.company, resolution.product.unit].filter(Boolean).join(' | ') || null, status: 'active' }));
+        await tx.getRepository(Product).save(tx.getRepository(Product).create({ id, mode: 'store', storeId: payload.storeId, categoryId: category.id, name: resolution.product.name, slug: `${resolution.product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 6)}`, description: [resolution.product.company, resolution.product.unit].filter(Boolean).join(' | ') || null, status: 'active' }));
+        await tx.getRepository(ProductCategory).insert({ id: uuidv4(), productId: id, categoryId: category.id, isPrimary: true });
         productId = id;
         createdProductsCount += 1;
       }
-      const product = await tx.getRepository(Product).findOneBy({ id: productId, storeId: payload.storeId });
+      const product = await tx.getRepository(Product).findOne({ where: [{ id: productId, mode: 'store', storeId: payload.storeId }, { id: productId, mode: 'global', storeId: null }] as any });
       if (!product) throw new AppError('NOT_FOUND', `Product not found for prefix ${prefix}`);
       await tx.getRepository(ProductPrefixMapping).upsert({ storeId: payload.storeId, prefix, productId }, ['storeId', 'prefix']);
     }

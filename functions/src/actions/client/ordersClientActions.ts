@@ -24,6 +24,9 @@ import { UserAddress } from '../../entities/UserAddress';
 import { resolveDeliveryQuote } from '../../utils/deliveryQuote';
 import { createFawaterkInvoice } from '../../utils/fawaterk';
 import { UserProfile } from '../../entities/UserProfile';
+import { StockMovement } from '../../entities/StockMovement';
+import { recomputeProductMetrics } from '../productMetrics';
+import { tryPostBusinessEvent } from '../../core/accounting/postingIntegration';
 
 async function getCart(ctx: ActionContext) {
   const uid = requireSessionIdentity(ctx);
@@ -172,7 +175,27 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
       if (i.variantId) {
         const v = await tx.getRepository(ProductVariant).findOneBy({ id: i.variantId });
         if (!v || v.stockQty < i.qty) throw new AppError('OUT_OF_STOCK', 'Variant stock insufficient');
-        await tx.getRepository(ProductVariant).decrement({ id: i.variantId }, 'stockQty', i.qty);
+        const beforeQty = Number(v.stockQty);
+        const afterQty = beforeQty - i.qty;
+        await tx.getRepository(ProductVariant).update({ id: i.variantId }, { stockQty: Math.round(afterQty) });
+        await tx.getRepository(StockMovement).save(tx.getRepository(StockMovement).create({
+          id: uuidv4(),
+          storeId: ctx.storeId!,
+          variantId: i.variantId,
+          warehouseId: null,
+          warehouseLocationId: null,
+          lotId: null,
+          movementType: 'sale_issue',
+          qtyDelta: (-i.qty).toFixed(3),
+          beforeQty: beforeQty.toFixed(3),
+          afterQty: afterQty.toFixed(3),
+          unitCostCents: null,
+          sourceDocumentType: 'order',
+          sourceDocumentId: orderId,
+          sourceEventType: 'checkout_create_payment_session',
+          metadata: { productId: i.productId },
+          createdByUid: uid,
+        }));
       }
     }
 
@@ -342,6 +365,20 @@ export async function paymentsConfirm(ctx: ActionContext, payload: any) {
     await tx.getRepository(PaymentSession).update({ id: session.id }, { status: 'paid' });
     await tx.getRepository(Order).update({ id: order.id }, { paymentStatus: 'paid', status: 'placed' });
     await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({ id: uuidv4(), orderId: order.id, status: 'placed', note: 'payment confirmed', createdByUid: uid }));
+    const rows = await tx.getRepository(Order).query('SELECT DISTINCT productId FROM order_items WHERE orderId=?', [order.id]);
+    for (const row of rows) {
+      if (typeof row?.productId === 'string' && row.productId) await recomputeProductMetrics(tx, row.productId, ctx.storeId!);
+    }
+  });
+
+  await tryPostBusinessEvent(ctx.db, {
+    storeId: order.storeId,
+    sourceDocumentType: 'order',
+    sourceDocumentId: order.id,
+    sourceEventType: 'payment_confirmed',
+    amountCents: Number(order.totalCents),
+    createdByUid: uid,
+    metadata: { paymentSessionId: session.id, provider: session.provider ?? null },
   });
 
   return { order: await ctx.db.getRepository(Order).findOneByOrFail({ id: order.id }), idempotent: false };

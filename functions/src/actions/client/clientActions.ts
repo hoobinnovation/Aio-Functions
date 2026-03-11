@@ -11,6 +11,7 @@ import { UserAccountDeleteRequest } from '../../entities/UserAccountDeleteReques
 import { Store } from '../../entities/Store';
 import { UserStoreContext } from '../../entities/UserStoreContext';
 import { ensureUserProfileForUid, requireAccountIdentity, requireSessionIdentity } from '../../core/identity';
+import { buildProviderStateSnapshot } from '../../core/auth/providerState';
 
 function extSafe(ext: string) {
   return ext.replace(/^\./, '').toLowerCase();
@@ -43,8 +44,10 @@ export async function clientActionsList() {
 export async function authEnsureUserProfile(ctx: ActionContext) {
   const uid = requireSessionIdentity(ctx);
   const profile = await ctx.db.transaction(async (tx: EntityManager) => ensureUserProfileForUid(tx, uid));
+  const providers = await ctx.db.transaction(async (tx: EntityManager) => buildProviderStateSnapshot(tx, uid));
   return {
     profile,
+    providers,
     identityType: ctx.auth?.isAnonymous ? 'guestAnonymous' : 'authenticatedCustomer',
   };
 }

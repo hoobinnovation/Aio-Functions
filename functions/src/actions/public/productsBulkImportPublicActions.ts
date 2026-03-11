@@ -8,6 +8,9 @@ import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
 import { ProductImportReference } from '../../entities/ProductImportReference';
 import { ProductImage } from '../../entities/ProductImage';
+import { ProductCategory } from '../../entities/ProductCategory';
+import { ProductBaseMedia } from '../../entities/ProductBaseMedia';
+import { StoreProductMediaOverride } from '../../entities/StoreProductMediaOverride';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { getBucketName, getStorage } from '../../utils/storage';
 
@@ -78,7 +81,8 @@ function hashPayload(payload: unknown): string {
 
 async function ensureCategoryHierarchy(
   tx: EntityManager,
-  storeId: string,
+  storeId: string | null,
+  mode: 'global' | 'store',
   parentCategoryNameRaw: string,
   categoryNameRaw: string,
 ): Promise<{ parentCategory: Category; childCategory: Category }> {
@@ -87,7 +91,7 @@ async function ensureCategoryHierarchy(
   if (!parentCategoryName) throw new AppError('VALIDATION_FAILED', 'parentCategoryName is required');
   if (!categoryName) throw new AppError('VALIDATION_FAILED', 'categoryName is required');
 
-  const categories = await tx.getRepository(Category).find({ where: { storeId } });
+  const categories = await tx.getRepository(Category).find({ where: { storeId, mode } as any });
   const parentNorm = normalizeNameForCompare(parentCategoryName);
   let parentCategory = categories.find((c: Category) => c.parentId == null && normalizeNameForCompare(c.name) === parentNorm);
 
@@ -95,6 +99,7 @@ async function ensureCategoryHierarchy(
     const parentSlugBase = toSlug(parentCategoryName) || `category-${uuidv4().slice(0, 6)}`;
     parentCategory = tx.getRepository(Category).create({
       id: uuidv4(),
+      mode,
       storeId,
       name: parentCategoryName,
       slug: `${parentSlugBase}-${uuidv4().slice(0, 6)}`,
@@ -112,6 +117,7 @@ async function ensureCategoryHierarchy(
     const childSlugBase = toSlug(categoryName) || `category-${uuidv4().slice(0, 6)}`;
     childCategory = tx.getRepository(Category).create({
       id: uuidv4(),
+      mode,
       storeId,
       name: categoryName,
       slug: `${childSlugBase}-${uuidv4().slice(0, 6)}`,
@@ -170,8 +176,12 @@ function normalizeRow(row: unknown): { value: NormalizedRow | null; error: strin
 }
 
 async function buildUniqueProductSlug(tx: EntityManager, storeId: string, base: string, productId: string): Promise<string> {
+  return buildUniqueProductSlugByScope(tx, 'store', storeId, base, productId);
+}
+
+async function buildUniqueProductSlugByScope(tx: EntityManager, mode: 'global' | 'store', storeId: string | null, base: string, productId: string): Promise<string> {
   const candidate = `${base}-${productId.slice(0, 6)}`.slice(0, 200);
-  const existing = await tx.getRepository(Product).findOneBy({ storeId, slug: candidate });
+  const existing = await tx.getRepository(Product).findOneBy({ mode, storeId, slug: candidate } as any);
   if (!existing || existing.id === productId) return candidate;
   return `${base}-${productId.slice(0, 10)}`.slice(0, 200);
 }
@@ -203,6 +213,7 @@ async function refreshProductImage(
   storeId: string,
   productId: string,
   imageUrl: string,
+  mediaScope: 'base' | 'storeOverride',
 ): Promise<{ uploaded: boolean; warning?: string }> {
   if (!isValidImageUrl(imageUrl)) {
     return { uploaded: false, warning: 'invalid image URL' };
@@ -248,6 +259,8 @@ async function refreshProductImage(
     await tx.getRepository(MediaAsset).save(media);
 
     const productImageRepo = tx.getRepository(ProductImage);
+    const baseMediaRepo = tx.getRepository(ProductBaseMedia);
+    const storeOverrideRepo = tx.getRepository(StoreProductMediaOverride);
     const existing = await productImageRepo.find({ where: { productId }, order: { sortOrder: 'ASC' as any } });
 
     if (existing.length) {
@@ -259,6 +272,22 @@ async function refreshProductImage(
       await productImageRepo.save(productImageRepo.create({ id: uuidv4(), productId, mediaAssetId: assetId, sortOrder: 0 }));
     }
 
+    if (mediaScope === 'base') {
+      const existingBase = await baseMediaRepo.find({ where: { productId }, order: { sortOrder: 'ASC' as any } });
+      if (existingBase.length) {
+        await baseMediaRepo.update({ id: existingBase[0].id }, { mediaAssetId: assetId, sortOrder: 0 });
+      } else {
+        await baseMediaRepo.insert({ id: uuidv4(), productId, mediaAssetId: assetId, sortOrder: 0 });
+      }
+    } else {
+      const existingOverride = await storeOverrideRepo.find({ where: { storeId, productId }, order: { sortOrder: 'ASC' as any } });
+      if (existingOverride.length) {
+        await storeOverrideRepo.update({ id: existingOverride[0].id }, { mediaAssetId: assetId, sortOrder: 0 });
+      } else {
+        await storeOverrideRepo.insert({ id: uuidv4(), storeId, productId, mediaAssetId: assetId, sortOrder: 0 });
+      }
+    }
+
     return { uploaded: true };
   } catch (error: any) {
     return { uploaded: false, warning: `image pipeline failed: ${error?.message ?? String(error)}` };
@@ -268,7 +297,14 @@ async function refreshProductImage(
 export async function publicProductsBulkImportFromJson(ctx: ActionContext, payload: any) {
   const normalizedStoreIdRaw = normalizeText(payload?.storeId);
   const storeId = normalizedStoreIdRaw && /^\d+$/.test(normalizedStoreIdRaw) ? String(Number(normalizedStoreIdRaw)) : normalizedStoreIdRaw;
-  if (!storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required');
+  const productMode = payload?.productMode === 'global' ? 'global' : 'store';
+  const categoryMode = payload?.categoryMode === 'global' ? 'global' : 'store';
+  const importStoreId = productMode === 'global' ? null : storeId;
+  const categoryStoreId = categoryMode === 'global' ? null : storeId;
+  const referenceStoreId = storeId ?? 'global';
+  if ((productMode === 'store' || categoryMode === 'store') && !storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required for store-scoped imports');
+  const mediaScope = payload?.mediaScope === 'storeOverride' ? 'storeOverride' : 'base';
+  if (mediaScope === 'storeOverride' && !storeId) throw new AppError('VALIDATION_FAILED', 'storeId is required for store media overrides');
 
   const parentCategoryName = normalizeText(payload?.parentCategoryName);
   const categoryName = normalizeText(payload?.categoryName);
@@ -276,8 +312,10 @@ export async function publicProductsBulkImportFromJson(ctx: ActionContext, paylo
   if (!categoryName) throw new AppError('VALIDATION_FAILED', 'categoryName is required');
   if (!Array.isArray(payload?.data) || payload.data.length === 0) throw new AppError('VALIDATION_FAILED', 'data must be a non-empty array');
 
-  const store = await ctx.db.getRepository(Store).findOneBy({ id: storeId });
-  if (!store) throw new AppError('NOT_FOUND', 'Store not found');
+  if (storeId) {
+    const store = await ctx.db.getRepository(Store).findOneBy({ id: storeId });
+    if (!store) throw new AppError('NOT_FOUND', 'Store not found');
+  }
 
   const report = {
     storeId,
@@ -318,27 +356,28 @@ export async function publicProductsBulkImportFromJson(ctx: ActionContext, paylo
   report.totalRowsNormalized = dedup.size;
 
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const { parentCategory, childCategory } = await ensureCategoryHierarchy(tx, storeId, parentCategoryName, categoryName);
+    const { parentCategory, childCategory } = await ensureCategoryHierarchy(tx, categoryStoreId, categoryMode, parentCategoryName, categoryName);
     report.parentCategoryId = parentCategory.id;
     report.categoryId = childCategory.id;
 
     for (const row of dedup.values()) {
       try {
         let reference = await tx.getRepository(ProductImportReference).findOneBy({
-          storeId,
+          storeId: referenceStoreId,
           sourceType: SOURCE_TYPE,
           sourceKey: row.sourceKey,
         });
 
         let productId = reference?.productId;
-        let product = productId ? await tx.getRepository(Product).findOneBy({ id: productId, storeId }) : null;
+        let product = productId ? await tx.getRepository(Product).findOneBy({ id: productId, mode: productMode, storeId: importStoreId } as any) : null;
 
         if (!product) {
           productId = uuidv4();
-          const slug = await buildUniqueProductSlug(tx, storeId, row.finalSlugBase, productId);
+          const slug = await buildUniqueProductSlugByScope(tx, productMode, importStoreId, row.finalSlugBase, productId);
           product = tx.getRepository(Product).create({
             id: productId,
-            storeId,
+            mode: productMode,
+            storeId: importStoreId,
             categoryId: childCategory.id,
             name: row.finalName,
             slug,
@@ -353,10 +392,12 @@ export async function publicProductsBulkImportFromJson(ctx: ActionContext, paylo
           await tx.getRepository(Product).save(product);
           report.productsCreated += 1;
         } else {
-          const slug = await buildUniqueProductSlug(tx, storeId, row.finalSlugBase, product.id);
+          const slug = await buildUniqueProductSlugByScope(tx, productMode, importStoreId, row.finalSlugBase, product.id);
           await tx.getRepository(Product).update(
             { id: product.id },
             {
+              mode: productMode,
+              storeId: importStoreId,
               categoryId: childCategory.id,
               name: row.finalName,
               slug,
@@ -372,11 +413,16 @@ export async function publicProductsBulkImportFromJson(ctx: ActionContext, paylo
           report.productsUpdated += 1;
         }
 
+        const existingPrimary = await tx.getRepository(ProductCategory).findOneBy({ productId: product.id, categoryId: childCategory.id });
+        if (!existingPrimary) {
+          await tx.getRepository(ProductCategory).insert({ id: uuidv4(), productId: product.id, categoryId: childCategory.id, isPrimary: true });
+        }
+
         const sourcePayloadHash = hashPayload(row.sourceRow);
         if (!reference) {
           reference = tx.getRepository(ProductImportReference).create({
             id: uuidv4(),
-            storeId,
+            storeId: referenceStoreId,
             productId: product.id,
             sourceType: SOURCE_TYPE,
             sourceKey: row.sourceKey,
@@ -409,7 +455,7 @@ export async function publicProductsBulkImportFromJson(ctx: ActionContext, paylo
 
         if (row.mainImageUrl) {
           report.imagesAttempted += 1;
-          const imageResult = await refreshProductImage(tx, ctx, storeId, product.id, row.mainImageUrl);
+          const imageResult = await refreshProductImage(tx, ctx, storeId ?? 'global', product.id, row.mainImageUrl, mediaScope);
           if (imageResult.uploaded) {
             report.imagesUploaded += 1;
           } else {

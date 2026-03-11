@@ -5,6 +5,8 @@ import { AppError } from '../../core/errors';
 import { Category } from '../../entities/Category';
 import { Product } from '../../entities/Product';
 import { ProductImage } from '../../entities/ProductImage';
+import { ProductBaseMedia } from '../../entities/ProductBaseMedia';
+import { StoreProductMediaOverride } from '../../entities/StoreProductMediaOverride';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { SeoSetting } from '../../entities/SeoSetting';
 import { SitemapRun } from '../../entities/SitemapRun';
@@ -14,6 +16,7 @@ import { LandingPage } from '../../entities/LandingPage';
 import { CashbackOffer } from '../../entities/CashbackOffer';
 import { resolveMediaPublicUrl } from '../../utils/mediaPublicUrl';
 import { parseFeatureVisibilityJson } from './storeFeatureVisibility';
+import { resolveStoreVisibleCategories, resolveStoreVisibleProducts } from '../catalogResolver';
 
 export type SeoArtifactKey = 'robots' | 'index' | 'products' | 'categories' | 'pages' | 'images';
 
@@ -192,15 +195,21 @@ export async function exportStoreSeoArtifacts(ctx: ActionContext, payload: any) 
   const seoRows = await ctx.db.getRepository(SeoSetting).find({ where: { storeId } }) as SeoSetting[];
   const baseUrl = await resolveBaseUrl(ctx, store, seoRows);
 
-  const categoriesAll = await ctx.db.getRepository(Category).find({ where: { storeId } }) as Category[];
+  const categoriesAll = await resolveStoreVisibleCategories(ctx.db, storeId, includeInactive) as Category[];
   const categories = categoriesAll
     .filter((row: Category) => (row.slug ?? '').trim().length > 0)
     .filter((row: Category) => isIndexableStatus(row.status, includeInactive));
 
   const indexedCategoryIds = new Set(categories.map((c: Category) => c.id));
 
-  const productsAll = await ctx.db.getRepository(Product).find({ where: { storeId } }) as Product[];
-  const products = productsAll
+  const productsVisible = await resolveStoreVisibleProducts(ctx.db, storeId, {
+    includeDisabled: includeInactive,
+    sortBy: 'updatedAt',
+    sortDirection: 'DESC',
+    limit: 100000,
+    offset: 0,
+  });
+  const products = (productsVisible.rows as Product[])
     .filter((row: Product) => (row.slug ?? '').trim().length > 0)
     .filter((row: Product) => isIndexableStatus(row.status, includeInactive))
     .filter((row: Product) => !row.categoryId || indexedCategoryIds.has(row.categoryId));
@@ -253,15 +262,29 @@ export async function exportStoreSeoArtifacts(ctx: ActionContext, payload: any) 
 
   const indexableProductIds = [...indexableProductsById.keys()];
   const productImagesAll = await ctx.db.getRepository(ProductImage).find({ order: { sortOrder: 'ASC' as any } }) as ProductImage[];
+  const productBaseMediaAll = await ctx.db.getRepository(ProductBaseMedia).find({ order: { sortOrder: 'ASC' as any } }) as ProductBaseMedia[];
+  const storeOverridesAll = await ctx.db.getRepository(StoreProductMediaOverride).find({ where: { storeId }, order: { sortOrder: 'ASC' as any } }) as StoreProductMediaOverride[];
   const productImages = productImagesAll.filter((row: ProductImage) => indexableProductIds.includes(row.productId));
+  const productBaseMedia = productBaseMediaAll.filter((row: ProductBaseMedia) => indexableProductIds.includes(row.productId));
+  const storeOverrides = storeOverridesAll.filter((row: StoreProductMediaOverride) => indexableProductIds.includes(row.productId));
 
-  const mediaIds = [...new Set(productImages.map((row: ProductImage) => row.mediaAssetId))];
+  const mediaIds = [...new Set([
+    ...productImages.map((row: ProductImage) => row.mediaAssetId),
+    ...productBaseMedia.map((row: ProductBaseMedia) => row.mediaAssetId),
+    ...storeOverrides.map((row: StoreProductMediaOverride) => row.mediaAssetId),
+  ])];
   const mediaRowsAll = mediaIds.length > 0 ? await ctx.db.getRepository(MediaAsset).find() as MediaAsset[] : [];
   const mediaRows = mediaRowsAll.filter((row: MediaAsset) => mediaIds.includes(row.id));
   const mediaById = new Map(mediaRows.map((row: MediaAsset) => [row.id, row]));
 
   const imagesByProduct = new Map<string, string[]>();
-  for (const relation of productImages) {
+  const imageRelations = [
+    ...storeOverrides.map((row: StoreProductMediaOverride) => ({ productId: row.productId, mediaAssetId: row.mediaAssetId })),
+    ...productBaseMedia.map((row: ProductBaseMedia) => ({ productId: row.productId, mediaAssetId: row.mediaAssetId })),
+    ...productImages.map((row: ProductImage) => ({ productId: row.productId, mediaAssetId: row.mediaAssetId })),
+  ];
+
+  for (const relation of imageRelations) {
     const product = indexableProductsById.get(relation.productId);
     if (!product) continue;
 

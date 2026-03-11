@@ -6,9 +6,9 @@ import { FeaturedItem } from '../../entities/FeaturedItem';
 import { HomeSection } from '../../entities/HomeSection';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { Product } from '../../entities/Product';
-import { ProductImage } from '../../entities/ProductImage';
 import { ProductVariant } from '../../entities/ProductVariant';
 import { StoreSettings } from '../../entities/StoreSettings';
+import { resolveEffectiveProductMedia } from '../catalogResolver';
 
 const adminSdk = require('firebase-admin') as any;
 
@@ -234,11 +234,11 @@ async function loadHomeDataContext(ctx: ActionContext, storeId: string): Promise
     : [];
   const bannerMediaMap = new Map<string, MediaAsset>(bannerMediaRows.map((m: MediaAsset) => [m.id, m] as const));
 
-  const categories = await ctx.db.getRepository(Category).find({ where: { storeId, status: 'active' }, order: { sortOrder: 'ASC' as any } });
+  const categories = await ctx.db.query("SELECT * FROM categories WHERE ((mode='global' AND storeId IS NULL) OR (mode='store' AND storeId=?)) AND status='active' ORDER BY sortOrder ASC", [storeId]);
 
   const featured = await ctx.db.getRepository(FeaturedItem).find({ where: { storeId }, order: { sortOrder: 'ASC' as any } });
 
-  const products = await ctx.db.getRepository(Product).find({ where: { storeId, status: 'active' }, order: { updatedAt: 'DESC' as any } });
+  const products = await ctx.db.query("SELECT * FROM products WHERE ((mode='global' AND storeId IS NULL) OR (mode='store' AND storeId=?)) AND status='active' ORDER BY updatedAt DESC", [storeId]);
   const productById = new Map<string, Product>(products.map((p: Product) => [p.id, p] as const));
 
   const variants = products.length
@@ -252,24 +252,15 @@ async function loadHomeDataContext(ctx: ActionContext, storeId: string): Promise
     if (!primaryVariantByProductId.get(v.productId)) primaryVariantByProductId.set(v.productId, v);
   }
 
-  const productImages = products.length
-    ? (await ctx.db.getRepository(ProductImage).find({ order: { sortOrder: 'ASC' as any } }))
-      .filter((img: ProductImage) => productById.has(img.productId))
-    : [];
-
-  const imageByProductId = new Map<string, ProductImage>();
-  for (const image of productImages) {
-    if (!imageByProductId.has(image.productId)) imageByProductId.set(image.productId, image);
-  }
-
-  const productMediaRows = productImages.length
-    ? await ctx.db.getRepository(MediaAsset).findByIds(productImages.map((i: ProductImage) => i.mediaAssetId) as any)
+  const mediaByProductId = await resolveEffectiveProductMedia(ctx.db, storeId, products.map((p: Product) => p.id));
+  const productMediaRows = mediaByProductId.size
+    ? await ctx.db.getRepository(MediaAsset).findByIds(Array.from(new Set([...mediaByProductId.values()])) as any)
     : [];
   const productMediaMap = new Map<string, MediaAsset>(productMediaRows.map((m: MediaAsset) => [m.id, m] as const));
   const productImageByProductId = new Map<string, MediaAsset | null>();
   for (const p of products) {
-    const img = imageByProductId.get(p.id);
-    productImageByProductId.set(p.id, img ? (productMediaMap.get(img.mediaAssetId) ?? null) : null);
+    const mediaAssetId = mediaByProductId.get(p.id);
+    productImageByProductId.set(p.id, mediaAssetId ? (productMediaMap.get(mediaAssetId) ?? null) : null);
   }
 
   const storeSettings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId });
@@ -374,6 +365,8 @@ function buildProductRailPayload(section: NormalizedHomeSection, dataCtx: BuildH
         compareAtPrice: Number.isFinite(compareAt) ? compareAt : null,
         currency: dataCtx.storeSettings?.currency ?? 'USD',
         inStock: variant ? variant.stockQty > 0 : false,
+        ratingAverage: Number(p.ratingAverage ?? 0),
+        popularityScore: Number(p.popularityScore ?? 0),
         favorite: {
           supported: true,
           toggleAction: 'productFavoritesToggle',
