@@ -89,6 +89,22 @@ Unified protocol:
 - Success: `{ ok:true, data:{ meta }, meta }`.
 - Errors: `VALIDATION_ERROR`, `INTERNAL`.
 
+### publicSeoGetPageSettings
+- Gateway public. `storeId` required.
+- Payload `{ pageType, pageKey }`.
+- Steps: compatibility alias for `publicSeoGetPageMeta`.
+- DB: `seo_settings`.
+- Success: `{ ok:true, data:{ meta }, meta }`.
+- Errors: `VALIDATION_ERROR`, `INTERNAL`.
+
+### publicSeoSettingsGet
+- Gateway public. `storeId` required.
+- Payload `{ pageType, pageKey }`.
+- Steps: compatibility alias for `publicSeoGetPageMeta`.
+- DB: `seo_settings`.
+- Success: `{ ok:true, data:{ meta }, meta }`.
+- Errors: `VALIDATION_ERROR`, `INTERNAL`.
+
 ### publicSeoGetLanding
 - Gateway public. `storeId` required.
 - Payload `{ slug }`.

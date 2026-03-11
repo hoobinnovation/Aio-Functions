@@ -11,6 +11,8 @@ import {
     publicCategoryGetById,
     publicCategoryGetBySlug,
     publicSeoGetPageMeta,
+    publicSeoGetPageSettings,
+    publicSeoSettingsGet,
     publicSeoGetLanding,
 } from '../actions/public/catalogPublicActions';
 import {
@@ -183,6 +185,7 @@ import {
     adminFeaturedList,
     adminFeaturedSearchProducts,
     adminFeaturedSet,
+    adminCatalogRebuildProductMetrics,
     adminProductsList,
     adminProductsGet,
     adminProductsCreate,
@@ -339,6 +342,8 @@ add(registryPublic, 'publicProductGetBySlug', publicProductGetBySlug as ActionHa
 add(registryPublic, 'publicCategoryGetById', publicCategoryGetById as ActionHandler);
 add(registryPublic, 'publicCategoryGetBySlug', publicCategoryGetBySlug as ActionHandler);
 add(registryPublic, 'publicSeoGetPageMeta', publicSeoGetPageMeta as ActionHandler);
+add(registryPublic, 'publicSeoGetPageSettings', publicSeoGetPageSettings as ActionHandler);
+add(registryPublic, 'publicSeoSettingsGet', publicSeoSettingsGet as ActionHandler);
 add(registryPublic, 'publicSeoGetLanding', publicSeoGetLanding as ActionHandler);
 add(registryPublic, 'publicProductsBulkImportFromJson', publicProductsBulkImportFromJson as ActionHandler);
 
@@ -456,6 +461,7 @@ add(registryAdmin, 'adminBannersDisable', adminBannersDisable as ActionHandler);
 add(registryAdmin, 'adminFeaturedList', adminFeaturedList as ActionHandler);
 add(registryAdmin, 'adminFeaturedSearchProducts', adminFeaturedSearchProducts as ActionHandler);
 add(registryAdmin, 'adminFeaturedSet', adminFeaturedSet as ActionHandler);
+add(registryAdmin, 'adminCatalogRebuildProductMetrics', adminCatalogRebuildProductMetrics as ActionHandler);
 add(registryAdmin, 'adminProductsList', adminProductsList as ActionHandler);
 add(registryAdmin, 'adminProductsGet', adminProductsGet as ActionHandler);
 add(registryAdmin, 'adminProductsCreate', adminProductsCreate as ActionHandler);

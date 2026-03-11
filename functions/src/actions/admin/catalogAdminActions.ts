@@ -16,6 +16,17 @@ import { AppError } from '../../core/errors';
 import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
 import { normalizeSectionForWrite, publishHomeLayoutForStore } from '../home/homeBuilder';
 import { exportStoreSeoArtifacts } from './seoExportArtifacts';
+import { recomputeStoreProductsMetrics } from '../productMetrics';
+
+const ADMIN_PRODUCT_QUERY_CONTRACT = {
+  allowedSortFields: ['updatedAt', 'createdAt', 'name', 'slug', 'categoryId', 'status', 'ratingAverage', 'popularityScore'],
+  sortAliases: {
+    newest: { by: 'createdAt', direction: 'desc' as const },
+    recentlyUpdated: { by: 'updatedAt', direction: 'desc' as const },
+    topRated: { by: 'ratingAverage', direction: 'desc' as const },
+    mostPopular: { by: 'popularityScore', direction: 'desc' as const },
+  },
+};
 
 async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: string) {
   const row = await ctx.db.getRepository(repo).findOneBy({ id });
@@ -59,11 +70,15 @@ export async function adminFeaturedSet(ctx: ActionContext, payload: any) {
   return adminFeaturedList(ctx, { storeId: payload.storeId });
 }
 
-export async function adminProductsList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { products: await ctx.db.getRepository(Product).find({ where: { storeId }, order: { updatedAt: 'DESC' as any }, take: q.limit, skip: q.offset }) }; }
+export async function adminProductsList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200, defaultSort: { by: 'updatedAt', dir: 'desc' }, contract: ADMIN_PRODUCT_QUERY_CONTRACT }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { products: await ctx.db.getRepository(Product).find({ where: { storeId }, order: { [q.sort.by]: q.sort.direction.toUpperCase() as any }, take: q.limit, skip: q.offset }) }; }
 export async function adminProductsGet(ctx: ActionContext, payload: any) { return { product: await byIdOrThrow(ctx, Product, payload.id, 'Product not found') }; }
 export async function adminProductsCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(Product).save(tx.getRepository(Product).create({ id, ...payload }));}); return adminProductsGet(ctx,{id}); }
 export async function adminProductsUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ const r=await tx.getRepository(Product).update({id:payload.id},payload); if(!r.affected) throw new AppError('NOT_FOUND','Product not found');}); return adminProductsGet(ctx,{id:payload.id}); }
 export async function adminProductsDisable(ctx: ActionContext, payload: any) { return adminProductsUpdate(ctx,{id:payload.id,status:'disabled'}); }
+export async function adminCatalogRebuildProductMetrics(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  return ctx.db.transaction(async (tx: EntityManager) => recomputeStoreProductsMetrics(tx, storeId));
+}
 
 export async function adminProductImagesList(ctx: ActionContext, payload: any) { return { images: await ctx.db.getRepository(ProductImage).find({ where: { productId: payload.productId }, order: { sortOrder: 'ASC' as any } }) }; }
 export async function adminProductImagesAdd(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(ProductImage).save(tx.getRepository(ProductImage).create({ id, ...payload }));}); return adminProductImagesList(ctx,{productId:payload.productId}); }
