@@ -26,6 +26,7 @@ function toErrorResponse(err: unknown, requestId: string, serverTime: string): U
             details: appErr.details,
         },
         meta: { requestId, serverTime },
+        raw:err
     };
 }
 

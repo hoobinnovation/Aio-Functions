@@ -47,11 +47,11 @@ export function validatePasswordStrengthOrThrow(passwordInput: unknown): string 
     throw new AppError('PASSWORD_TOO_WEAK', 'Password must be at least 8 characters long');
   }
 
-  const hasLetter = /[A-Za-z]/.test(password);
-  const hasDigit = /\d/.test(password);
-  if (!hasLetter || !hasDigit) {
-    throw new AppError('PASSWORD_TOO_WEAK', 'Password must contain letters and numbers');
-  }
+  // const hasLetter = /[A-Za-z]/.test(password);
+  // const hasDigit = /\d/.test(password);
+  // if (!hasLetter || !hasDigit) {
+  //   throw new AppError('PASSWORD_TOO_WEAK', 'Password must contain letters and numbers');
+  // }
 
   return password;
 }

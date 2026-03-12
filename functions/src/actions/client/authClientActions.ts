@@ -64,6 +64,7 @@ export async function authPhonePasswordRegister(ctx: ActionContext, payload: any
 
   return {
     customToken,
+    firebaseCustomToken:customToken,
     profile,
     providers,
     identityType: 'authenticatedCustomer',
