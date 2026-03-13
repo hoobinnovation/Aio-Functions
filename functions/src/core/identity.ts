@@ -4,6 +4,7 @@ import { AppError } from './errors';
 import { UserProfile } from '../entities/UserProfile';
 import { UserAddress } from '../entities/UserAddress';
 import { v4 as uuidv4 } from 'uuid';
+import { enrichProfileFromAuthRecord } from './auth/profileShape';
 
 export function requireSessionIdentity(ctx: ActionContext): string {
   const uid = ctx.uid ?? ctx.auth?.uid;
@@ -28,7 +29,7 @@ export async function ensureUserProfileForUid(tx: EntityManager, uid: string): P
     profile = repo.create({ uid, status: 'active' });
     await repo.save(profile);
   }
-  return profile;
+  return enrichProfileFromAuthRecord(tx, uid, profile);
 }
 
 export async function hydrateProfileFromCheckout(tx: EntityManager, uid: string, input: any): Promise<UserProfile> {

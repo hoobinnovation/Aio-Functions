@@ -10,8 +10,14 @@ import { bootstrapCreateStoreWithOwner } from './actions/bootstraps/createStoreW
 import { storageThumbnails_onFinalize } from './triggers/storageThumbnails_onFinalize';
 import {getInitializedDataSource} from "./core/db";
 
-adminSdk.initializeApp()
 
+var serviceAccount = require("./service.json")
+
+adminSdk.initializeApp({
+    credential: adminSdk.credential.cert(serviceAccount),
+    databaseURL: "https://aio-erp-sys-default-rtdb.firebaseio.com",
+    storageBucket:"gs://aio-erp-sys.appspot.com"
+});
 export {
   publicGateway as public,
   clientGateway as client,

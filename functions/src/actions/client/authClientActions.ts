@@ -8,6 +8,7 @@ import { requireAccountIdentity, requireSessionIdentity } from '../../core/ident
 import { buildProviderStateSnapshot } from '../../core/auth/providerState';
 import { hashPassword, normalizePhoneNumberOrThrow, validatePasswordStrengthOrThrow, verifyPassword } from '../../core/auth/phonePassword';
 import { mergeGuestState } from '../../core/auth/guestMerge';
+import { enrichProfileFromAuthRecord, presentUserProfile, resolveDisplayNameInput } from '../../core/auth/profileShape';
 
 const adminSdk = require('firebase-admin') as any;
 
@@ -22,7 +23,7 @@ async function upsertProfileForIntentionalAuth(tx: EntityManager, uid: string, p
   const existing = await repo.findOneBy({ uid });
 
   const profilePatch: Partial<UserProfile> = {
-    displayName: normalizeOptionalString(payload?.displayName) ?? existing?.displayName ?? null,
+    displayName: resolveDisplayNameInput(payload, existing?.displayName ?? null),
     phone: normalizeOptionalString(payload?.phone) ?? normalizedPhone,
     email: normalizeOptionalString(payload?.email) ?? existing?.email ?? null,
     locale: normalizeOptionalString(payload?.locale) ?? existing?.locale ?? null,
@@ -31,7 +32,8 @@ async function upsertProfileForIntentionalAuth(tx: EntityManager, uid: string, p
   };
 
   await repo.upsert({ uid, ...profilePatch }, ['uid']);
-  return repo.findOneByOrFail({ uid });
+  const profile = await repo.findOneByOrFail({ uid });
+  return enrichProfileFromAuthRecord(tx, uid, profile);
 }
 
 export async function authPhonePasswordRegister(ctx: ActionContext, payload: any) {
@@ -60,12 +62,20 @@ export async function authPhonePasswordRegister(ctx: ActionContext, payload: any
   });
 
   const providers = await ctx.db.transaction(async (tx: EntityManager) => buildProviderStateSnapshot(tx, uid));
-  const customToken = await adminSdk.auth().createCustomToken(uid);
+    let customToken: string | null = null;
+
+    try {
+        customToken = await adminSdk.auth().createCustomToken(uid);
+    } catch (error: any) {
+        throw new AppError('CREATE_CUSTOM_TOKEN_FAILED',
+            error?.code +'::'+error?.message + '?uid:'+uid
+        );
+    }
 
   return {
     customToken,
     firebaseCustomToken:customToken,
-    profile,
+    profile: presentUserProfile(profile),
     providers,
     identityType: 'authenticatedCustomer',
     upgradeMode: 'sameUidUpgrade',
@@ -107,7 +117,7 @@ export async function authPhonePasswordLogin(ctx: ActionContext, payload: any) {
 
   return {
     customToken,
-    profile: profile!,
+    profile: presentUserProfile(profile!),
     providers,
     identityType: 'authenticatedCustomer',
     mergedGuestState,

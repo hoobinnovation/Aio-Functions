@@ -95,6 +95,13 @@ export const CLIENT_ACTIONS_SOT = [
     'insuranceApproveQuote',
     'insuranceRejectQuote',
     'insuranceListMyOrders',
+    'prescriptionCreateDraft',
+    'prescriptionAttachFiles',
+    'prescriptionSubmit',
+    'prescriptionGet',
+    'prescriptionListMine',
+    'prescriptionCancel',
+    'prescriptionGetWhatsAppContact',
 
     'dineInScanTableCode',
     'dineInGetSession',

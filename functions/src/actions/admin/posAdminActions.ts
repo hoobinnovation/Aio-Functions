@@ -63,3 +63,6 @@ export async function adminPosReturnsGet(ctx: ActionContext, payload: any) {
 export async function adminPosReturnsList(ctx: ActionContext, payload: any) {
   return { items: await ctx.db.getRepository(POSReturn).find({ where: { storeId: payload.storeId }, order: { createdAt: 'DESC' as any }, take: payload.limit ?? 100 }) };
 }
+
+export const adminPosRefundsCreate = adminPosReturnsCreate;
+export const adminPosRefundsList = adminPosReturnsList;

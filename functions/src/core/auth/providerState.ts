@@ -14,7 +14,14 @@ export interface ProviderStateSnapshot {
 export async function buildProviderStateSnapshot(tx: EntityManager, uid: string): Promise<ProviderStateSnapshot> {
   try {
     const credential = await tx.getRepository(AuthPhonePasswordCredential).findOneBy({ uid, status: 'active' });
-    const userRecord = await adminSdk.auth().getUser(uid);
+    let userRecord: any = null;
+    try {
+      userRecord = await adminSdk.auth().getUser(uid);
+    } catch (error: any) {
+      if (String(error?.code || '') !== 'auth/user-not-found') {
+        throw error;
+      }
+    }
     const providerIds = new Set<string>(
       Array.isArray(userRecord?.providerData)
         ? userRecord.providerData

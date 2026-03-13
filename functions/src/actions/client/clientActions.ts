@@ -12,6 +12,7 @@ import { Store } from '../../entities/Store';
 import { UserStoreContext } from '../../entities/UserStoreContext';
 import { ensureUserProfileForUid, requireAccountIdentity, requireSessionIdentity } from '../../core/identity';
 import { buildProviderStateSnapshot } from '../../core/auth/providerState';
+import { presentUserProfile, resolveDisplayNameInput } from '../../core/auth/profileShape';
 
 function extSafe(ext: string) {
   return ext.replace(/^\./, '').toLowerCase();
@@ -46,16 +47,16 @@ export async function authEnsureUserProfile(ctx: ActionContext) {
   const profile = await ctx.db.transaction(async (tx: EntityManager) => ensureUserProfileForUid(tx, uid));
   const providers = await ctx.db.transaction(async (tx: EntityManager) => buildProviderStateSnapshot(tx, uid));
   return {
-    profile,
+    profile: presentUserProfile(profile),
     providers,
     identityType: ctx.auth?.isAnonymous ? 'guestAnonymous' : 'authenticatedCustomer',
   };
 }
 
 export async function profileGet(ctx: ActionContext) {
-  requireAccountIdentity(ctx);
-  const profile = await requireProfile(ctx);
-  return { profile };
+  const uid = requireAccountIdentity(ctx);
+  const profile = await ctx.db.transaction(async (tx: EntityManager) => ensureUserProfileForUid(tx, uid));
+  return { profile: presentUserProfile(profile) };
 }
 
 export async function profileUpdate(ctx: ActionContext, payload: any) {
@@ -65,7 +66,7 @@ export async function profileUpdate(ctx: ActionContext, payload: any) {
     await tx.getRepository(UserProfile).update({ uid }, {
       phone: payload.phone ?? null,
       email: payload.email ?? null,
-      displayName: payload.displayName ?? null,
+      displayName: resolveDisplayNameInput(payload),
       locale: payload.locale ?? null,
       marketingOptIn: payload.marketingOptIn ?? false,
     });

@@ -132,8 +132,11 @@ export const bootstrapCreateStoreWithOwner = onRequest(async (req, res) => {
         await admin.auth().setCustomUserClaims(createdAuthUser.uid, {
             admin: true,
             role: payload.ownerRole || 'superadmin',
+            roles: [payload.ownerRole || 'superadmin'],
             storeId: String(payload.storeId),
-            store_id: String(payload.storeId)
+            store_id: String(payload.storeId),
+            stores: [String(payload.storeId)],
+            storeAccess: [String(payload.storeId)]
         });
 
         return json(res, 200, {
