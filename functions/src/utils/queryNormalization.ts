@@ -312,6 +312,7 @@ export function normalizeSearchInput(payload: any): NormalizedSearchInput {
   const raw = payload?.search?.term ?? payload?.query ?? payload?.q ?? payload?.search;
   if (raw == null || raw === '') return { term: '' };
   const term = toStringOrNull(raw);
+  console.log(raw,term)
   if (term == null) {
     throw new AppError('QUERY_SEARCH_INVALID', 'search term must be a string');
   }
