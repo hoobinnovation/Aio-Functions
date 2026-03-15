@@ -165,7 +165,28 @@ ACTION_SPECS.adminProductAliasGet={schema:Joi.object({storeId:Joi.string().requi
 ACTION_SPECS.adminProductAliasUpsert={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().required(),alias:Joi.string().allow('', null).max(180).required()}).required(),notes:'Upsert product alias',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductAliasDelete={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'Delete product alias',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductImagesList={schema:Joi.object({productId:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'list images',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesAdd={schema:Joi.object({productId:Joi.string().required(),mediaAssetId:Joi.string().required(),sortOrder:Joi.number().integer().optional(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'add image',errorCodes:['VALIDATION_ERROR']};
+
+ACTION_SPECS.adminProductImagesAdd = {
+  schema: Joi.object({
+    productId: Joi.string().required(),
+    mediaAssetId: Joi.string().optional(),
+    assetId: Joi.string().optional(),
+    sortOrder: Joi.number().integer().optional(),
+    scope: Joi.string().valid('legacy', 'base', 'storeOverride').optional(),
+    storeId: Joi.string().optional(),
+  })
+      .custom((value: any, helpers: any) => {
+        if (!value.mediaAssetId && !value.assetId) {
+          return helpers.error('any.invalid');
+        }
+        return value;
+      })
+      .required(),
+  notes: 'add image',
+  errorCodes: ['VALIDATION_ERROR'],
+};
+
+
 ACTION_SPECS.adminProductImagesRemove={schema:Joi.object({id:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional()}).required(),notes:'remove image',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductImagesReorder={schema:Joi.object({productId:Joi.string().required(),items:Joi.any().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'reorder images',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsList={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'list specs',errorCodes:['VALIDATION_ERROR']};
