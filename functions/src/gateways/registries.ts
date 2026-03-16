@@ -188,6 +188,12 @@ import {
     adminReturnsUpdateStatus,
 } from '../actions/admin/ordersAdminActions';
 import {
+    deliveryOrdersList,
+    deliveryOrdersGet,
+    deliveryOrdersTracking,
+    deliveryOrdersUpdateStatus,
+} from '../actions/client/deliveryClientActions';
+import {
     adminCategoriesList,
     adminCategoriesGet,
     adminCategoriesCreate,
@@ -543,6 +549,12 @@ add(registryClient, 'dineInCallWaiter', dineInCallWaiter as ActionHandler);
 add(registryClient, 'dineInRequestBill', dineInRequestBill as ActionHandler);
 add(registryClient, 'reviewsCanReview', reviewsCanReview as ActionHandler);
 add(registryClient, 'reviewsCreate', reviewsCreate as ActionHandler);
+
+add(registryClient, 'deliveryOrdersList', deliveryOrdersList as ActionHandler);
+add(registryClient, 'deliveryOrdersGet', deliveryOrdersGet as ActionHandler);
+add(registryClient, 'deliveryOrdersTracking', deliveryOrdersTracking as ActionHandler);
+add(registryClient, 'deliveryOrdersUpdateStatus', deliveryOrdersUpdateStatus as ActionHandler);
+
 
 export const registryAdmin = m();
 add(registryAdmin, 'adminHealthWhoAmI', adminHealthWhoAmI as ActionHandler);
