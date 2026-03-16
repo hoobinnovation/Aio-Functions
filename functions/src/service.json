@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "aio-erp-sys",
+  "private_key_id": "ab265db9a2a9895d0f0b2344126f7b208cf8a573",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDSekk6YBXqagMS\n5YOQWRh7UZnVlkBWRdBo+TZpi1aI/kTT+/lah/JOVUl7E5CyirZa0x8Qs5vtxh2c\ncL8tOe5Dgqv3HpMQVhEi8o442qQhslnNThj6LupEEvfoAjtI7TP0ldqDIkIzxorN\npCDVm3rLzEFLS/dBqVxo7mgIPKbT9435VMTdBxDdu/gaAMNUfUtgu06E0DrreBjs\nyqGHzXbOaBRWVW/nTjA5i2PavJrcb2MBh26vaZv+fXYonGlq9rLdSfcADoU+FYAP\nNA7Tmk5iSmPtPJ8r1qQkOJ+LoAfLca7iivQHRLUflkAVVo1dus4aRfFpzUrNv/2L\nK563tb39AgMBAAECggEAAPGPHKiHswp39wwrg5X+2qd30WfRqH8fl+XQTn1Ba+ce\nMpWhDP+umF51PxoMLDwt7bM0ixTo6fvdpCFRAx4znlCSYeU3VwVMaJELGivtdTkx\nLsqH1a6Zl5QDMQ2ZdiZ/P1XEuEnoo9ObmhQqcj0gf/km/RBmSiWiILKaXD87jFmi\nWsuGfUg1sLAbd9J1SgWpIo7p0vTlk2UBZFqtM3Y2g3k+5qLrR72Sz5XjLZtwHRaG\nRu1YSRdWiJN55XMxRlfKkJZmpALDS+gZjc4bP81PtcAR7EdPqQyS7HIxu20nwZs3\nrGo7wpaiDvLBBKhrFyj7+leFgNY1Zyz2sg583YYp4QKBgQD/dttubpR5L1/e5Z5f\nmZxmc8kVoWa25bPpyVbHjX3o+/SwX0xoOUHhUpt/41sr5fI3v9LMLJgYfdFazadk\nraeG047SvDZrt4ls+mPBNmkYjSI6uHmgT0orvYhpwuiF1G0LYVsJo14rw1ZaLGcn\nUr1XuxGuKhAQ8Ve8J37rAH2soQKBgQDS60dEiNwEAEH0auQHFWma0dzhmfaZraG9\nhgYagcYw64SyvATASQwLrBO5Y1FTBxiIbvast/ZhW6c2SJjorK0qzmeqjhyYVjvb\nRz2gWjcXZPBGsHOtilrMcg34OH7VobFFLj1nvInm83W9w6fSAf0nm776P2rzgbld\nXDhc9W1X3QKBgQD+THzGg0E9GRGgOobat3je66dh5tbufd4IfSnrX0fVIupCn7rZ\njRWtjKPKPLJHEpF5OXRHVqTYzHYYo9tb9xlqtzHXSRALThp45w9iCB26GNPYDEbW\nc9drjzI5xZHdlsYtq+4JvBxECCDvhn/wvwZITKme67QuiXBCljZbDJQNwQKBgQCS\nMTPvo/Dj8Q3GDQTKiCPvhIDV+jJ76GaQB8JZQxQNOmF6xWmBod/wgzAUsmte4i81\n+buOkd/7MVzf+kfKFk3cur4N8HyPdk38ug9UAtPmqjcEuC8l3Rz8Uh2uq/H1vyIw\n8lDrgzoOUzeL9X5vyKMgfgpMSAKoj4Tc2hvTCuXkHQKBgQD3SYyMgCiHtlht5UHd\nQmfXnEh+fSu2GhR1MZViIoGQMMQ60t3GT/3s3mgPTPeVYw8sZoegyV0IU+c3yXsR\nrfer+8KevgHPaAU2fZkkzcsmQqFI6BqgZVgHi6pUgjaTsDNl/OIBoFvu+WYTWmf0\nM11BleIXF1dCaRPpDgzR5DyC2A==\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-mpfgq@aio-erp-sys.iam.gserviceaccount.com",
+  "client_id": "110124422997460012458",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-mpfgq%40aio-erp-sys.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

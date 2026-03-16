@@ -11,8 +11,16 @@ import {
     publicCategoryGetById,
     publicCategoryGetBySlug,
     publicSeoGetPageMeta,
+    publicSeoGetPageSettings,
+    publicSeoSettingsGet,
     publicSeoGetLanding,
 } from '../actions/public/catalogPublicActions';
+import {
+    authPhonePasswordRegister,
+    authPhonePasswordLogin,
+    authProvidersGet,
+    authSetPhonePassword,
+} from '../actions/client/authClientActions';
 import {
     clientHealthWhoAmI,
     clientActionsList,
@@ -49,6 +57,15 @@ import {
     insuranceRejectQuote,
     insuranceListMyOrders,
 } from '../actions/client/ordersClientActions';
+import {
+    prescriptionCreateDraft,
+    prescriptionAttachFiles,
+    prescriptionSubmit,
+    prescriptionGet,
+    prescriptionListMine,
+    prescriptionCancel,
+    prescriptionGetWhatsAppContact,
+} from '../actions/client/prescriptionClientActions';
 import {
     cartGet,
     cartAddItem,
@@ -128,6 +145,7 @@ import {
 import {
     adminOrdersList,
     adminOrdersGet,
+    adminOrdersCreate,
     adminOrdersUpdateStatus,
     adminOrdersSetTracking,
     adminOrdersAddInternalNote,
@@ -170,6 +188,12 @@ import {
     adminReturnsUpdateStatus,
 } from '../actions/admin/ordersAdminActions';
 import {
+    deliveryOrdersList,
+    deliveryOrdersGet,
+    deliveryOrdersTracking,
+    deliveryOrdersUpdateStatus,
+} from '../actions/client/deliveryClientActions';
+import {
     adminCategoriesList,
     adminCategoriesGet,
     adminCategoriesCreate,
@@ -183,6 +207,7 @@ import {
     adminFeaturedList,
     adminFeaturedSearchProducts,
     adminFeaturedSet,
+    adminCatalogRebuildProductMetrics,
     adminProductsList,
     adminProductsGet,
     adminProductsCreate,
@@ -219,7 +244,12 @@ import {
     adminLandingPagesPublish,
     adminLandingPagesUnpublish,
     adminLandingPagesDisable,
+    adminSitemapGet,
     adminSitemapRegenerate,
+    adminProductAliasesList,
+    adminProductAliasGet,
+    adminProductAliasUpsert,
+    adminProductAliasDelete,
 } from '../actions/admin/catalogAdminActions';
 import { ActionHandler } from '../core/protocol';
 import { publicProductsBulkImportFromJson } from '../actions/public/productsBulkImportPublicActions';
@@ -234,6 +264,16 @@ import {
     adminInsuranceSetShipmentTracking,
 } from '../actions/admin/insuranceAdminActions';
 import {
+    adminPrescriptionList,
+    adminPrescriptionGet,
+    adminPrescriptionMarkUnderReview,
+    adminPrescriptionApprove,
+    adminPrescriptionReject,
+    adminPrescriptionSetItemsDraft,
+    adminPrescriptionConvertToOrder,
+    adminPrescriptionLinkExistingOrder,
+} from '../actions/admin/prescriptionAdminActions';
+import {
     adminInventoryImportCreateBatch,
     adminInventoryImportPreview,
     adminInventoryImportGetUnmappedPrefixes,
@@ -241,6 +281,16 @@ import {
     adminInventoryImportApply,
     adminInventoryImportGet,
 } from '../actions/admin/inventoryImportAdminActions';
+import {
+    adminPriceImportCreateSession,
+    adminPriceImportUploadSheet,
+    adminPriceImportParsePreview,
+    adminPriceImportResolveMatch,
+    adminPriceImportApply,
+    adminPriceImportListMappings,
+    adminPriceImportUpsertMapping,
+    adminPriceImportDeleteMapping,
+} from '../actions/admin/priceImportAdminActions';
 import {
     reportsOverview,
     reportsTopProducts,
@@ -255,7 +305,69 @@ import {
     adminReportsAttributionOverview,
     adminReportsTopCampaigns,
 } from '../actions/admin/reportsMarketingAdminActions';
-import { adminAccountingKpis, adminAccountingLedger } from '../actions/admin/accountingAdminActions';
+import {
+    adminAccountingKpis,
+    adminAccountingLedger,
+    adminDrawerSessionsList,
+    adminDrawerSessionsGet,
+    adminDrawerReconciliationsList,
+    adminChartOfAccountsList,
+    adminChartOfAccountsCreate,
+    adminChartOfAccountsUpdate,
+    adminChartOfAccountsSetActive,
+    adminJournalEntriesList,
+    adminJournalEntriesGet,
+    adminJournalEntriesCreate,
+    adminJournalEntriesPost,
+    adminJournalEntriesReverse,
+    adminJournalEntriesRetry,
+    adminAccountingPeriodsList,
+    adminAccountingPeriodsCreate,
+    adminAccountingPeriodsUpdate,
+    adminAccountingPeriodsSetStatus,
+    adminAccountingPeriodsOpen,
+    adminAccountingPeriodsClose,
+    adminPostingRulesList,
+    adminPostingRulesCreate,
+    adminPostingRulesUpdate,
+} from '../actions/admin/accountingAdminActions';
+import {
+    adminSuppliersList,
+    adminSuppliersCreate,
+    adminSuppliersUpdate,
+    adminSuppliersDisable,
+    adminWarehousesList,
+    adminWarehousesCreate,
+    adminWarehousesUpdate,
+    adminWarehousesDisable,
+    adminPurchaseOrdersList,
+    adminPurchaseOrdersGet,
+    adminPurchaseOrdersCreate,
+    adminPurchaseOrdersUpdate,
+    adminPurchaseOrdersSubmit,
+    adminPurchaseOrdersApprove,
+    adminPurchaseOrdersCancel,
+    adminPurchaseOrdersReceive,
+    adminGoodsReceiptsList,
+    adminGoodsReceiptsGet,
+    adminGoodsReceiptsCreate,
+    adminStockMovementsList,
+    adminInventoryBatchesList,
+    adminInventoryBatchesUpdate,
+} from '../actions/admin/procurementAdminActions';
+import {
+    adminPosSessionsOpen,
+    adminPosSessionsClose,
+    adminPosSessionsList,
+    adminPosSalesCreate,
+    adminPosSalesGet,
+    adminPosSalesList,
+    adminPosReturnsCreate,
+    adminPosReturnsGet,
+    adminPosReturnsList,
+    adminPosRefundsCreate,
+    adminPosRefundsList,
+} from '../actions/admin/posAdminActions';
 import {
     adminDineInSettingsGet,
     adminDineInSettingsUpdate,
@@ -339,6 +451,8 @@ add(registryPublic, 'publicProductGetBySlug', publicProductGetBySlug as ActionHa
 add(registryPublic, 'publicCategoryGetById', publicCategoryGetById as ActionHandler);
 add(registryPublic, 'publicCategoryGetBySlug', publicCategoryGetBySlug as ActionHandler);
 add(registryPublic, 'publicSeoGetPageMeta', publicSeoGetPageMeta as ActionHandler);
+add(registryPublic, 'publicSeoGetPageSettings', publicSeoGetPageSettings as ActionHandler);
+add(registryPublic, 'publicSeoSettingsGet', publicSeoSettingsGet as ActionHandler);
 add(registryPublic, 'publicSeoGetLanding', publicSeoGetLanding as ActionHandler);
 add(registryPublic, 'publicProductsBulkImportFromJson', publicProductsBulkImportFromJson as ActionHandler);
 
@@ -346,6 +460,10 @@ export const registryClient = m();
 add(registryClient, 'clientHealthWhoAmI', clientHealthWhoAmI as ActionHandler);
 add(registryClient, 'clientActionsList', clientActionsList as ActionHandler);
 add(registryClient, 'authEnsureUserProfile', authEnsureUserProfile as ActionHandler);
+add(registryClient, 'authPhonePasswordRegister', authPhonePasswordRegister as ActionHandler);
+add(registryClient, 'authPhonePasswordLogin', authPhonePasswordLogin as ActionHandler);
+add(registryClient, 'authProvidersGet', authProvidersGet as ActionHandler);
+add(registryClient, 'authSetPhonePassword', authSetPhonePassword as ActionHandler);
 add(registryClient, 'profileGet', profileGet as ActionHandler);
 add(registryClient, 'profileUpdate', profileUpdate as ActionHandler);
 add(registryClient, 'accountDeleteRequest', accountDeleteRequest as ActionHandler);
@@ -417,6 +535,13 @@ add(registryClient, 'insuranceGet', insuranceGet as ActionHandler);
 add(registryClient, 'insuranceApproveQuote', insuranceApproveQuote as ActionHandler);
 add(registryClient, 'insuranceRejectQuote', insuranceRejectQuote as ActionHandler);
 add(registryClient, 'insuranceListMyOrders', insuranceListMyOrders as ActionHandler);
+add(registryClient, 'prescriptionCreateDraft', prescriptionCreateDraft as ActionHandler);
+add(registryClient, 'prescriptionAttachFiles', prescriptionAttachFiles as ActionHandler);
+add(registryClient, 'prescriptionSubmit', prescriptionSubmit as ActionHandler);
+add(registryClient, 'prescriptionGet', prescriptionGet as ActionHandler);
+add(registryClient, 'prescriptionListMine', prescriptionListMine as ActionHandler);
+add(registryClient, 'prescriptionCancel', prescriptionCancel as ActionHandler);
+add(registryClient, 'prescriptionGetWhatsAppContact', prescriptionGetWhatsAppContact as ActionHandler);
 add(registryClient, 'dineInScanTableCode', dineInScanTableCode as ActionHandler);
 add(registryClient, 'dineInGetSession', dineInGetSession as ActionHandler);
 add(registryClient, 'dineInCloseSession', dineInCloseSession as ActionHandler);
@@ -424,6 +549,12 @@ add(registryClient, 'dineInCallWaiter', dineInCallWaiter as ActionHandler);
 add(registryClient, 'dineInRequestBill', dineInRequestBill as ActionHandler);
 add(registryClient, 'reviewsCanReview', reviewsCanReview as ActionHandler);
 add(registryClient, 'reviewsCreate', reviewsCreate as ActionHandler);
+
+add(registryClient, 'deliveryOrdersList', deliveryOrdersList as ActionHandler);
+add(registryClient, 'deliveryOrdersGet', deliveryOrdersGet as ActionHandler);
+add(registryClient, 'deliveryOrdersTracking', deliveryOrdersTracking as ActionHandler);
+add(registryClient, 'deliveryOrdersUpdateStatus', deliveryOrdersUpdateStatus as ActionHandler);
+
 
 export const registryAdmin = m();
 add(registryAdmin, 'adminHealthWhoAmI', adminHealthWhoAmI as ActionHandler);
@@ -456,11 +587,16 @@ add(registryAdmin, 'adminBannersDisable', adminBannersDisable as ActionHandler);
 add(registryAdmin, 'adminFeaturedList', adminFeaturedList as ActionHandler);
 add(registryAdmin, 'adminFeaturedSearchProducts', adminFeaturedSearchProducts as ActionHandler);
 add(registryAdmin, 'adminFeaturedSet', adminFeaturedSet as ActionHandler);
+add(registryAdmin, 'adminCatalogRebuildProductMetrics', adminCatalogRebuildProductMetrics as ActionHandler);
 add(registryAdmin, 'adminProductsList', adminProductsList as ActionHandler);
 add(registryAdmin, 'adminProductsGet', adminProductsGet as ActionHandler);
 add(registryAdmin, 'adminProductsCreate', adminProductsCreate as ActionHandler);
 add(registryAdmin, 'adminProductsUpdate', adminProductsUpdate as ActionHandler);
 add(registryAdmin, 'adminProductsDisable', adminProductsDisable as ActionHandler);
+add(registryAdmin, 'adminProductAliasesList', adminProductAliasesList as ActionHandler);
+add(registryAdmin, 'adminProductAliasGet', adminProductAliasGet as ActionHandler);
+add(registryAdmin, 'adminProductAliasUpsert', adminProductAliasUpsert as ActionHandler);
+add(registryAdmin, 'adminProductAliasDelete', adminProductAliasDelete as ActionHandler);
 add(registryAdmin, 'adminProductImagesList', adminProductImagesList as ActionHandler);
 add(registryAdmin, 'adminProductImagesAdd', adminProductImagesAdd as ActionHandler);
 add(registryAdmin, 'adminProductImagesRemove', adminProductImagesRemove as ActionHandler);
@@ -477,6 +613,28 @@ add(registryAdmin, 'adminProductVariantsBulkStockUpdate', adminProductVariantsBu
 add(registryAdmin, 'adminInventoryAdjust', adminInventoryAdjust as ActionHandler);
 add(registryAdmin, 'adminInventoryHistory', adminInventoryHistory as ActionHandler);
 add(registryAdmin, 'adminInventoryLowStockReport', adminInventoryLowStockReport as ActionHandler);
+add(registryAdmin, 'adminSuppliersList', adminSuppliersList as ActionHandler);
+add(registryAdmin, 'adminSuppliersCreate', adminSuppliersCreate as ActionHandler);
+add(registryAdmin, 'adminSuppliersUpdate', adminSuppliersUpdate as ActionHandler);
+add(registryAdmin, 'adminSuppliersDisable', adminSuppliersDisable as ActionHandler);
+add(registryAdmin, 'adminWarehousesList', adminWarehousesList as ActionHandler);
+add(registryAdmin, 'adminWarehousesCreate', adminWarehousesCreate as ActionHandler);
+add(registryAdmin, 'adminWarehousesUpdate', adminWarehousesUpdate as ActionHandler);
+add(registryAdmin, 'adminWarehousesDisable', adminWarehousesDisable as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersList', adminPurchaseOrdersList as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersGet', adminPurchaseOrdersGet as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersCreate', adminPurchaseOrdersCreate as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersUpdate', adminPurchaseOrdersUpdate as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersSubmit', adminPurchaseOrdersSubmit as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersApprove', adminPurchaseOrdersApprove as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersCancel', adminPurchaseOrdersCancel as ActionHandler);
+add(registryAdmin, 'adminPurchaseOrdersReceive', adminPurchaseOrdersReceive as ActionHandler);
+add(registryAdmin, 'adminGoodsReceiptsList', adminGoodsReceiptsList as ActionHandler);
+add(registryAdmin, 'adminGoodsReceiptsGet', adminGoodsReceiptsGet as ActionHandler);
+add(registryAdmin, 'adminGoodsReceiptsCreate', adminGoodsReceiptsCreate as ActionHandler);
+add(registryAdmin, 'adminStockMovementsList', adminStockMovementsList as ActionHandler);
+add(registryAdmin, 'adminInventoryBatchesList', adminInventoryBatchesList as ActionHandler);
+add(registryAdmin, 'adminInventoryBatchesUpdate', adminInventoryBatchesUpdate as ActionHandler);
 add(registryAdmin, 'adminHomeSectionsList', adminHomeSectionsList as ActionHandler);
 add(registryAdmin, 'adminHomeSectionsGet', adminHomeSectionsGet as ActionHandler);
 add(registryAdmin, 'adminHomeSectionsCreate', adminHomeSectionsCreate as ActionHandler);
@@ -492,11 +650,13 @@ add(registryAdmin, 'adminLandingPagesUpdate', adminLandingPagesUpdate as ActionH
 add(registryAdmin, 'adminLandingPagesPublish', adminLandingPagesPublish as ActionHandler);
 add(registryAdmin, 'adminLandingPagesUnpublish', adminLandingPagesUnpublish as ActionHandler);
 add(registryAdmin, 'adminLandingPagesDisable', adminLandingPagesDisable as ActionHandler);
+add(registryAdmin, 'adminSitemapGet', adminSitemapGet as ActionHandler);
 add(registryAdmin, 'adminSitemapRegenerate', adminSitemapRegenerate as ActionHandler);
 add(registryAdmin, 'adminMediaCreateUploadSpec', adminMediaCreateUploadSpec as ActionHandler);
 add(registryAdmin, 'adminMediaFinalizeUpload', adminMediaFinalizeUpload as ActionHandler);
 add(registryAdmin, 'adminOrdersList', adminOrdersList as ActionHandler);
 add(registryAdmin, 'adminOrdersGet', adminOrdersGet as ActionHandler);
+add(registryAdmin, 'adminOrdersCreate', adminOrdersCreate as ActionHandler);
 add(registryAdmin, 'adminOrdersUpdateStatus', adminOrdersUpdateStatus as ActionHandler);
 add(registryAdmin, 'adminOrdersSetTracking', adminOrdersSetTracking as ActionHandler);
 add(registryAdmin, 'adminOrdersAddInternalNote', adminOrdersAddInternalNote as ActionHandler);
@@ -513,12 +673,28 @@ add(registryAdmin, 'adminInsuranceRemoveItem', adminInsuranceRemoveItem as Actio
 add(registryAdmin, 'adminInsuranceLockQuote', adminInsuranceLockQuote as ActionHandler);
 add(registryAdmin, 'adminInsuranceSendQuote', adminInsuranceSendQuote as ActionHandler);
 add(registryAdmin, 'adminInsuranceSetShipmentTracking', adminInsuranceSetShipmentTracking as ActionHandler);
+add(registryAdmin, 'adminPrescriptionList', adminPrescriptionList as ActionHandler);
+add(registryAdmin, 'adminPrescriptionGet', adminPrescriptionGet as ActionHandler);
+add(registryAdmin, 'adminPrescriptionMarkUnderReview', adminPrescriptionMarkUnderReview as ActionHandler);
+add(registryAdmin, 'adminPrescriptionApprove', adminPrescriptionApprove as ActionHandler);
+add(registryAdmin, 'adminPrescriptionReject', adminPrescriptionReject as ActionHandler);
+add(registryAdmin, 'adminPrescriptionSetItemsDraft', adminPrescriptionSetItemsDraft as ActionHandler);
+add(registryAdmin, 'adminPrescriptionConvertToOrder', adminPrescriptionConvertToOrder as ActionHandler);
+add(registryAdmin, 'adminPrescriptionLinkExistingOrder', adminPrescriptionLinkExistingOrder as ActionHandler);
 add(registryAdmin, 'adminInventoryImportCreateBatch', adminInventoryImportCreateBatch as ActionHandler);
 add(registryAdmin, 'adminInventoryImportPreview', adminInventoryImportPreview as ActionHandler);
 add(registryAdmin, 'adminInventoryImportGetUnmappedPrefixes', adminInventoryImportGetUnmappedPrefixes as ActionHandler);
 add(registryAdmin, 'adminInventoryImportResolvePrefixes', adminInventoryImportResolvePrefixes as ActionHandler);
 add(registryAdmin, 'adminInventoryImportApply', adminInventoryImportApply as ActionHandler);
 add(registryAdmin, 'adminInventoryImportGet', adminInventoryImportGet as ActionHandler);
+add(registryAdmin, 'adminPriceImportCreateSession', adminPriceImportCreateSession as ActionHandler);
+add(registryAdmin, 'adminPriceImportUploadSheet', adminPriceImportUploadSheet as ActionHandler);
+add(registryAdmin, 'adminPriceImportParsePreview', adminPriceImportParsePreview as ActionHandler);
+add(registryAdmin, 'adminPriceImportResolveMatch', adminPriceImportResolveMatch as ActionHandler);
+add(registryAdmin, 'adminPriceImportApply', adminPriceImportApply as ActionHandler);
+add(registryAdmin, 'adminPriceImportListMappings', adminPriceImportListMappings as ActionHandler);
+add(registryAdmin, 'adminPriceImportUpsertMapping', adminPriceImportUpsertMapping as ActionHandler);
+add(registryAdmin, 'adminPriceImportDeleteMapping', adminPriceImportDeleteMapping as ActionHandler);
 add(registryAdmin, 'adminRiskRulesGet', adminRiskRulesGet as ActionHandler);
 add(registryAdmin, 'adminRiskRulesUpdate', adminRiskRulesUpdate as ActionHandler);
 add(registryAdmin, 'adminRiskFlaggedOrdersList', adminRiskFlaggedOrdersList as ActionHandler);
@@ -541,11 +717,44 @@ add(registryAdmin, 'adminDrawersUpdate', adminDrawersUpdate as ActionHandler);
 add(registryAdmin, 'adminDrawersDisable', adminDrawersDisable as ActionHandler);
 add(registryAdmin, 'adminDrawerSessionsOpen', adminDrawerSessionsOpen as ActionHandler);
 add(registryAdmin, 'adminDrawerSessionsClose', adminDrawerSessionsClose as ActionHandler);
+add(registryAdmin, 'adminDrawerSessionsList', adminDrawerSessionsList as ActionHandler);
+add(registryAdmin, 'adminDrawerSessionsGet', adminDrawerSessionsGet as ActionHandler);
+add(registryAdmin, 'adminDrawerReconciliationsList', adminDrawerReconciliationsList as ActionHandler);
 add(registryAdmin, 'adminAccountingKpis', adminAccountingKpis as ActionHandler);
 add(registryAdmin, 'adminAccountingLedger', adminAccountingLedger as ActionHandler);
 add(registryAdmin, 'adminAccountingCreateExpense', adminAccountingCreateExpense as ActionHandler);
 add(registryAdmin, 'adminAccountingCreateAdjustment', adminAccountingCreateAdjustment as ActionHandler);
 add(registryAdmin, 'adminAccountingCreatePOSSale', adminAccountingCreatePOSSale as ActionHandler);
+add(registryAdmin, 'adminChartOfAccountsList', adminChartOfAccountsList as ActionHandler);
+add(registryAdmin, 'adminChartOfAccountsCreate', adminChartOfAccountsCreate as ActionHandler);
+add(registryAdmin, 'adminChartOfAccountsUpdate', adminChartOfAccountsUpdate as ActionHandler);
+add(registryAdmin, 'adminChartOfAccountsSetActive', adminChartOfAccountsSetActive as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesList', adminJournalEntriesList as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesGet', adminJournalEntriesGet as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesCreate', adminJournalEntriesCreate as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesPost', adminJournalEntriesPost as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesReverse', adminJournalEntriesReverse as ActionHandler);
+add(registryAdmin, 'adminJournalEntriesRetry', adminJournalEntriesRetry as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsList', adminAccountingPeriodsList as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsCreate', adminAccountingPeriodsCreate as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsUpdate', adminAccountingPeriodsUpdate as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsSetStatus', adminAccountingPeriodsSetStatus as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsOpen', adminAccountingPeriodsOpen as ActionHandler);
+add(registryAdmin, 'adminAccountingPeriodsClose', adminAccountingPeriodsClose as ActionHandler);
+add(registryAdmin, 'adminPostingRulesList', adminPostingRulesList as ActionHandler);
+add(registryAdmin, 'adminPostingRulesCreate', adminPostingRulesCreate as ActionHandler);
+add(registryAdmin, 'adminPostingRulesUpdate', adminPostingRulesUpdate as ActionHandler);
+add(registryAdmin, 'adminPosSessionsOpen', adminPosSessionsOpen as ActionHandler);
+add(registryAdmin, 'adminPosSessionsClose', adminPosSessionsClose as ActionHandler);
+add(registryAdmin, 'adminPosSessionsList', adminPosSessionsList as ActionHandler);
+add(registryAdmin, 'adminPosSalesCreate', adminPosSalesCreate as ActionHandler);
+add(registryAdmin, 'adminPosSalesGet', adminPosSalesGet as ActionHandler);
+add(registryAdmin, 'adminPosSalesList', adminPosSalesList as ActionHandler);
+add(registryAdmin, 'adminPosReturnsCreate', adminPosReturnsCreate as ActionHandler);
+add(registryAdmin, 'adminPosReturnsGet', adminPosReturnsGet as ActionHandler);
+add(registryAdmin, 'adminPosReturnsList', adminPosReturnsList as ActionHandler);
+add(registryAdmin, 'adminPosRefundsCreate', adminPosRefundsCreate as ActionHandler);
+add(registryAdmin, 'adminPosRefundsList', adminPosRefundsList as ActionHandler);
 add(registryAdmin, 'reportsOverview', reportsOverview as ActionHandler);
 add(registryAdmin, 'reportsTopProducts', reportsTopProducts as ActionHandler);
 add(registryAdmin, 'reportsOrdersByStatus', reportsOrdersByStatus as ActionHandler);

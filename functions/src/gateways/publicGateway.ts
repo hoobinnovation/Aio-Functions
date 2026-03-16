@@ -31,7 +31,7 @@ function toPublicEnvelopeError(error: any) {
   };
 }
 
-export const publicGateway = onCall(async (request: any) => {
+export const publicGateway = onCall({timeoutSeconds:3600 },async (request: any) => {
   const incoming = request?.data && typeof request.data === 'object' && request.data !== null
     ? { ...request.data, storeId: request.data.storeId ?(
               typeof request.data.storeId === 'string' ? request.data.storeId.trim() : request.data.storeId

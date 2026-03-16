@@ -19,21 +19,281 @@ import { DrawerSession } from '../../entities/DrawerSession';
 import { LedgerEntry } from '../../entities/LedgerEntry';
 import { Return } from '../../entities/Return';
 import { Refund } from '../../entities/Refund';
+import { DeliveryZone } from '../../entities/DeliveryZone';
 import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/queryNormalization';
+import { recomputeProductMetrics } from '../productMetrics';
+import { tryPostBusinessEvent } from '../../core/accounting/postingIntegration';
+import { normalizeTableQuery, sanitizeSort, buildGroupedSummary } from './reporting/tableQuery';
 
 async function byId(ctx:ActionContext,e:any,id:string,m:string){const r=await ctx.db.getRepository(e).findOneBy({id}); if(!r) throw new AppError('NOT_FOUND',m); return r;}
 const crud=(e:any,m:string)=>({list:async(ctx:ActionContext,p:any)=>({items:await ctx.db.getRepository(e).find({where:{storeId:p.storeId}})}),get:async(ctx:ActionContext,p:any)=>({item:await byId(ctx,e,p.id,m)}),create:async(ctx:ActionContext,p:any)=>{const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(e).save(tx.getRepository(e).create({id,...p}));});return {item:await ctx.db.getRepository(e).findOneByOrFail({id})};},update:async(ctx:ActionContext,p:any)=>{await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(e).update({id:p.id},p);if(!r.affected) throw new AppError('NOT_FOUND',m);});return {item:await ctx.db.getRepository(e).findOneByOrFail({id:p.id})};},disable:async(ctx:ActionContext,p:any)=>{await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(e).update({id:p.id},{status:'disabled'});if(!r.affected) throw new AppError('NOT_FOUND',m);});return {disabled:true};}});
 
-export async function adminOrdersList(ctx:ActionContext,p:any={}){const q=normalizeListQueryInput(p,{defaultPageSize:50,maxPageSize:200});const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);return {orders:await ctx.db.getRepository(Order).find({where:{storeId},order:{createdAt:'DESC' as any},take:q.limit,skip:q.offset})};}
-export async function adminOrdersGet(ctx:ActionContext,p:any){return {order:await byId(ctx,Order,p.orderId,'Order not found')};}
-export async function adminOrdersUpdateStatus(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(Order).update({id:p.orderId},{status:p.status}); if(!r.affected) throw new AppError('NOT_FOUND','Order not found'); await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId:p.orderId,status:p.status,note:p.note??null,createdByUid:ctx.uid!}));}); return adminOrdersGet(ctx,{orderId:p.orderId});}
-export async function adminOrdersSetTracking(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{let s=await tx.getRepository(Shipment).findOneBy({orderId:p.orderId}); if(!s){s=tx.getRepository(Shipment).create({id:uuidv4(),orderId:p.orderId,carrier:p.carrier,trackingNumber:p.trackingNumber,status:'in_transit'});await tx.getRepository(Shipment).save(s);} else await tx.getRepository(Shipment).update({id:s.id},{carrier:p.carrier,trackingNumber:p.trackingNumber,status:p.status||s.status});}); return adminOrdersTrackingGet(ctx,{orderId:p.orderId});}
-export async function adminOrdersAddInternalNote(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId:p.orderId,status:'note',note:p.note,createdByUid:ctx.uid!}));}); return {added:true};}
-export async function adminOrdersInvoiceUrl(_ctx:ActionContext,p:any){return {invoiceUrl:`gs://invoices/${p.storeId}/${p.orderId}.pdf`};}
-export async function adminOrdersTrackingGet(ctx:ActionContext,p:any){const s=await ctx.db.getRepository(Shipment).findOneBy({orderId:p.orderId}); if(!s) return {shipment:null,events:[]}; const ev=await ctx.db.getRepository(TrackingEvent).find({where:{shipmentId:s.id},order:{createdAt:'ASC' as any}}); return {shipment:s,events:ev};}
-export async function adminOrdersTrackingAddEvent(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(TrackingEvent).save(tx.getRepository(TrackingEvent).create({id:uuidv4(),shipmentId:p.shipmentId,message:p.message,location:p.location??null}));}); return adminOrdersTrackingGet(ctx,{orderId:p.orderId});}
-export async function adminOrdersTrackingDeleteEvent(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(TrackingEvent).delete({id:p.id});}); return {deleted:true};}
-export async function adminOrdersTrackingUpdateShipment(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Shipment).update({id:p.shipmentId},{status:p.status,carrier:p.carrier,trackingNumber:p.trackingNumber});}); return {updated:true};}
+function resolveOrderId(payload: any) {
+  const value = payload?.orderId ?? payload?.id;
+  if (!value) throw new AppError('VALIDATION_FAILED', 'orderId is required');
+  return String(value);
+}
+
+function resolveTrackingEventId(payload: any) {
+  const value = payload?.eventId ?? payload?.id;
+  if (!value) throw new AppError('VALIDATION_FAILED', 'eventId is required');
+  return String(value);
+}
+
+function toCents(value: any) {
+  const parsed = Number(value || 0);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.round(parsed * 100);
+}
+
+function orderListSortSql(by: string) {
+  const map: Record<string, string> = {
+    createdAt: 'o.createdAt',
+    status: 'o.status',
+    total: 'o.totalCents',
+    customerName: 'o.shippingRecipientName',
+    serviceType: 'o.serviceType',
+    branchId: 'o.branchId',
+  };
+  return map[by] || map.createdAt;
+}
+
+async function getOrderByStore(ctx: ActionContext, storeId: string, orderId: string) {
+  const order = await ctx.db.getRepository(Order).findOneBy({ id: orderId, storeId });
+  if (!order) throw new AppError('NOT_FOUND', 'Order not found');
+  return order;
+}
+
+async function buildOrderDetails(ctx: ActionContext, storeId: string, orderId: string) {
+  const order = await getOrderByStore(ctx, storeId, orderId);
+  const shipment = await ctx.db.getRepository(Shipment).findOneBy({ orderId: order.id });
+  return {
+    order: {
+      ...order,
+      customerName: order.shippingRecipientName || null,
+      customerPhone: order.shippingPhone || null,
+      address: order.shippingAddressLine || null,
+      total: Number(order.totalCents || 0) / 100,
+      subtotal: Number(order.subtotalCents || 0) / 100,
+      shipping: Number(order.shippingCents || 0) / 100,
+      discount: Number(order.discountCents || 0) / 100,
+      tax: Number(order.taxCents || 0) / 100,
+      trackingNumber: shipment?.trackingNumber || null,
+      shipmentId: shipment?.id || null,
+    },
+  };
+}
+
+export async function adminOrdersList(ctx:ActionContext,p:any={}) {
+  const q = normalizeTableQuery(p, { sortBy: 'createdAt', sortDir: 'desc', pageSize: 50 }, { fallbackStoreId: ctx.storeId });
+  const safeSort = sanitizeSort(q.sort, ['createdAt', 'status', 'total', 'customerName', 'serviceType', 'branchId'], { by: 'createdAt', dir: 'desc' });
+  const filters = q.filters || {};
+  const where = ['o.storeId=?', 'o.createdAt BETWEEN ? AND ?'];
+  const params: any[] = [q.storeId, q.range.from, q.range.to];
+
+  if (filters.status) { where.push('o.status = ?'); params.push(String(filters.status)); }
+  if (filters.customer) {
+    where.push('(LOWER(COALESCE(o.shippingRecipientName,\'\')) LIKE ? OR LOWER(COALESCE(o.shippingPhone,\'\')) LIKE ? OR LOWER(o.id) LIKE ?)');
+    const needle = `%${String(filters.customer).toLowerCase()}%`;
+    params.push(needle, needle, needle);
+  }
+  if (filters.serviceType) { where.push('o.serviceType = ?'); params.push(String(filters.serviceType)); }
+  if (filters.branchId) { where.push('o.branchId = ?'); params.push(String(filters.branchId)); }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const totalRows = await ctx.db.query(`SELECT COUNT(*) total FROM orders o ${whereSql}`, params);
+  const total = Number(totalRows[0]?.total ?? 0);
+  const limit = q.fetchAll ? 10000 : q.pageSize;
+  const offset = q.fetchAll ? 0 : (q.page - 1) * q.pageSize;
+  const items = await ctx.db.query(
+    `SELECT
+       o.*,
+       o.shippingRecipientName customerName,
+       o.shippingPhone customerPhone,
+       o.shippingAddressLine address,
+       ROUND(o.totalCents / 100, 2) total
+     FROM orders o
+     ${whereSql}
+     ORDER BY ${orderListSortSql(safeSort.by)} ${safeSort.dir === 'asc' ? 'ASC' : 'DESC'}
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset],
+  );
+  const grouped = await buildGroupedSummary(
+    ctx.db,
+    q,
+    ['status', 'serviceType', 'branchId'],
+    { status: 'o.status', serviceType: 'o.serviceType', branchId: 'COALESCE(o.branchId,\'(none)\')' },
+    `FROM orders o ${whereSql}`,
+    params,
+  );
+  return {
+    items,
+    pageInfo: { page: q.fetchAll ? 1 : q.page, pageSize: q.fetchAll ? total : q.pageSize, total },
+    grouped,
+    capabilities: { canEdit: true, canDelete: false },
+  };
+}
+
+export async function adminOrdersGet(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  return buildOrderDetails(ctx, storeId, resolveOrderId(p));
+}
+
+export async function adminOrdersCreate(ctx: ActionContext, p: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = uuidv4();
+  const zoneId = p.zoneId ? String(p.zoneId) : null;
+  const zone = zoneId ? await ctx.db.getRepository(DeliveryZone).findOneBy({ id: zoneId, storeId }) : null;
+  const subtotalCents = toCents(p.total);
+  const shippingCents = zone ? Number(zone.priceCents || 0) : 0;
+  const totalCents = subtotalCents + shippingCents;
+
+  await ctx.db.transaction(async (tx: EntityManager) => {
+    await tx.getRepository(Order).save(tx.getRepository(Order).create({
+      id: orderId,
+      storeId,
+      uid: String(p.uid || `admin_manual:${orderId}`),
+      channel: 'admin',
+      status: p.status || 'pending',
+      serviceType: p.serviceType || 'delivery',
+      branchId: p.branchId || null,
+      tableId: null,
+      dineInSessionId: null,
+      deliveryZoneId: zone?.id || zoneId,
+      deliveryZoneName: zone?.name || p.zoneName || null,
+      shippingMethodId: null,
+      shippingRecipientName: p.customerName || null,
+      shippingPhone: p.customerPhone || null,
+      shippingAddressLabel: p.toCity || p.city || null,
+      shippingAddressLine: p.addressLine || p.address || null,
+      subtotalCents: String(subtotalCents),
+      discountCents: '0',
+      shippingCents: String(shippingCents),
+      taxCents: '0',
+      totalCents: String(totalCents),
+      paymentStatus: p.paymentStatus || 'pending',
+      riskStatus: 'clear',
+    }));
+    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({
+      id: uuidv4(),
+      orderId,
+      status: p.status || 'pending',
+      note: p.note || 'Created from admin dispatch workspace',
+      createdByUid: ctx.uid!,
+    }));
+    if (p.trackingNumber || p.courierId || p.status === 'out_for_delivery') {
+      await tx.getRepository(Shipment).save(tx.getRepository(Shipment).create({
+        id: uuidv4(),
+        orderId,
+        carrier: p.courierId || p.carrier || null,
+        trackingNumber: p.trackingNumber || null,
+        status: p.shipmentStatus || (p.status === 'out_for_delivery' ? 'out_for_delivery' : 'pending'),
+      }));
+    }
+  });
+
+  return adminOrdersGet(ctx, { storeId, orderId });
+}
+
+export async function adminOrdersUpdateStatus(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  await ctx.db.transaction(async(tx:EntityManager)=>{
+    const r=await tx.getRepository(Order).update({id:orderId, storeId},{status:p.status});
+    if(!r.affected) throw new AppError('NOT_FOUND','Order not found');
+    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId,status:p.status,note:p.note??null,createdByUid:ctx.uid!}));
+    const rows=await tx.getRepository(Order).query('SELECT DISTINCT productId FROM order_items WHERE orderId=?',[orderId]);
+    for(const row of rows){if(typeof row?.productId==='string'&&row.productId) await recomputeProductMetrics(tx,row.productId,storeId);}
+  });
+  return adminOrdersGet(ctx,{storeId,orderId});
+}
+
+export async function adminOrdersSetTracking(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  await ctx.db.transaction(async(tx:EntityManager)=>{
+    await getOrderByStore({ ...ctx, db: tx as any } as ActionContext, storeId, orderId);
+    let s=await tx.getRepository(Shipment).findOneBy({orderId});
+    if(!s){
+      s=tx.getRepository(Shipment).create({
+        id:uuidv4(),
+        orderId,
+        carrier:p.carrier||p.courierId||null,
+        trackingNumber:p.trackingNumber||null,
+        status:p.status||'in_transit',
+      });
+      await tx.getRepository(Shipment).save(s);
+    } else {
+      await tx.getRepository(Shipment).update({id:s.id},{
+        carrier:p.carrier||p.courierId||s.carrier,
+        trackingNumber:p.trackingNumber??s.trackingNumber,
+        status:p.status||s.status
+      });
+    }
+  });
+  return adminOrdersTrackingGet(ctx,{storeId,orderId});
+}
+
+export async function adminOrdersAddInternalNote(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  await getOrderByStore(ctx, storeId, orderId);
+  await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId,status:'note',note:p.note,createdByUid:ctx.uid!}));});
+  return {added:true};
+}
+
+export async function adminOrdersInvoiceUrl(_ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(_ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  const url = `gs://invoices/${storeId}/${orderId}.pdf`;
+  return {invoiceUrl:url,url};
+}
+
+export async function adminOrdersTrackingGet(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  await getOrderByStore(ctx, storeId, orderId);
+  const s=await ctx.db.getRepository(Shipment).findOneBy({orderId});
+  if(!s) return {shipment:null,events:[]};
+  const ev=await ctx.db.getRepository(TrackingEvent).find({where:{shipmentId:s.id},order:{createdAt:'ASC' as any}});
+  return {shipment:s,events:ev.map((item: TrackingEvent)=>({ ...item, label: item.message }))};
+}
+
+export async function adminOrdersTrackingAddEvent(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
+  const orderId = resolveOrderId(p);
+  const tracking = await adminOrdersTrackingGet(ctx, { storeId, orderId });
+  let shipmentId = p.shipmentId || tracking.shipment?.id || null;
+  if (!shipmentId) {
+    await ctx.db.transaction(async(tx:EntityManager)=>{
+      const shipment = tx.getRepository(Shipment).create({ id: uuidv4(), orderId, carrier: null, trackingNumber: null, status: 'pending' });
+      await tx.getRepository(Shipment).save(shipment);
+      shipmentId = shipment.id;
+    });
+  }
+  await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(TrackingEvent).save(tx.getRepository(TrackingEvent).create({id:uuidv4(),shipmentId,message:p.message||p.label,location:p.location??null}));});
+  return adminOrdersTrackingGet(ctx,{storeId,orderId});
+}
+
+export async function adminOrdersTrackingDeleteEvent(ctx:ActionContext,p:any){
+  const eventId = resolveTrackingEventId(p);
+  await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(TrackingEvent).delete({id:eventId});});
+  if (p.orderId || p.id) return adminOrdersTrackingGet(ctx,{storeId:p.storeId,orderId:p.orderId ?? p.id});
+  return {deleted:true};
+}
+
+export async function adminOrdersTrackingUpdateShipment(ctx:ActionContext,p:any){
+  const orderId = p.orderId || p.id || null;
+  let shipmentId = p.shipmentId || null;
+  if (!shipmentId && orderId) {
+    const shipment = await ctx.db.getRepository(Shipment).findOneBy({ orderId: String(orderId) });
+    shipmentId = shipment?.id || null;
+  }
+  if (!shipmentId) throw new AppError('VALIDATION_FAILED', 'shipmentId is required');
+  await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Shipment).update({id:shipmentId},{status:p.status,carrier:p.carrier ?? p.courierId,trackingNumber:p.trackingNumber});});
+  if (orderId) return adminOrdersTrackingGet(ctx,{storeId:p.storeId,orderId});
+  return {updated:true};
+}
 
 export async function adminInsuranceList(ctx:ActionContext,p:any){return {orders:await ctx.db.getRepository(InsuranceOrder).find({where:{storeId:p.storeId},order:{createdAt:'DESC' as any}})};}
 export async function adminInsuranceGet(ctx:ActionContext,p:any){const o=await byId(ctx,InsuranceOrder,p.insuranceOrderId,'Insurance order not found'); const items=await ctx.db.getRepository(InsuranceItem).find({where:{insuranceOrderId:o.id}}); return {insuranceOrder:o,items};}
@@ -57,7 +317,7 @@ const dr=crud(Drawer,'Drawer not found'); export const adminDrawersList=dr.list;
 export async function adminDrawerSessionsOpen(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(DrawerSession).save(tx.getRepository(DrawerSession).create({id,drawerId:p.drawerId,openedByUid:ctx.uid!,openedAt:new Date(),closedByUid:null,closedAt:null,openingBalanceCents:String(p.openingBalanceCents),closingBalanceCents:null}));});return {session:await ctx.db.getRepository(DrawerSession).findOneByOrFail({id})};}
 export async function adminDrawerSessionsClose(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const s=await tx.getRepository(DrawerSession).findOneBy({id:p.sessionId}); if(!s||s.closedAt) throw new AppError('VALIDATION_ERROR','Session not open'); await tx.getRepository(DrawerSession).update({id:s.id},{closedByUid:ctx.uid!,closedAt:new Date(),closingBalanceCents:String(p.closingBalanceCents)});});return {closed:true};}
 
-async function ledger(ctx:ActionContext,p:any,type:string){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(LedgerEntry).save(tx.getRepository(LedgerEntry).create({id,storeId:p.storeId,amountCents:String(p.amountCents),type,channel:p.channel||'backoffice',branchId:p.branchId??null,deviceId:p.deviceId??null,employeeId:p.employeeId??null,drawerSessionId:p.drawerSessionId??null,refType:type,refId:id}));});return {entry:await ctx.db.getRepository(LedgerEntry).findOneByOrFail({id})};}
+async function ledger(ctx:ActionContext,p:any,type:string){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(LedgerEntry).save(tx.getRepository(LedgerEntry).create({id,storeId:p.storeId,amountCents:String(p.amountCents),type,channel:p.channel||'backoffice',branchId:p.branchId??null,deviceId:p.deviceId??null,employeeId:p.employeeId??null,drawerSessionId:p.drawerSessionId??null,refType:type,refId:id}));});const entry=await ctx.db.getRepository(LedgerEntry).findOneByOrFail({id});const sourceEventType=type==='expense'?'manual_expense_created':type==='pos_sale'?'pos_sale_completed':'drawer_cash_movement';await tryPostBusinessEvent(ctx.db,{storeId:entry.storeId,sourceDocumentType:'ledger_entry',sourceDocumentId:entry.id,sourceEventType,amountCents:Number(entry.amountCents),createdByUid:ctx.uid??null,metadata:{channel:entry.channel,drawerSessionId:entry.drawerSessionId,branchId:entry.branchId,deviceId:entry.deviceId,employeeId:entry.employeeId,refType:entry.refType,refId:entry.refId}});return {entry};}
 export async function adminAccountingKpis(ctx:ActionContext,p:any){const rows=await ctx.db.query('SELECT SUM(amountCents) net, COUNT(*) count FROM ledger_entries WHERE storeId=?',[p.storeId]);return {kpis:rows[0]};}
 export async function adminAccountingLedger(ctx:ActionContext,p:any){return {entries:await ctx.db.getRepository(LedgerEntry).find({where:{storeId:p.storeId},order:{createdAt:'DESC' as any},take:p.limit||100})};}
 export async function adminAccountingCreateExpense(ctx:ActionContext,p:any){return ledger(ctx,{...p,amountCents:-Math.abs(p.amountCents)},'expense');}
@@ -77,6 +337,6 @@ export async function adminReturnsList(ctx:ActionContext,p:any={}){const q=norma
 export async function adminReturnsGet(ctx:ActionContext,p:any){return {return:await byId(ctx,Return,p.returnId,'Return not found')};}
 export async function adminReturnsApprove(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:'approved',approvedAt:new Date()});});return adminReturnsGet(ctx,{returnId:p.returnId});}
 export async function adminReturnsReject(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:'rejected',rejectedAt:new Date()});});return adminReturnsGet(ctx,{returnId:p.returnId});}
-export async function adminReturnsRefundPartial(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Refund).save(tx.getRepository(Refund).create({id,returnId:p.returnId,amountCents:String(p.amountCents),method:p.method,status:'completed'}));});return {refund:await ctx.db.getRepository(Refund).findOneByOrFail({id})};}
+export async function adminReturnsRefundPartial(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Refund).save(tx.getRepository(Refund).create({id,returnId:p.returnId,amountCents:String(p.amountCents),method:p.method,status:'completed'}));});const refund=await ctx.db.getRepository(Refund).findOneByOrFail({id});const ret=await ctx.db.getRepository(Return).findOneBy({id:refund.returnId});await tryPostBusinessEvent(ctx.db,{storeId:ret?.storeId??null,sourceDocumentType:'refund',sourceDocumentId:refund.id,sourceEventType:'refund_completed',amountCents:Number(refund.amountCents),createdByUid:ctx.uid??null,metadata:{returnId:refund.returnId,method:refund.method,status:refund.status}});return {refund};}
 export async function adminReturnsRefundFull(ctx:ActionContext,p:any){const ret=await byId(ctx,Return,p.returnId,'Return not found'); const order=await byId(ctx,Order,ret.orderId,'Order not found'); return adminReturnsRefundPartial(ctx,{returnId:p.returnId,amountCents:Number(order.totalCents),method:p.method||'original'});}
 export async function adminReturnsUpdateStatus(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:p.status});});return adminReturnsGet(ctx,{returnId:p.returnId});}

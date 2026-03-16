@@ -28,5 +28,5 @@ export function resolveMediaPublicUrl(path: string | null | undefined): string |
 
   const bucket = getBucketName();
   if (!bucket) return null;
-  return `https://storage.googleapis.com/${bucket}/${encodeStoragePath(trimmed)}`;
+  return`gs:${encodeStoragePath(trimmed)}`;
 }

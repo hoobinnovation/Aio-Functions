@@ -27,6 +27,7 @@ export interface UnifiedError {
     details?: unknown;
   };
   meta: ResponseMeta;
+  raw:any
 }
 
 export type UnifiedResponse = UnifiedSuccess | UnifiedError;

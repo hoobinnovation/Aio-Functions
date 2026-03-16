@@ -26,6 +26,7 @@ function toErrorResponse(err: unknown, requestId: string, serverTime: string): U
             details: appErr.details,
         },
         meta: { requestId, serverTime },
+        raw:err
     };
 }
 
@@ -275,6 +276,7 @@ export async function dispatchAction(
             meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
         };
     } catch (err) {
+        console.error(err)
         return toErrorResponse(err, ctx.requestId, ctx.serverTime);
     }
 }

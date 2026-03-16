@@ -40,6 +40,8 @@ const profileUpdatePayload = Joi.object({
   phone: Joi.string().max(32).allow(null, ''),
   email: Joi.string().max(255).allow(null, ''),
   displayName: Joi.string().max(80).allow(null, ''),
+  fullName: Joi.string().max(80).allow(null, ''),
+  name: Joi.string().max(80).allow(null, ''),
   locale: Joi.string().max(10).allow(null, ''),
   marketingOptIn: Joi.boolean().optional(),
 }).required();
@@ -69,6 +71,41 @@ const profileUpdatePayload = Joi.object({
 });
 
 ACTION_SPECS.profileUpdate = { schema: profileUpdatePayload, notes: 'Update own profile', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
+ACTION_SPECS.authPhonePasswordRegister = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+    displayName: Joi.string().max(80).allow(null, ''),
+    fullName: Joi.string().max(80).allow(null, ''),
+    name: Joi.string().max(80).allow(null, ''),
+    email: Joi.string().max(255).allow(null, ''),
+    locale: Joi.string().max(10).allow(null, ''),
+    marketingOptIn: Joi.boolean().optional(),
+  }).required(),
+  notes: 'Register or upgrade account with phone+password',
+  errorCodes: ['VALIDATION_ERROR', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authPhonePasswordLogin = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Phone+password login',
+  errorCodes: ['VALIDATION_ERROR', 'INVALID_PHONE_PASSWORD_CREDENTIALS', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
+ACTION_SPECS.authProvidersGet = {
+  schema: Joi.any().optional(),
+  notes: 'Get attached account providers',
+  errorCodes: ['VALIDATION_ERROR', 'PROVIDER_STATE_UNAVAILABLE'],
+};
+ACTION_SPECS.authSetPhonePassword = {
+  schema: Joi.object({
+    phone: Joi.string().min(8).max(32).required(),
+    password: Joi.string().min(8).max(120).required(),
+  }).required(),
+  notes: 'Attach or update phone+password credentials for authenticated account',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED', 'PHONE_ALREADY_IN_USE', 'PASSWORD_REQUIRED', 'PASSWORD_TOO_WEAK'],
+};
 ACTION_SPECS.accountDeleteRequest = { schema: Joi.object({ reason: Joi.string().max(500).allow(null, '') }).required(), notes: 'Create delete request', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.addressesCreate = { schema: addressPayload.required(), notes: 'Create address', errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_DISABLED'] };
 ACTION_SPECS.addressesUpdate = { schema: addressPayload.keys({ id: Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }).required() }).required(), notes: 'Update address', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
@@ -107,24 +144,51 @@ ACTION_SPECS.publicProductGetBySlug={schema:Joi.object({slug:Joi.string().requir
 ACTION_SPECS.publicCategoryGetById={schema:Joi.object({categoryId:Joi.string().required()}).required(),notes:'Category by id',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicCategoryGetBySlug={schema:Joi.object({slug:Joi.string().required()}).required(),notes:'Category by slug',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicSeoGetPageMeta={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO meta',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.publicSeoGetPageSettings={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO page settings',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.publicSeoSettingsGet={schema:Joi.object({pageType:Joi.string().required(),pageKey:Joi.string().required()}).required(),notes:'SEO settings get',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.publicSeoGetLanding={schema:Joi.object({slug:Joi.string().required()}).required(),notes:'Landing',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.productFavoritesToggle={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'Toggle favorite product',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.storeFavoritesToggle={schema:Joi.object({storeId:Joi.string().required()}).required(),notes:'Toggle favorite store',errorCodes:['VALIDATION_ERROR']};
 
 ['adminCategoriesList','adminBannersList','adminFeaturedList','adminProductsList','adminHomeSectionsList','adminLandingPagesList','adminInventoryLowStockReport'].forEach((n)=>{ACTION_SPECS[n]={schema:storeScoped,notes:'Store scoped list',errorCodes:['VALIDATION_ERROR']};});
 ['adminCategoriesGet','adminCategoriesDisable','adminBannersGet','adminBannersDisable','adminProductsGet','adminProductsDisable','adminHomeSectionsGet','adminHomeSectionsDisable','adminLandingPagesGet','adminLandingPagesPublish','adminLandingPagesUnpublish','adminLandingPagesDisable'].forEach((n)=>{ACTION_SPECS[n]={schema:idSchema,notes:'By id',errorCodes:['VALIDATION_ERROR']};});
-ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({storeId:Joi.string().required(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminCategoriesUpdate={schema:Joi.object({id:Joi.string().required(),name:Joi.string().optional(),slug:Joi.string().optional(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update category',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersCreate={schema:Joi.object({storeId:Joi.string().required(),title:Joi.string().required(),mediaAssetId:Joi.string().required(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersUpdate={schema:Joi.object({id:Joi.string().required(),title:Joi.string().optional(),mediaAssetId:Joi.string().optional(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminFeaturedSearchProducts={schema:Joi.object({storeId:Joi.string().required(),query:Joi.string().allow('',null),limit:Joi.number().integer().min(1).max(100).optional()}).required(),notes:'Search products for featured',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminFeaturedSet={schema:Joi.object({storeId:Joi.string().required(),productIds:Joi.any().required()}).required(),notes:'Set featured',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductsCreate={schema:Joi.object({storeId:Joi.string().required(),categoryId:Joi.string().required(),name:Joi.string().required(),slug:Joi.string().required(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Create product',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductsUpdate={schema:Joi.object({id:Joi.string().required(),categoryId:Joi.string().optional(),name:Joi.string().optional(),slug:Joi.string().optional(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Update product',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesList={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'list images',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesAdd={schema:Joi.object({productId:Joi.string().required(),mediaAssetId:Joi.string().required(),sortOrder:Joi.number().integer().optional()}).required(),notes:'add image',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesRemove={schema:idSchema,notes:'remove image',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminProductImagesReorder={schema:Joi.object({productId:Joi.string().required(),items:Joi.any().required()}).required(),notes:'reorder images',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductsCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),categoryId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Create product',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductsUpdate={schema:Joi.object({id:Joi.string().required(),mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),categoryId:Joi.string().allow(null,'').optional(),categoryIds:Joi.array().items(Joi.string()).optional(),name:Joi.string().optional(),slug:Joi.string().optional(),description:Joi.string().allow(null,''),status:Joi.string().optional()}).required(),notes:'Update product',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductAliasesList={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().optional(),limit:Joi.number().integer().min(1).max(500).optional()}).required(),notes:'List product aliases',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductAliasGet={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'Get product alias',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductAliasUpsert={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().required(),alias:Joi.string().allow('', null).max(180).required()}).required(),notes:'Upsert product alias',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductAliasDelete={schema:Joi.object({storeId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'Delete product alias',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesList={schema:Joi.object({productId:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'list images',errorCodes:['VALIDATION_ERROR']};
+
+ACTION_SPECS.adminProductImagesAdd = {
+  schema: Joi.object({
+    productId: Joi.string().required(),
+    mediaAssetId: Joi.string().optional(),
+    assetId: Joi.string().optional(),
+    sortOrder: Joi.number().integer().optional(),
+    scope: Joi.string().valid('legacy', 'base', 'storeOverride').optional(),
+    storeId: Joi.string().optional(),
+  })
+      .custom((value: any, helpers: any) => {
+        if (!value.mediaAssetId && !value.assetId) {
+          return helpers.error('any.invalid');
+        }
+        return value;
+      })
+      .required(),
+  notes: 'add image',
+  errorCodes: ['VALIDATION_ERROR'],
+};
+
+
+ACTION_SPECS.adminProductImagesRemove={schema:Joi.object({id:Joi.string().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional()}).required(),notes:'remove image',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminProductImagesReorder={schema:Joi.object({productId:Joi.string().required(),items:Joi.any().required(),scope:Joi.string().valid('legacy','base','storeOverride').optional(),storeId:Joi.string().optional()}).required(),notes:'reorder images',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsList={schema:Joi.object({productId:Joi.string().required()}).required(),notes:'list specs',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsCreate={schema:Joi.object({productId:Joi.string().required(),specKey:Joi.string().required(),specValue:Joi.string().required(),sortOrder:Joi.number().integer().optional()}).required(),notes:'create spec',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductSpecsUpdate={schema:Joi.object({id:Joi.string().required(),productId:Joi.string().required(),specKey:Joi.string().optional(),specValue:Joi.string().optional(),sortOrder:Joi.number().integer().optional()}).required(),notes:'update spec',errorCodes:['VALIDATION_ERROR']};
@@ -145,6 +209,7 @@ ACTION_SPECS.adminSeoUpdate={schema:Joi.object({id:Joi.string().optional(),store
 ACTION_SPECS.adminLandingPagesGet={schema:idSchema,notes:'get landing page',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminLandingPagesCreate={schema:Joi.object({storeId:Joi.string().required(),slug:Joi.string().required(),title:Joi.string().required(),body:Joi.any().required()}).required(),notes:'create landing',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminLandingPagesUpdate={schema:Joi.object({id:Joi.string().required(),slug:Joi.string().optional(),title:Joi.string().optional(),body:Joi.any().optional(),status:Joi.string().optional()}).required(),notes:'update landing',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSitemapGet={schema:Joi.object({storeId:Joi.string().required()}).required(),notes:'Get sitemap status',errorCodes:['VALIDATION_ERROR','NOT_FOUND','STORE_ACCESS_REQUIRED']};
 ACTION_SPECS.adminSitemapRegenerate={schema:Joi.object({storeId:Joi.string().required(),artifact:Joi.string().valid('robots','index','products','categories','pages','images','all').optional(),includeInactive:Joi.boolean().optional(),includeEmpty:Joi.boolean().optional(),forceRegenerate:Joi.boolean().optional()}).required(),notes:'Export SEO artifacts for store',errorCodes:['VALIDATION_ERROR','NOT_FOUND','STORE_ACCESS_REQUIRED']};
 
 const phase4ClientAny = ['cartGet','cartClear','cartRemoveCoupon','notificationsList','notificationsMarkAllRead','loyaltyGetDashboard','loyaltyListTransactions','walletGet','walletHistory','alertsGetPrefs','recoGetCartUpsell','postPurchaseGetNudges','supportListTickets','settingsGet'];
@@ -332,6 +397,43 @@ ACTION_SPECS.adminInventoryImportGetUnmappedPrefixes = { schema: Joi.object({ st
 ACTION_SPECS.adminInventoryImportResolvePrefixes = { schema: Joi.object({ storeId: Joi.string().required(), batchId: Joi.number().integer().positive().required(), resolutions: Joi.any().required() }).required(), notes: 'Resolve prefixes', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
 ACTION_SPECS.adminInventoryImportApply = { schema: Joi.object({ storeId: Joi.string().required(), batchId: Joi.number().integer().positive().required() }).required(), notes: 'Apply import batch', errorCodes: ['VALIDATION_FAILED', 'IMPORT_NEEDS_MAPPING', 'IMPORT_ALREADY_APPLIED'] };
 ACTION_SPECS.adminInventoryImportGet = { schema: Joi.object({ storeId: Joi.string().required(), batchId: Joi.number().integer().positive().required() }).required(), notes: 'Get import batch', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
+ACTION_SPECS.adminPriceImportCreateSession = { schema: Joi.object({ storeId: Joi.string().required() }).required(), notes: 'Create price import session', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.adminPriceImportUploadSheet = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    sessionId: Joi.string().required(),
+    fileMediaAssetId: Joi.string().required(),
+    fileType: Joi.string().valid('excel', 'csv', 'tsv').required(),
+    fileName: Joi.string().max(255).allow(null, ''),
+    maxRows: Joi.number().integer().min(1).max(1000).optional(),
+    rows: Joi.array().items(Joi.object({
+      rowNumber: Joi.number().integer().min(1).optional(),
+      sourceName: Joi.string().allow('', null).required(),
+      sourcePrice: Joi.any().optional(),
+      sourceUnit: Joi.string().allow('', null).optional(),
+      sourceBalance: Joi.any().optional(),
+    })).required(),
+  }).required(),
+  notes: 'Upload parsed price sheet rows',
+  errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND']
+};
+ACTION_SPECS.adminPriceImportParsePreview = { schema: Joi.object({ storeId: Joi.string().required(), sessionId: Joi.string().required(), status: Joi.string().optional(), maxRows: Joi.number().integer().min(1).max(1000).optional() }).required(), notes: 'Preview price import session', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
+ACTION_SPECS.adminPriceImportResolveMatch = { schema: Joi.object({ storeId: Joi.string().required(), sessionId: Joi.string().required(), rowId: Joi.string().required(), productId: Joi.string().required(), variantId: Joi.string().allow(null, ''), confidenceScore: Joi.number().integer().min(0).max(100).optional(), saveMapping: Joi.boolean().optional(), maxRows: Joi.number().integer().min(1).max(1000).optional() }).required(), notes: 'Resolve one price import row', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
+ACTION_SPECS.adminPriceImportApply = { schema: Joi.object({ storeId: Joi.string().required(), sessionId: Joi.string().required(), maxRows: Joi.number().integer().min(1).max(1000).optional() }).required(), notes: 'Apply store price import', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
+ACTION_SPECS.adminPriceImportListMappings = { schema: Joi.object({ storeId: Joi.string().required(), query: Joi.string().allow('', null), limit: Joi.number().integer().min(1).max(500).optional() }).required(), notes: 'List price import mappings', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.adminPriceImportUpsertMapping = { schema: Joi.object({ storeId: Joi.string().required(), sourceText: Joi.string().max(180).required(), productId: Joi.string().required(), variantId: Joi.string().allow(null, ''), confidence: Joi.number().integer().min(0).max(100).optional(), mappingType: Joi.string().max(24).optional() }).required(), notes: 'Upsert price import mapping', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
+ACTION_SPECS.adminPriceImportDeleteMapping = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    id: Joi.string().optional(),
+    sourceText: Joi.string().allow('', null).optional(),
+  }).custom((value: any, helpers: any) => {
+    if (!value?.id && !value?.sourceText) return helpers.error('any.invalid');
+    return value;
+  }).required(),
+  notes: 'Delete price import mapping',
+  errorCodes: ['VALIDATION_FAILED']
+};
 
 const baseReportPayload = Joi.object({
   storeId: Joi.string().required(),
@@ -532,10 +634,40 @@ const listQueryPayload = Joi.object({
 }).optional();
 
 ACTION_SPECS.adminOrdersList = { schema: listQueryPayload, notes: 'admin orders list query', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminOrdersCreate = {
+  schema: Joi.object({
+    storeId: Joi.string().optional(),
+    customerName: Joi.string().max(120).required(),
+    customerPhone: Joi.string().max(32).allow('', null).required(),
+    addressLine: Joi.string().max(300).allow('', null).optional(),
+    address: Joi.string().max(300).allow('', null).optional(),
+    city: Joi.string().max(120).allow('', null).optional(),
+    area: Joi.string().max(120).allow('', null).optional(),
+    zoneId: Joi.string().allow('', null).optional(),
+    total: Joi.number().min(0).required(),
+    status: Joi.string().max(24).optional(),
+    priority: Joi.string().max(24).optional(),
+    trackingNumber: Joi.string().max(120).allow('', null).optional(),
+    courierId: Joi.string().allow('', null).optional(),
+    note: Joi.string().max(500).allow('', null).optional(),
+  }).required(),
+  notes: 'admin manual order create',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND']
+};
+ACTION_SPECS.adminOrdersGet = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional() }).required(), notes: 'admin get order', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersUpdateStatus = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), status: Joi.string().required(), note: Joi.string().max(500).allow('', null).optional() }).required(), notes: 'admin order status update', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersSetTracking = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), trackingNumber: Joi.string().allow('', null).optional(), carrier: Joi.string().allow('', null).optional(), courierId: Joi.string().allow('', null).optional(), status: Joi.string().allow('', null).optional() }).required(), notes: 'admin order tracking set', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersAddInternalNote = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), note: Joi.string().max(2000).required() }).required(), notes: 'admin order note', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersInvoiceUrl = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional() }).required(), notes: 'admin invoice url', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminOrdersTrackingGet = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional() }).required(), notes: 'admin order tracking get', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersTrackingAddEvent = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), shipmentId: Joi.string().allow('', null).optional(), message: Joi.string().allow('', null).optional(), label: Joi.string().allow('', null).optional(), location: Joi.string().allow('', null).optional() }).required(), notes: 'admin order tracking add event', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersTrackingDeleteEvent = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), eventId: Joi.string().optional() }).required(), notes: 'admin order tracking delete event', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminOrdersTrackingUpdateShipment = { schema: Joi.object({ storeId: Joi.string().optional(), orderId: Joi.string().optional(), id: Joi.string().optional(), shipmentId: Joi.string().allow('', null).optional(), trackingNumber: Joi.string().allow('', null).optional(), carrier: Joi.string().allow('', null).optional(), courierId: Joi.string().allow('', null).optional(), status: Joi.string().allow('', null).optional() }).required(), notes: 'admin shipment update', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
 ACTION_SPECS.adminInsuranceList = { schema: listQueryPayload, notes: 'admin insurance list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminRiskFlaggedOrdersList = { schema: listQueryPayload, notes: 'admin risk list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminReturnsList = { schema: listQueryPayload, notes: 'admin returns list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminProductsList = { schema: listQueryPayload, notes: 'admin products list query', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminCatalogRebuildProductMetrics = { schema: Joi.object({ storeId: Joi.string().optional() }).optional(), notes: 'rebuild persisted product metrics', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminCategoriesList = { schema: listQueryPayload, notes: 'admin categories list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminBannersList = { schema: listQueryPayload, notes: 'admin banners list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminLandingPagesList = { schema: listQueryPayload, notes: 'admin landing pages list query', errorCodes: ['VALIDATION_ERROR'] };
@@ -553,6 +685,30 @@ ACTION_SPECS.adminDrawersList = { schema: listQueryPayload, notes: 'admin drawer
 ACTION_SPECS.adminDineInTablesList = { schema: listQueryPayload.keys({ branchId: Joi.string().optional() }), notes: 'admin dine-in tables list query', errorCodes: ['VALIDATION_FAILED'] };
 ACTION_SPECS.adminDineInSessionsList = { schema: listQueryPayload.keys({ branchId: Joi.string().optional(), status: Joi.string().optional() }), notes: 'admin dine-in sessions list query', errorCodes: ['VALIDATION_FAILED'] };
 ACTION_SPECS.adminDineInWaiterCallsList = { schema: listQueryPayload.keys({ branchId: Joi.string().optional(), status: Joi.string().optional() }), notes: 'admin dine-in waiter calls list query', errorCodes: ['VALIDATION_FAILED'] };
+ACTION_SPECS.adminDrawerSessionsList = { schema: listQueryPayload, notes: 'admin drawer sessions list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminDrawerSessionsGet = { schema: Joi.object({ storeId: Joi.string().optional(), sessionId: Joi.string().optional(), id: Joi.string().optional() }).required(), notes: 'admin drawer session get', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminDrawerReconciliationsList = { schema: listQueryPayload, notes: 'admin drawer reconciliations list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminChartOfAccountsList = { schema: listQueryPayload, notes: 'admin chart of accounts list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminChartOfAccountsCreate = { schema: Joi.object({ storeId: Joi.string().optional(), code: Joi.string().max(40).required(), name: Joi.string().max(140).required(), type: Joi.string().valid('asset','liability','equity','revenue','expense','cogs','contra').required(), parentId: Joi.string().allow('', null).optional(), active: Joi.boolean().optional(), allowPosting: Joi.boolean().optional() }).required(), notes: 'admin chart account create', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminChartOfAccountsUpdate = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional(), code: Joi.string().max(40).optional(), name: Joi.string().max(140).optional(), type: Joi.string().valid('asset','liability','equity','revenue','expense','cogs','contra').optional(), parentId: Joi.string().allow('', null).optional(), active: Joi.boolean().optional(), allowPosting: Joi.boolean().optional() }).required(), notes: 'admin chart account update', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminChartOfAccountsSetActive = { schema: Joi.object({ id: Joi.string().required(), active: Joi.boolean().required(), storeId: Joi.string().optional() }).required(), notes: 'admin chart account activate', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminJournalEntriesList = { schema: listQueryPayload.keys({ sourceType: Joi.string().optional(), sourceId: Joi.string().optional(), postingStatus: Joi.string().valid('pending','posted','failed','reversed').optional() }), notes: 'admin journal entries list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminJournalEntriesGet = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin journal entry get', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminJournalEntriesCreate = { schema: Joi.object({ storeId: Joi.string().optional(), postingDate: Joi.string().required(), memo: Joi.string().allow('', null).optional(), periodId: Joi.string().allow('', null).optional(), sourceType: Joi.string().allow('', null).optional(), sourceId: Joi.string().allow('', null).optional(), lines: Joi.array().items(Joi.object({ accountId: Joi.string().required(), debit: Joi.number().min(0).required(), credit: Joi.number().min(0).required(), description: Joi.string().allow('', null).optional() })).min(2).required() }).required(), notes: 'admin journal entry create', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminJournalEntriesPost = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin journal entry post', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminJournalEntriesReverse = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin journal entry reverse', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminJournalEntriesRetry = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin journal entry retry', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminAccountingPeriodsList = { schema: listQueryPayload, notes: 'admin accounting periods list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminAccountingPeriodsCreate = { schema: Joi.object({ storeId: Joi.string().optional(), name: Joi.string().max(24).required(), startDate: Joi.string().required(), endDate: Joi.string().required(), status: Joi.string().valid('open','closed').optional() }).required(), notes: 'admin accounting period create', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminAccountingPeriodsUpdate = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional(), name: Joi.string().max(24).optional(), startDate: Joi.string().optional(), endDate: Joi.string().optional(), status: Joi.string().valid('open','closed').optional() }).required(), notes: 'admin accounting period update', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminAccountingPeriodsSetStatus = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional(), status: Joi.string().valid('open','closed').required() }).required(), notes: 'admin accounting period status', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminAccountingPeriodsOpen = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin accounting period open', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminAccountingPeriodsClose = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional() }).required(), notes: 'admin accounting period close', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminPostingRulesList = { schema: listQueryPayload, notes: 'admin posting rules list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminPostingRulesCreate = { schema: Joi.object({ storeId: Joi.string().optional(), name: Joi.string().max(80).required(), eventType: Joi.string().max(64).required(), sourceType: Joi.string().max(48).required(), debitAccountId: Joi.string().required(), creditAccountId: Joi.string().required(), active: Joi.boolean().optional(), priority: Joi.number().integer().min(1).optional() }).required(), notes: 'admin posting rule create', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminPostingRulesUpdate = { schema: Joi.object({ id: Joi.string().required(), storeId: Joi.string().optional(), name: Joi.string().max(80).optional(), eventType: Joi.string().max(64).optional(), sourceType: Joi.string().max(48).optional(), debitAccountId: Joi.string().optional(), creditAccountId: Joi.string().optional(), active: Joi.boolean().optional(), priority: Joi.number().integer().min(1).optional() }).required(), notes: 'admin posting rule update', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminPosRefundsList = { schema: listQueryPayload, notes: 'admin pos refunds list', errorCodes: ['VALIDATION_ERROR'] };
+ACTION_SPECS.adminPosRefundsCreate = { schema: Joi.any().optional(), notes: 'admin pos refund create alias', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.ordersList = { schema: listQueryPayload, notes: 'orders list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.notificationsList = { schema: listQueryPayload, notes: 'notifications list query', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.supportListTickets = { schema: listQueryPayload, notes: 'support tickets list query', errorCodes: ['VALIDATION_ERROR'] };
@@ -568,8 +724,8 @@ ACTION_SPECS.dineInCloseSession={schema:Joi.object({sessionToken:Joi.string().re
 ACTION_SPECS.dineInCallWaiter={schema:Joi.object({sessionToken:Joi.string().required(),callType:Joi.string().valid('callWaiter','requestBill','needHelp','cleanup').required(),note:Joi.string().max(1000).allow('',null),orderId:Joi.string().optional()}).required(),notes:'dine in waiter call',errorCodes:['VALIDATION_FAILED']};
 ACTION_SPECS.dineInRequestBill={schema:Joi.object({sessionToken:Joi.string().required(),orderId:Joi.string().optional(),note:Joi.string().max(1000).allow('',null)}).required(),notes:'dine in request bill',errorCodes:['VALIDATION_FAILED']};
 
-ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
-ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCanReview={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required()}).required(),notes:'review eligibility',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
+ACTION_SPECS.reviewsCreate={schema:Joi.object({orderId:Joi.string().required(),productId:Joi.string().required(),rating:Joi.number().integer().min(1).max(5).required(),comment:Joi.string().max(2000).allow('',null)}).required(),notes:'create order review',errorCodes:['VALIDATION_FAILED','NOT_FOUND']};
 
 ACTION_SPECS.checkoutCreatePaymentSession={schema:Joi.object({serviceType:Joi.string().valid('standard','delivery','pickup','dineIn').optional(),branchId:Joi.string().optional(),dineInSessionToken:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','DINE_IN_SESSION_REQUIRED']};
 
@@ -775,11 +931,206 @@ ACTION_SPECS.paymentsConfirm = {
 
 ACTION_SPECS.publicProductsBulkImportFromJson = {
   schema: Joi.object({
-    storeId: Joi.any().required(),
+    storeId: Joi.any().optional(),
+    productMode: Joi.string().valid('global', 'store').optional(),
+    categoryMode: Joi.string().valid('global', 'store').optional(),
+    mediaScope: Joi.string().valid('base', 'storeOverride').optional(),
     parentCategoryName: Joi.string().min(1).required(),
     categoryName: Joi.string().min(1).required(),
     data: Joi.array().items(Joi.object().required()).min(1).required(),
   }).required(),
   notes: 'admin bulk import products from JSON',
   errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'],
+};
+
+
+ACTION_SPECS.adminSuppliersList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminSuppliersDisable={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminWarehousesDisable={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersGet={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersSubmit={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersApprove={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersCancel={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPurchaseOrdersReceive={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminGoodsReceiptsList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminGoodsReceiptsGet={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminGoodsReceiptsCreate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminStockMovementsList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminInventoryBatchesList={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminInventoryBatchesUpdate={schema:Joi.any().optional(),notes:'phase7',errorCodes:['VALIDATION_ERROR']};
+
+
+ACTION_SPECS.adminPosSessionsOpen={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSessionsClose={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSessionsList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesCreate={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesGet={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosSalesList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsCreate={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsGet={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminPosReturnsList={schema:Joi.any().optional(),notes:'phase8',errorCodes:['VALIDATION_ERROR']};
+
+const prescriptionFilesPayload = Joi.array().items(
+  Joi.object({
+    mediaAssetId: Joi.string().required(),
+    kind: Joi.string().max(32).optional(),
+    sortOrder: Joi.number().integer().min(0).optional(),
+  }).required()
+).min(1).required();
+
+const prescriptionItemDraftsPayload = Joi.array().items(
+  Joi.object({
+    productId: Joi.string().required(),
+    variantId: Joi.string().required(),
+    qty: Joi.number().integer().min(1).required(),
+    note: Joi.string().max(500).allow(null, '').optional(),
+  }).required()
+).required();
+
+ACTION_SPECS.prescriptionCreateDraft = {
+  schema: Joi.object({
+    customerName: Joi.string().max(120).allow(null, '').optional(),
+    customerPhone: Joi.string().max(32).allow(null, '').optional(),
+    customerWhatsAppPhone: Joi.string().max(32).allow(null, '').optional(),
+    notes: Joi.string().max(2000).allow(null, '').optional(),
+  }).optional(),
+  notes: 'create prescription request draft',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED'],
+};
+
+ACTION_SPECS.prescriptionAttachFiles = {
+  schema: Joi.object({
+    prescriptionRequestId: Joi.string().required(),
+    files: prescriptionFilesPayload,
+  }).required(),
+  notes: 'attach uploaded media assets to prescription request',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED', 'NOT_FOUND'],
+};
+
+ACTION_SPECS.prescriptionSubmit = {
+  schema: Joi.object({
+    prescriptionRequestId: Joi.string().required(),
+    customerName: Joi.string().max(120).allow(null, '').optional(),
+    customerPhone: Joi.string().max(32).allow(null, '').optional(),
+    customerWhatsAppPhone: Joi.string().max(32).allow(null, '').optional(),
+    notes: Joi.string().max(2000).allow(null, '').optional(),
+  }).required(),
+  notes: 'submit prescription request for review',
+  errorCodes: ['VALIDATION_ERROR', 'ACCOUNT_AUTH_REQUIRED', 'NOT_FOUND'],
+};
+
+ACTION_SPECS.prescriptionGet = {
+  schema: Joi.object({ prescriptionRequestId: Joi.string().required() }).required(),
+  notes: 'get own prescription request',
+  errorCodes: ['ACCOUNT_AUTH_REQUIRED', 'NOT_FOUND'],
+};
+
+ACTION_SPECS.prescriptionListMine = {
+  schema: clientFriendlyListQueryPayload.keys({
+    status: Joi.string().valid('draft', 'submitted', 'under_review', 'approved', 'rejected_unreadable', 'converted_to_order', 'cancelled').optional(),
+  }),
+  notes: 'list own prescription requests',
+  errorCodes: ['ACCOUNT_AUTH_REQUIRED'],
+};
+
+ACTION_SPECS.prescriptionCancel = {
+  schema: Joi.object({
+    prescriptionRequestId: Joi.string().required(),
+    reason: Joi.string().max(500).allow(null, '').optional(),
+  }).required(),
+  notes: 'cancel own prescription request',
+  errorCodes: ['ACCOUNT_AUTH_REQUIRED', 'NOT_FOUND', 'VALIDATION_ERROR'],
+};
+
+ACTION_SPECS.prescriptionGetWhatsAppContact = {
+  schema: Joi.any().optional(),
+  notes: 'get prescription support WhatsApp contact',
+  errorCodes: ['VALIDATION_ERROR'],
+};
+
+ACTION_SPECS.adminPrescriptionList = {
+  schema: clientFriendlyListQueryPayload.keys({
+    storeId: Joi.string().required(),
+    status: Joi.string().valid('draft', 'submitted', 'under_review', 'approved', 'rejected_unreadable', 'converted_to_order', 'cancelled').optional(),
+  }).required(),
+  notes: 'admin list prescription requests',
+  errorCodes: ['VALIDATION_ERROR', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionGet = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+  }).required(),
+  notes: 'admin get prescription request details',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionMarkUnderReview = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+    note: Joi.string().max(500).allow(null, '').optional(),
+  }).required(),
+  notes: 'mark prescription request under review',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionApprove = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+    note: Joi.string().max(500).allow(null, '').optional(),
+    reviewNotes: Joi.string().max(500).allow(null, '').optional(),
+  }).required(),
+  notes: 'approve prescription request',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionReject = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+    rejectionReason: Joi.string().max(500).required(),
+    note: Joi.string().max(500).allow(null, '').optional(),
+  }).required(),
+  notes: 'reject unreadable or invalid prescription request',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionSetItemsDraft = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+    items: prescriptionItemDraftsPayload,
+  }).required(),
+  notes: 'set mapped product draft items for prescription request',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionConvertToOrder = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+  }).required(),
+  notes: 'convert approved prescription request to a real order',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'OUT_OF_STOCK', 'STORE_ACCESS_REQUIRED'],
+};
+
+ACTION_SPECS.adminPrescriptionLinkExistingOrder = {
+  schema: Joi.object({
+    storeId: Joi.string().required(),
+    prescriptionRequestId: Joi.string().required(),
+    orderId: Joi.string().required(),
+  }).required(),
+  notes: 'link an existing order to prescription request',
+  errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
 };

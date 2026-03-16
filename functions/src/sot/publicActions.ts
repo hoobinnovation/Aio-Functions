@@ -11,6 +11,8 @@ export const PUBLIC_ACTIONS_SOT = [
   'publicCategoryGetById',
   'publicCategoryGetBySlug',
   'publicSeoGetPageMeta',
+  'publicSeoGetPageSettings',
+  'publicSeoSettingsGet',
   'publicSeoGetLanding',
   'publicDevSeedDummyData',
   'publicProductsBulkImportFromJson',

@@ -96,16 +96,18 @@ function toIsoOrNull(value: unknown) {
 }
 
 export function normalizeDateInput(
-  payload: any,
-  options?: { defaultDaysBack?: number; allowEmpty?: boolean; requireCompleteRange?: boolean },
+    payload: any,
+    options?: { defaultDaysBack?: number; allowEmpty?: boolean; requireCompleteRange?: boolean },
 ): NormalizedDateInput {
   const fromRaw = payload?.from ?? payload?.dateFrom ?? payload?.range?.from;
   const toRaw = payload?.to ?? payload?.dateTo ?? payload?.range?.to;
-  const source: DateInputSource = payload?.from != null || payload?.to != null
-    ? 'topLevel'
-    : payload?.range
-      ? 'range'
-      : 'none';
+
+  const source: DateInputSource =
+      payload?.from != null || payload?.to != null
+          ? 'topLevel'
+          : payload?.range
+              ? 'range'
+              : 'none';
 
   let from = toIsoOrNull(fromRaw);
   let to = toIsoOrNull(toRaw);
@@ -120,7 +122,7 @@ export function normalizeDateInput(
 
   if (!from && !to && options?.defaultDaysBack) {
     const end = new Date();
-    const start = new Date(end.getTime() - (options.defaultDaysBack * 86400000));
+    const start = new Date(end.getTime() - options.defaultDaysBack * 86400000);
     return { from: start.toISOString(), to: end.toISOString(), source: 'defaulted' };
   }
 
@@ -145,7 +147,6 @@ export function normalizePagination(payload: any, defaultPageSize = 20, maxPageS
   const pageFromTopLevel = toNumberOrUndefined(payload?.page);
   const limit = toNumberOrUndefined(payload?.limit);
   const offset = toNumberOrUndefined(payload?.offset);
-
   const pageSizeFromTopLevel = toNumberOrUndefined(payload?.pageSize);
   const pageSizeFromLimit = limit;
 
@@ -176,9 +177,9 @@ export function normalizePagination(payload: any, defaultPageSize = 20, maxPageS
 }
 
 export function normalizeSort(
-  payload: any,
-  defaults: { by: string; dir: 'asc' | 'desc' },
-  options?: Pick<QueryContractOptions, 'allowedSortFields' | 'sortAliases'>,
+    payload: any,
+    defaults: { by: string; dir: 'asc' | 'desc' },
+    options?: Pick<QueryContractOptions, 'allowedSortFields' | 'sortAliases'>,
 ): NormalizedSortInput {
   const sortInput = payload?.sort ?? payload?.sortBy;
   let by: unknown;
@@ -203,8 +204,9 @@ export function normalizeSort(
   if (normalizedDir !== 'asc' && normalizedDir !== 'desc') {
     throw new AppError('QUERY_SORT_INVALID', 'sort.direction must be asc or desc', { direction: dir });
   }
-    console.log(options?.allowedSortFields,normalizedBy)
-  if (options?.allowedSortFields &&
+
+  if (
+      options?.allowedSortFields &&
       options.allowedSortFields.length > 0 &&
       !options.allowedSortFields.includes(normalizedBy)
   ) {
@@ -223,24 +225,32 @@ export function normalizeSort(
 
 function coerceSimpleFilterValue(value: unknown): unknown {
   if (value == null) return undefined;
+
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed.length) return undefined;
+
     const bool = toBooleanOrUndefined(trimmed);
     if (bool !== undefined) return bool;
+
     const numeric = toNumberOrUndefined(trimmed);
     if (numeric !== undefined && /^-?\d+(\.\d+)?$/.test(trimmed)) return numeric;
+
     return trimmed;
   }
+
   if (Array.isArray(value)) {
     return value.map(coerceSimpleFilterValue).filter((entry) => entry !== undefined);
   }
+
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
+
   if (isObject(value)) {
     return value;
   }
+
   return undefined;
 }
 
@@ -251,9 +261,9 @@ export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[])
   }
 
   const normalized = Object.fromEntries(
-    Object.entries(filters)
-      .map(([key, value]) => [key, coerceSimpleFilterValue(value)] as const)
-      .filter(([, value]) => value !== undefined),
+      Object.entries(filters)
+          .map(([key, value]) => [key, coerceSimpleFilterValue(value)] as const)
+          .filter(([, value]) => value !== undefined),
   );
 
   if (allowedFilterKeys?.length) {
@@ -272,10 +282,12 @@ export function normalizeFilters(filters: unknown, allowedFilterKeys?: string[])
 export function normalizeFlags(flags: unknown) {
   if (!isObject(flags)) return {};
   return Object.fromEntries(
-    Object.entries(flags).map(([key, value]) => {
-      const normalizedBool = toBooleanOrUndefined(value);
-      return [key, normalizedBool ?? value];
-    }).filter(([, value]) => value !== undefined),
+      Object.entries(flags)
+          .map(([key, value]) => {
+            const normalizedBool = toBooleanOrUndefined(value);
+            return [key, normalizedBool ?? value];
+          })
+          .filter(([, value]) => value !== undefined),
   ) as Record<string, unknown>;
 }
 
@@ -283,6 +295,7 @@ function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map(toStringOrNull).filter((entry): entry is string => !!entry);
   }
+
   const raw = toStringOrNull(value);
   if (!raw) return [];
   return raw.split(',').map((entry) => entry.trim()).filter(Boolean);
@@ -290,10 +303,12 @@ function normalizeStringArray(value: unknown): string[] {
 
 function enforceAllowedList(values: string[], allowedValues: string[] | undefined, code: string, message: string) {
   if (!allowedValues?.length || !values.length) return values;
+
   const unsupported = values.filter((value) => !allowedValues.includes(value));
   if (unsupported.length) {
     throw new AppError(code, message, { unsupported, allowed: allowedValues });
   }
+
   return values;
 }
 
@@ -311,10 +326,12 @@ export function normalizeColumns(columns: unknown, allowedColumns?: string[]) {
 export function normalizeSearchInput(payload: any): NormalizedSearchInput {
   const raw = payload?.search?.term ?? payload?.query ?? payload?.q ?? payload?.search;
   if (raw == null || raw === '') return { term: '' };
+
   const term = toStringOrNull(raw);
   if (term == null) {
     throw new AppError('QUERY_SEARCH_INVALID', 'search term must be a string');
   }
+
   return { term };
 }
 
@@ -323,13 +340,13 @@ export function isDevRelaxedValidationEnabled() {
 }
 
 export function normalizeListQueryInput(
-  payload: any,
-  options?: {
-    defaultPageSize?: number;
-    maxPageSize?: number;
-    defaultSort?: { by: string; dir: 'asc' | 'desc' };
-    contract?: QueryContractOptions;
-  },
+    payload: any,
+    options?: {
+      defaultPageSize?: number;
+      maxPageSize?: number;
+      defaultSort?: { by: string; dir: 'asc' | 'desc' };
+      contract?: QueryContractOptions;
+    },
 ): NormalizedListQuery {
   const pagination = normalizePagination(payload, options?.defaultPageSize ?? 20, options?.maxPageSize ?? 200);
   const offset = (pagination.page - 1) * pagination.pageSize;

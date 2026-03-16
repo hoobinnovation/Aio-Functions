@@ -14,7 +14,7 @@ import { adminHealthActionsCoverage as adminHealthActionsCoverageCore, actionsLi
 import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { buildFeatureVisibilityResponse, serializeFeatureVisibility } from './storeFeatureVisibility';
-
+import PROD from "../../utils/PROD";
 
 type AdminModuleDescriptor = {
   key: string;
@@ -30,11 +30,14 @@ const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
   { key: 'categories', label: 'Categories', icon: 'category', actionNames: ['adminCategoriesList','adminCategoriesGet','adminCategoriesCreate','adminCategoriesUpdate','adminCategoriesDisable'] },
   { key: 'banners', label: 'Banners', icon: 'image', actionNames: ['adminBannersList','adminBannersGet','adminBannersCreate','adminBannersUpdate','adminBannersDisable'] },
   { key: 'featuredProducts', label: 'Featured Products', icon: 'star', actionNames: ['adminFeaturedList','adminFeaturedSearchProducts','adminFeaturedSet'] },
-  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable'] },
+  { key: 'products', label: 'Products', icon: 'inventory_2', actionNames: ['adminProductsList','adminProductsGet','adminProductsCreate','adminProductsUpdate','adminProductsDisable','adminCatalogRebuildProductMetrics'] },
+  { key: 'productAliases', label: 'Product Aliases', icon: 'drive_file_rename_outline', actionNames: ['adminProductAliasesList','adminProductAliasGet','adminProductAliasUpsert','adminProductAliasDelete'] },
   { key: 'productImages', label: 'Product Images', icon: 'collections', actionNames: ['adminProductImagesList','adminProductImagesAdd','adminProductImagesRemove','adminProductImagesReorder'] },
   { key: 'productSpecs', label: 'Product Specs', icon: 'fact_check', actionNames: ['adminProductSpecsList','adminProductSpecsCreate','adminProductSpecsUpdate','adminProductSpecsDelete'] },
   { key: 'productVariants', label: 'Product Variants', icon: 'view_module', actionNames: ['adminProductVariantsList','adminProductVariantsCreate','adminProductVariantsUpdate','adminProductVariantsDelete','adminProductVariantsBulkStockUpdate'] },
   { key: 'inventory', label: 'Inventory', icon: 'inventory', actionNames: ['adminInventoryAdjust','adminInventoryHistory','adminInventoryLowStockReport','adminInventoryImportCreateBatch','adminInventoryImportPreview','adminInventoryImportGetUnmappedPrefixes','adminInventoryImportResolvePrefixes','adminInventoryImportApply','adminInventoryImportGet'] },
+  { key: 'priceImport', label: 'Price Import', icon: 'price_change', actionNames: ['adminPriceImportCreateSession','adminPriceImportUploadSheet','adminPriceImportParsePreview','adminPriceImportResolveMatch','adminPriceImportApply','adminPriceImportListMappings','adminPriceImportUpsertMapping','adminPriceImportDeleteMapping'] },
+  { key: 'posCashier', label: 'POS & Cashier', icon: 'point_of_sale', actionNames: ['adminPosSessionsOpen','adminPosSessionsClose','adminPosSessionsList','adminPosSalesCreate','adminPosSalesGet','adminPosSalesList','adminPosReturnsCreate','adminPosReturnsGet','adminPosReturnsList','adminAccountingCreatePOSSale','adminDrawersList','adminDrawerSessionsOpen','adminDrawerSessionsClose'] },
   { key: 'orders', label: 'Orders', icon: 'shopping_bag', actionNames: ['adminOrdersList','adminOrdersGet','adminOrdersUpdateStatus','adminOrdersSetTracking','adminOrdersAddInternalNote','adminOrdersInvoiceUrl','adminOrdersTrackingGet','adminOrdersTrackingAddEvent','adminOrdersTrackingDeleteEvent','adminOrdersTrackingUpdateShipment'] },
   { key: 'shippingMethods', label: 'Shipping Methods', icon: 'local_shipping', actionNames: ['adminShippingMethodsList','adminShippingMethodsGet','adminShippingMethodsCreate','adminShippingMethodsUpdate','adminShippingMethodsDisable'] },
   { key: 'deliveryZones', label: 'Delivery Zones', icon: 'map', actionNames: ['adminDeliveryZonesList','adminDeliveryZonesGet','adminDeliveryZonesCreate','adminDeliveryZonesUpdate','adminDeliveryZonesDisable'] },
@@ -45,12 +48,14 @@ const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
   { key: 'loyaltySettings', label: 'Loyalty Settings', icon: 'tune', actionNames: ['adminLoyaltyGetSettings','adminLoyaltyUpdateSettings','adminLoyaltyAdjustUserPoints'] },
   { key: 'loyaltyTiers', label: 'Loyalty Tiers', icon: 'military_tech', actionNames: ['adminLoyaltyTiersList','adminLoyaltyTiersCreate','adminLoyaltyTiersUpdate','adminLoyaltyTiersDisable'] },
   { key: 'reports', label: 'Reports', icon: 'analytics', actionNames: ['reportsOverview','reportsTopProducts','reportsOrdersByStatus','reportsInventorySummary','reportsCustomersSummary','reportsReturnsSummary','reportsLoyaltySummary','reportsCashbackSummary','adminReportsAttributionOverview','adminReportsTopCampaigns'] },
-  { key: 'seo', label: 'SEO', icon: 'travel_explore', actionNames: ['adminSeoGet','adminSeoUpdate','adminSitemapRegenerate'] },
+  { key: 'seo', label: 'SEO', icon: 'travel_explore', actionNames: ['adminSeoGet','adminSeoUpdate','adminSitemapGet','adminSitemapRegenerate'] },
   { key: 'landingPages', label: 'Landing Pages', icon: 'web', actionNames: ['adminLandingPagesList','adminLandingPagesGet','adminLandingPagesCreate','adminLandingPagesUpdate','adminLandingPagesPublish','adminLandingPagesUnpublish','adminLandingPagesDisable'] },
   { key: 'riskRules', label: 'Risk Rules', icon: 'gavel', actionNames: ['adminRiskRulesGet','adminRiskRulesUpdate'] },
   { key: 'flaggedOrders', label: 'Flagged Orders', icon: 'warning', actionNames: ['adminRiskFlaggedOrdersList','adminRiskFlaggedOrdersResolve'] },
   { key: 'returns', label: 'Returns', icon: 'assignment_return', actionNames: ['adminReturnsList','adminReturnsGet','adminReturnsApprove','adminReturnsReject','adminReturnsRefundPartial','adminReturnsRefundFull','adminReturnsUpdateStatus'] },
   { key: 'insurance', label: 'Insurance', icon: 'health_and_safety', actionNames: ['adminInsuranceList','adminInsuranceGet','adminInsuranceAddItem','adminInsuranceUpdateItem','adminInsuranceRemoveItem','adminInsuranceLockQuote','adminInsuranceSendQuote','adminInsuranceSetShipmentTracking'] },
+  { key: 'prescriptions', label: 'Prescriptions', icon: 'medication', actionNames: ['adminPrescriptionList','adminPrescriptionGet','adminPrescriptionMarkUnderReview','adminPrescriptionApprove','adminPrescriptionReject','adminPrescriptionSetItemsDraft','adminPrescriptionConvertToOrder','adminPrescriptionLinkExistingOrder'] },
+  { key: 'procurement', label: 'Procurement', icon: 'inventory', actionNames: ['adminSuppliersList','adminSuppliersCreate','adminSuppliersUpdate','adminSuppliersDisable','adminWarehousesList','adminWarehousesCreate','adminWarehousesUpdate','adminWarehousesDisable','adminPurchaseOrdersList','adminPurchaseOrdersGet','adminPurchaseOrdersCreate','adminPurchaseOrdersUpdate','adminPurchaseOrdersSubmit','adminPurchaseOrdersApprove','adminPurchaseOrdersCancel','adminPurchaseOrdersReceive','adminGoodsReceiptsList','adminGoodsReceiptsGet','adminGoodsReceiptsCreate','adminStockMovementsList','adminInventoryBatchesList','adminInventoryBatchesUpdate'] },
   { key: 'branches', label: 'Branches', icon: 'account_tree', actionNames: ['adminBranchesList','adminBranchesCreate','adminBranchesUpdate','adminBranchesDisable'] },
   { key: 'devices', label: 'Devices', icon: 'devices', actionNames: ['adminDevicesList','adminDevicesCreate','adminDevicesUpdate','adminDevicesDisable'] },
   { key: 'employees', label: 'Employees', icon: 'badge', actionNames: ['adminEmployeesList','adminEmployeesCreate','adminEmployeesUpdate','adminEmployeesDisable'] },
@@ -74,11 +79,11 @@ export async function adminHealthWhoAmI(ctx: ActionContext) {
 export async function adminHealthDbCheck(ctx: ActionContext) {
   await ctx.db.query('SELECT 1');
   const names = ['stores', 'admin_users', 'admin_roles', 'admin_store_access', 'user_profiles', 'media_assets'];
-  const rows: Array<{ TABLE_NAME: string }> = await ctx.db.query(
-    `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN (${names.map(() => '?').join(',')})`,
-    [process.env.DB_NAME, ...names],
+  const rows = await ctx.db.query(
+      `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN (${names.map(() => '?').join(',')})`,
+      [process.env.DB_NAME, ...names],
   );
-  const found = new Set(rows.map((r) => r.TABLE_NAME));
+  const found = new Set(rows.map((r: any) => r.TABLE_NAME));
   const tables = Object.fromEntries(names.map((n) => [n, found.has(n)]));
   return { ping: true, tables };
 }
@@ -94,14 +99,12 @@ export async function adminHealthActionsCoverage() {
 export async function adminActionsList(ctx: ActionContext) {
   const actions = actionsListForGateway('admin');
   const allowed = ctx.auth?.admin?.roles?.length
-    ? actions.filter((action) => {
+      ? actions.filter((action) => {
         const policy = ACTION_ROLE_MAP[action];
-        if (!policy) {
-          return false;
-        }
+        if (!policy) return false;
         return policy.rolesAllowed.some((role) => ctx.auth!.admin!.roles.includes(role));
       })
-    : actions;
+      : actions;
 
   const allowedSet = new Set(allowed);
   const navigation = ADMIN_MODULES.map((module) => {
@@ -131,14 +134,26 @@ export async function adminMe(ctx: ActionContext) {
   const roles = await ctx.db.getRepository(AdminRole).findBy({ adminUid: ctx.uid! });
 
   let storeBootstrap: Record<string, unknown> | null = null;
+
   if (ctx.storeId) {
     if (!ctx.auth?.admin?.storeAccess.includes(ctx.storeId)) {
       throw new AppError('STORE_ACCESS_REQUIRED', 'Missing store access');
     }
+
     const store = await ctx.db.getRepository(Store).findOneBy({ id: ctx.storeId });
     if (!store) throw new AppError('NOT_FOUND', 'Store not found');
-    const settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId });
-    if (!settings) throw new AppError('NOT_FOUND', 'Store settings not found');
+
+    let settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: ctx.storeId });
+    if (!settings) {
+      if (PROD) throw new AppError('NOT_FOUND', 'Store settings not found');
+      settings = {
+        currency: 'جنيه مصري',
+        taxMode: 'tax',
+        pickupEnabled: true,
+        deliveryEnabled: true,
+      } as any;
+    }
+
     storeBootstrap = {
       storeId: store.id,
       store: {
@@ -180,53 +195,69 @@ export async function adminStoresGet(ctx: ActionContext, payload: any) {
 export async function adminStoresCreate(ctx: ActionContext, payload: any) {
   const existing = await ctx.db.getRepository(Store).findOneBy({ id: payload.storeId });
   if (existing) throw new AppError('CONFLICT', 'Store already exists');
+
   await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(Store).save(tx.getRepository(Store).create({
-      id: payload.storeId,
-      name: payload.name,
-      status: 'active',
-      disabledReason: null,
-      disabledAt: null,
-      disabledByUid: null,
-    }));
-    await tx.getRepository(StoreSettings).save(tx.getRepository(StoreSettings).create({
-      storeId: payload.storeId,
-      currency: payload.currency ?? 'USD',
-      taxMode: payload.taxMode ?? 'exclusive',
-      supportWhatsApp: payload.supportWhatsApp ?? null,
-      supportEmail: payload.supportEmail ?? null,
-      pickupEnabled: payload.pickupEnabled ?? true,
-      deliveryEnabled: payload.deliveryEnabled ?? true,
-      featureVisibilityJson: null,
-    }));
+    await tx.getRepository(Store).save(
+        tx.getRepository(Store).create({
+          id: payload.storeId,
+          name: payload.name,
+          status: 'active',
+          disabledReason: null,
+          disabledAt: null,
+          disabledByUid: null,
+        })
+    );
+
+    await tx.getRepository(StoreSettings).save(
+        tx.getRepository(StoreSettings).create({
+          storeId: payload.storeId,
+          currency: payload.currency ?? 'USD',
+          taxMode: payload.taxMode ?? 'exclusive',
+          supportWhatsApp: payload.supportWhatsApp ?? null,
+          supportEmail: payload.supportEmail ?? null,
+          pickupEnabled: payload.pickupEnabled ?? true,
+          deliveryEnabled: payload.deliveryEnabled ?? true,
+          featureVisibilityJson: null,
+        })
+    );
   });
+
   return adminStoresGet(ctx, { storeId: payload.storeId });
 }
 
 export async function adminStoresUpdate(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(Store).update({ id: payload.storeId }, { name: payload.name, status: payload.status ?? undefined });
+    const res = await tx.getRepository(Store).update(
+        { id: payload.storeId },
+        { name: payload.name, status: payload.status ?? undefined }
+    );
     if (!res.affected) throw new AppError('NOT_FOUND', 'Store not found');
   });
+
   return adminStoresGet(ctx, { storeId: payload.storeId });
 }
 
 export async function adminStoresDisable(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(Store).update({ id: payload.storeId }, {
-      status: 'disabled',
-      disabledReason: payload.reason ?? null,
-      disabledAt: new Date(),
-      disabledByUid: ctx.uid!,
-    });
+    const res = await tx.getRepository(Store).update(
+        { id: payload.storeId },
+        {
+          status: 'disabled',
+          disabledReason: payload.reason ?? null,
+          disabledAt: new Date(),
+          disabledByUid: ctx.uid!,
+        }
+    );
     if (!res.affected) throw new AppError('NOT_FOUND', 'Store not found');
   });
+
   return adminStoresGet(ctx, { storeId: payload.storeId });
 }
 
 export async function adminStoreSettingsGet(ctx: ActionContext, payload: any) {
   const settings = await ctx.db.getRepository(StoreSettings).findOneBy({ storeId: payload.storeId });
   if (!settings) throw new AppError('NOT_FOUND', 'Store settings not found');
+
   return {
     settings: {
       storeId: settings.storeId,
@@ -244,28 +275,37 @@ export async function adminStoreSettingsGet(ctx: ActionContext, payload: any) {
 export async function adminStoreSettingsUpdate(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
     const existing = await tx.getRepository(StoreSettings).findOneBy({ storeId: payload.storeId });
-    await tx.getRepository(StoreSettings).upsert({
-      storeId: payload.storeId,
-      currency: payload.currency,
-      taxMode: payload.taxMode,
-      supportWhatsApp: payload.supportWhatsApp ?? null,
-      supportEmail: payload.supportEmail ?? null,
-      pickupEnabled: payload.pickupEnabled,
-      deliveryEnabled: payload.deliveryEnabled,
-      featureVisibilityJson: payload.featureVisibility === undefined
-        ? existing?.featureVisibilityJson ?? null
-        : serializeFeatureVisibility(payload.featureVisibility),
-    }, ['storeId']);
+
+    await tx.getRepository(StoreSettings).upsert(
+        {
+          storeId: payload.storeId,
+          currency: payload.currency,
+          taxMode: payload.taxMode,
+          supportWhatsApp: payload.supportWhatsApp ?? null,
+          supportEmail: payload.supportEmail ?? null,
+          pickupEnabled: payload.pickupEnabled,
+          deliveryEnabled: payload.deliveryEnabled,
+          featureVisibilityJson:
+              payload.featureVisibility === undefined
+                  ? existing?.featureVisibilityJson ?? null
+                  : serializeFeatureVisibility(payload.featureVisibility),
+        },
+        ['storeId']
+    );
   });
+
   return adminStoreSettingsGet(ctx, { storeId: payload.storeId });
 }
 
 export async function adminCustomersList(ctx: ActionContext, payload: any = {}) {
   const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
-  const limit = q.limit;
-  const offset = q.offset;
-  const rows = await ctx.db.getRepository(UserProfile).find({ order: { updatedAt: 'DESC' as any }, take: limit, skip: offset });
-  return { customers: rows, limit, offset };
+  const rows = await ctx.db.getRepository(UserProfile).find({
+    order: { updatedAt: 'DESC' as any },
+    take: q.limit,
+    skip: q.offset,
+  });
+
+  return { customers: rows, limit: q.limit, offset: q.offset };
 }
 
 export async function adminCustomersGet(ctx: ActionContext, payload: any) {
@@ -276,48 +316,60 @@ export async function adminCustomersGet(ctx: ActionContext, payload: any) {
 
 export async function adminCustomersUpdate(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(UserProfile).update({ uid: payload.uid }, {
-      phone: payload.phone ?? null,
-      email: payload.email ?? null,
-      displayName: payload.displayName ?? null,
-      locale: payload.locale ?? null,
-      marketingOptIn: payload.marketingOptIn ?? false,
-      status: payload.status ?? undefined,
-    });
+    const res = await tx.getRepository(UserProfile).update(
+        { uid: payload.uid },
+        {
+          phone: payload.phone ?? null,
+          email: payload.email ?? null,
+          displayName: payload.displayName ?? null,
+          locale: payload.locale ?? null,
+          marketingOptIn: payload.marketingOptIn ?? false,
+          status: payload.status ?? undefined,
+        }
+    );
     if (!res.affected) throw new AppError('NOT_FOUND', 'Customer not found');
   });
+
   return adminCustomersGet(ctx, { uid: payload.uid });
 }
 
 export async function adminCustomersDisable(ctx: ActionContext, payload: any) {
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(UserProfile).update({ uid: payload.uid }, {
-      status: 'disabled',
-      disabledReason: payload.reason ?? null,
-      disabledAt: new Date(),
-      disabledByUid: ctx.uid!,
-    });
+    const res = await tx.getRepository(UserProfile).update(
+        { uid: payload.uid },
+        {
+          status: 'disabled',
+          disabledReason: payload.reason ?? null,
+          disabledAt: new Date(),
+          disabledByUid: ctx.uid!,
+        }
+    );
     if (!res.affected) throw new AppError('NOT_FOUND', 'Customer not found');
   });
+
   return adminCustomersGet(ctx, { uid: payload.uid });
 }
 
 export async function adminCustomersSearch(ctx: ActionContext, payload: any = {}) {
   const nq = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
   const q = `%${nq.query || ''}%`;
+
   const rows = await ctx.db.query(
-    'SELECT * FROM user_profiles WHERE uid LIKE ? OR email LIKE ? OR phone LIKE ? OR displayName LIKE ? ORDER BY updatedAt DESC LIMIT ?',
-    [q, q, q, q, nq.limit],
+      'SELECT * FROM user_profiles WHERE uid LIKE ? OR email LIKE ? OR phone LIKE ? OR displayName LIKE ? ORDER BY updatedAt DESC LIMIT ?',
+      [q, q, q, q, nq.limit],
   );
+
   return { customers: rows };
 }
 
 export async function adminMediaCreateUploadSpec(ctx: ActionContext, payload: any) {
   const assetId = uuidv4();
   const ext = String(payload.fileExt).replace(/^\./, '').toLowerCase();
+
   const originalPath = ctx.storeId
-    ? `stores/${ctx.storeId}/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`
-    : `global/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`;
+      ? `stores/${ctx.storeId}/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`
+      : `global/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`;
+
   const bucketName = getBucketName();
 
   await ctx.db.transaction(async (tx: EntityManager) => {
@@ -348,7 +400,11 @@ export async function adminMediaCreateUploadSpec(ctx: ActionContext, payload: an
     assetId,
     bucket: bucketName,
     originalPath,
-    upload: { method: 'PUT', url, headers: { 'Content-Type': payload.contentType } },
+    upload: {
+      method: 'PUT',
+      url,
+      headers: { 'Content-Type': payload.contentType },
+    },
     finalizeHint: { action: 'adminMediaFinalizeUpload', assetId },
   };
 }
@@ -359,40 +415,71 @@ export async function adminMediaFinalizeUpload(ctx: ActionContext, payload: any)
 
   const effectiveStore = ctx.storeId ?? asset.storeId ?? undefined;
   if (effectiveStore) {
-    const access = await ctx.db.getRepository(AdminStoreAccess).findOneBy({ adminUid: ctx.uid!, storeId: effectiveStore });
+    const access = await ctx.db.getRepository(AdminStoreAccess).findOneBy({
+      adminUid: ctx.uid!,
+      storeId: effectiveStore,
+    });
     if (!access) throw new AppError('FORBIDDEN', 'Missing store access for asset store');
   }
 
-  const [metadata] = await getStorage().bucket(getBucketName()).file(asset.originalPath).getMetadata();
-  const size = Number(metadata.size || 0);
-  if (size > Number(asset.sizeBytes)) {
-    throw new AppError('VALIDATION_ERROR', 'Uploaded size exceeds requested size', { requested: asset.sizeBytes, actual: size });
+  let metadata: any;
+  try {
+    [metadata] = await getStorage().bucket(getBucketName()).file(asset.originalPath).getMetadata();
+  } catch (error: any) {
+    throw new AppError('NOT_FOUND', 'Uploaded file not found in storage', {
+      assetId: asset.id,
+      path: asset.originalPath,
+      reason: error?.message ?? String(error),
+    });
   }
+
+  const size = Number(metadata?.size || 0);
+  if (!size) {
+    throw new AppError('VALIDATION_ERROR', 'Uploaded file is empty or missing metadata size', {
+      assetId: asset.id,
+      path: asset.originalPath,
+    });
+  }
+
+  if (size > Number(asset.sizeBytes)) {
+    throw new AppError('VALIDATION_ERROR', 'Uploaded size exceeds requested size', {
+      requested: asset.sizeBytes,
+      actual: size,
+    });
+  }
+
   if (metadata.contentType !== asset.contentType) {
-    throw new AppError('VALIDATION_ERROR', 'Uploaded content type mismatch', { requested: asset.contentType, actual: metadata.contentType });
+    throw new AppError('VALIDATION_ERROR', 'Uploaded content type mismatch', {
+      requested: asset.contentType,
+      actual: metadata.contentType,
+    });
   }
 
   await ctx.db.transaction(async (tx: EntityManager) => {
     await tx.getRepository(MediaAsset).update(asset.id, {
       contentType: metadata.contentType || asset.contentType,
       sizeBytes: String(size),
-      status: asset.kind === 'image' ? 'processing' : 'ready',
+      status: 'ready',
     });
   });
 
   const updated = await ctx.db.getRepository(MediaAsset).findOneByOrFail({ id: asset.id });
+
+  const normalizedAsset = {
+    id: updated.id,
+    originalPath: updated.originalPath,
+    thumbnailPath: updated.thumbnailPath ?? undefined,
+    status: updated.status,
+    contentType: updated.contentType,
+    sizeBytes: Number(updated.sizeBytes),
+    kind: updated.kind,
+    ownerType: updated.ownerType,
+    ownerId: updated.ownerId,
+    storeId: updated.storeId ?? undefined,
+  };
+
   return {
-    asset: {
-      id: updated.id,
-      originalPath: updated.originalPath,
-      thumbnailPath: updated.thumbnailPath ?? undefined,
-      status: updated.status,
-      contentType: updated.contentType,
-      sizeBytes: Number(updated.sizeBytes),
-      kind: updated.kind,
-      ownerType: updated.ownerType,
-      ownerId: updated.ownerId,
-      storeId: updated.storeId ?? undefined,
-    },
+    asset: normalizedAsset,
+    ...normalizedAsset,
   };
 }

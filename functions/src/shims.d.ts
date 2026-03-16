@@ -84,19 +84,19 @@ declare module 'typeorm' {
   export function UpdateDateColumn(options?: unknown): PropertyDecorator;
   export function Index(name: string, fields: string[]): ClassDecorator;
 }
-
-declare module 'firebase-admin' {
-  const admin: { initializeApp: () => void };
-  export = admin;
-}
-
-declare module 'firebase-functions/v2/https' {
-  export function onCall(handler: (request: any) => Promise<any> | any): any;
-}
-
-declare module 'firebase-functions/v2/storage' {
-  export function onObjectFinalized(handler: (event: any) => Promise<void> | void): any;
-}
+//
+// declare module 'firebase-admin' {
+//   const admin: { initializeApp: () => void };
+//   export = admin;
+// }
+//
+// declare module 'firebase-functions/v2/https' {
+//   export function onCall(handler: (request: any) => Promise<any> | any): any;
+// }
+//
+// declare module 'firebase-functions/v2/storage' {
+//   export function onObjectFinalized(handler: (event: any) => Promise<void> | void): any;
+// }
 
 declare module '@google-cloud/storage' {
   export class Storage {

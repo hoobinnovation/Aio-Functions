@@ -29,18 +29,112 @@ import { OrderReview } from '../../entities/OrderReview';
 import { resolveEffectiveDineInSettings } from './dineInSupport';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { Branch } from '../../entities/Branch';
+import { OrderItem } from '../../entities/OrderItem';
+import { recomputeProductMetrics } from '../productMetrics';
 
 function hav(lat1:number,lng1:number,lat2:number,lng2:number){const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 async function cart(ctx:ActionContext){let c=await ctx.db.getRepository(Cart).findOneBy({uid:ctx.uid!,storeId:ctx.storeId!});if(!c){await ctx.db.transaction(async(tx:EntityManager)=>{c=tx.getRepository(Cart).create({id:uuidv4(),uid:ctx.uid!,storeId:ctx.storeId!,couponCode:null});await tx.getRepository(Cart).save(c);});}return c!;}
-async function cartView(ctx:ActionContext){const c=await cart(ctx);const items=await ctx.db.getRepository(CartItem).find({where:{cartId:c.id}});return {cart:c,items};}
+async function cartView(ctx:ActionContext){
+const c=await cart(ctx);
+const items=await ctx.db.getRepository(CartItem).find({where:{cartId:c.id}});
+const itemIds=items.map((item:CartItem)=>item.productId).filter(Boolean);
+const variantIds=items.map((item:CartItem)=>item.variantId).filter(Boolean) as string[];
+const products=itemIds.length?await ctx.db.getRepository(Product).findByIds(itemIds as any):[];
+const variants=variantIds.length?await ctx.db.getRepository(ProductVariant).findByIds(variantIds as any):[];
+const productMap=new Map<string,Product>(products.map((row:Product)=>[row.id,row] as const));
+const variantMap=new Map<string,ProductVariant>(variants.map((row:ProductVariant)=>[row.id,row] as const));
+const mediaByProductId=await (async()=>{
+  if(!itemIds.length) return new Map<string, any>();
+  const placeholders=itemIds.map(()=>'?').join(',');
+  const rows=await ctx.db.query(
+    `SELECT pi.productId, ma.originalPath, ma.thumbnailPath
+     FROM product_images pi
+     INNER JOIN media_assets ma ON ma.id = pi.mediaAssetId
+     WHERE pi.productId IN (${placeholders})
+     ORDER BY pi.productId ASC, pi.sortOrder ASC, pi.createdAt ASC`,
+    itemIds,
+  );
+  const out=new Map<string, any>();
+  for(const row of rows){
+    if(out.has(row.productId)) continue;
+    out.set(row.productId,row);
+  }
+  return out;
+})();
+let coupon:null|Coupon=null;
+if(c.couponCode) coupon=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:c.couponCode,status:'active'});
+const totals=computeTotals(items,coupon);
+const normalizedItems=items.map((item:CartItem)=>{
+  const product=productMap.get(item.productId);
+  const variant=item.variantId?variantMap.get(item.variantId):null;
+  const media=mediaByProductId.get(item.productId) || null;
+  const imageUrl=String(media?.thumbnailPath || media?.originalPath || '');
+  return {
+    id:item.id,
+    productId:item.productId,
+    variantId:item.variantId,
+    name:product?.name || 'Product',
+    slug:product?.slug || null,
+    quantity:Number(item.qty || 0),
+    qty:Number(item.qty || 0),
+    unitPriceCents:Number(item.unitPriceCents || 0),
+    price:Number(item.unitPriceCents || 0) / 100,
+    lineTotal:Number(item.unitPriceCents || 0) * Number(item.qty || 0) / 100,
+    currency:'EGP',
+    imageUrl,
+    thumbnailUrl:imageUrl,
+    image:imageUrl,
+    originalPath:String(media?.originalPath || '') || null,
+    thumbnailPath:String(media?.thumbnailPath || '') || null,
+    stockQty:Number(variant?.stockQty || 0),
+    sku:variant?.sku || null,
+    attrs:variant?.attributes || {},
+    attrsText:Array.isArray(Object.entries(variant?.attributes || {}))
+      ? Object.entries(variant?.attributes || {}).slice(0,2).map(([key,value])=>`${key}: ${value}`).join(' - ')
+      : '',
+  };
+});
+return {
+  id:c.id,
+  uid:c.uid,
+  storeId:c.storeId,
+  couponCode:c.couponCode,
+  items:normalizedItems,
+  totals:{
+    subtotal:totals.subtotalCents/100,
+    discount:0,
+    couponDiscount:totals.discountCents/100,
+    targetedDiscountTotal:0,
+    shipping:0,
+    tax:0,
+    cashbackPreview:totals.cashbackPreviewCents/100,
+    total:totals.totalCents/100,
+    currency:'EGP',
+  },
+  cart:c,
+};
+}
 
 export async function cartGet(ctx:ActionContext){return cartView(ctx);}
-export async function cartAddItem(ctx:ActionContext,p:any){const c=await cart(ctx);const v=await ctx.db.getRepository(ProductVariant).findOneBy({id:p.variantId,status:'active'});if(!v) throw new AppError('NOT_FOUND','Variant not found');if(v.stockQty<p.qty) throw new AppError('OUT_OF_STOCK','Not enough stock');await ctx.db.transaction(async(tx:EntityManager)=>{const e=await tx.getRepository(CartItem).findOneBy({cartId:c.id,variantId:p.variantId});if(e) await tx.getRepository(CartItem).update({id:e.id},{qty:e.qty+p.qty}); else await tx.getRepository(CartItem).save(tx.getRepository(CartItem).create({id:uuidv4(),cartId:c.id,productId:p.productId,variantId:p.variantId,qty:p.qty,unitPriceCents:v.priceCents}));});return cartView(ctx);} 
-export async function cartUpdateQty(ctx:ActionContext,p:any){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{const it=await tx.getRepository(CartItem).findOneBy({id:p.itemId,cartId:c.id});if(!it) throw new AppError('NOT_FOUND','Item not found');const v=it.variantId?await tx.getRepository(ProductVariant).findOneBy({id:it.variantId}):null;if(v && v.stockQty<p.qty) throw new AppError('OUT_OF_STOCK','Not enough stock');await tx.getRepository(CartItem).update({id:it.id},{qty:p.qty});});return cartView(ctx);} 
+export async function cartAddItem(ctx:ActionContext,p:any){
+const c=await cart(ctx);
+const qty=Math.max(1,Number(p.qty ?? p.quantity ?? 1));
+let variantId=typeof p.variantId==='string'&&p.variantId.trim()?p.variantId.trim():null;
+if(!variantId&&typeof p.productId==='string'&&p.productId.trim()){
+  const fallbackVariant=await ctx.db.getRepository(ProductVariant).findOne({where:{productId:p.productId,status:'active'} as any,order:{createdAt:'ASC' as any}});
+  variantId=fallbackVariant?.id || null;
+}
+if(!variantId) throw new AppError('VALIDATION_FAILED','variantId is required');
+const v=await ctx.db.getRepository(ProductVariant).findOneBy({id:variantId,status:'active'});
+if(!v) throw new AppError('NOT_FOUND','Variant not found');
+if(v.stockQty<qty) throw new AppError('OUT_OF_STOCK','Not enough stock');
+await ctx.db.transaction(async(tx:EntityManager)=>{const e=await tx.getRepository(CartItem).findOneBy({cartId:c.id,variantId});if(e) await tx.getRepository(CartItem).update({id:e.id},{qty:e.qty+qty}); else await tx.getRepository(CartItem).save(tx.getRepository(CartItem).create({id:uuidv4(),cartId:c.id,productId:p.productId || v.productId,variantId,qty,unitPriceCents:v.priceCents}));});
+return cartView(ctx);} 
+export async function cartUpdateQty(ctx:ActionContext,p:any){const c=await cart(ctx);const qty=Math.max(1,Number(p.qty ?? p.quantity ?? 1));await ctx.db.transaction(async(tx:EntityManager)=>{const it=await tx.getRepository(CartItem).findOneBy({id:p.itemId,cartId:c.id});if(!it) throw new AppError('NOT_FOUND','Item not found');const v=it.variantId?await tx.getRepository(ProductVariant).findOneBy({id:it.variantId}):null;if(v && v.stockQty<qty) throw new AppError('OUT_OF_STOCK','Not enough stock');await tx.getRepository(CartItem).update({id:it.id},{qty});});return cartView(ctx);} 
 export async function cartRemoveItem(ctx:ActionContext,p:any){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(CartItem).delete({id:p.itemId,cartId:c.id});});return cartView(ctx);} 
 export async function cartClear(ctx:ActionContext){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(CartItem).delete({cartId:c.id});await tx.getRepository(Cart).update({id:c.id},{couponCode:null});});return cartView(ctx);} 
 
-export async function cartApplyCoupon(ctx:ActionContext,p:any){const c=await cart(ctx);const cp=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code:p.code,status:'active'});if(!cp) throw new AppError('NOT_FOUND','Coupon not found');const now=new Date();if((cp.startsAt&&now<cp.startsAt)||(cp.endsAt&&now>cp.endsAt)) throw new AppError('COUPON_INVALID','Coupon outside valid window');const used=await ctx.db.query('SELECT COUNT(*) c FROM wallet_transactions WHERE uid=? AND note LIKE ?', [ctx.uid!, `%coupon:${cp.code}%`]);if(Number(used[0]?.c||0)>=cp.perUserLimit) throw new AppError('COUPON_LIMIT','Per-user limit reached');await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:cp.code});});return cartView(ctx);} 
+export async function cartApplyCoupon(ctx:ActionContext,p:any){const c=await cart(ctx);const code=String(p.code ?? p.couponCode ?? '').trim();const cp=await ctx.db.getRepository(Coupon).findOneBy({storeId:ctx.storeId!,code,status:'active'});if(!cp) throw new AppError('NOT_FOUND','Coupon not found');const now=new Date();if((cp.startsAt&&now<cp.startsAt)||(cp.endsAt&&now>cp.endsAt)) throw new AppError('COUPON_INVALID','Coupon outside valid window');const used=await ctx.db.query('SELECT COUNT(*) c FROM wallet_transactions WHERE uid=? AND note LIKE ?', [ctx.uid!, `%coupon:${cp.code}%`]);if(Number(used[0]?.c||0)>=cp.perUserLimit) throw new AppError('COUPON_LIMIT','Per-user limit reached');await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:cp.code});});return cartView(ctx);} 
 export async function cartRemoveCoupon(ctx:ActionContext){const c=await cart(ctx);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Cart).update({id:c.id},{couponCode:null});});return cartView(ctx);} 
 
 export async function shippingListMethods(ctx:ActionContext){return {methods:await ctx.db.getRepository(ShippingMethod).find({where:{storeId:ctx.storeId!,status:'active'}})};} 
@@ -69,8 +163,8 @@ export async function alertsGetPrefs(ctx:ActionContext){let p=await ctx.db.getRe
 export async function alertsUpdatePrefs(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(AlertsPref).upsert({uid:ctx.uid!,backInStock:!!p.backInStock,priceDrop:!!p.priceDrop},['uid']);});return alertsGetPrefs(ctx);} 
 export async function alertsSubscribeBackInStock(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{const ex=await tx.getRepository(AlertsSubscription).findOneBy({uid:ctx.uid!,productId:p.productId,type:'back_in_stock'});if(!ex) await tx.getRepository(AlertsSubscription).save(tx.getRepository(AlertsSubscription).create({id:uuidv4(),uid:ctx.uid!,productId:p.productId,type:'back_in_stock'}));});return {subscribed:true};}
 
-export async function recoGetSimilar(ctx:ActionContext,p:any){const prod=await ctx.db.getRepository(Product).findOneBy({id:p.productId});if(!prod) return {products:[]};const rows=await ctx.db.getRepository(Product).find({where:{categoryId:prod.categoryId,storeId:prod.storeId,status:'active'},take:10,order:{updatedAt:'DESC' as any}});return {products:rows.filter((r: Product)=>r.id!==p.productId)};}
-export async function recoGetCartUpsell(ctx:ActionContext){const v=await cartView(ctx);const ids=v.items.map((i: CartItem)=>i.productId);if(!ids.length) return {products:[]};const rows=await ctx.db.query(`SELECT * FROM products WHERE storeId=? AND status='active' AND id NOT IN (${ids.map(()=>'?').join(',')}) ORDER BY updatedAt DESC LIMIT 10`,[ctx.storeId!,...ids]);return {products:rows};}
+export async function recoGetSimilar(ctx:ActionContext,p:any){const prod=await ctx.db.getRepository(Product).findOneBy({id:p.productId});if(!prod) return {products:[]};const categoryRows=await ctx.db.query('SELECT categoryId FROM product_categories WHERE productId=? ORDER BY isPrimary DESC, createdAt ASC LIMIT 3',[p.productId]);const categoryIds=categoryRows.map((r:any)=>r.categoryId).filter((id:any)=>typeof id==='string'&&id);if(!categoryIds.length&&prod.categoryId) categoryIds.push(prod.categoryId);if(!categoryIds.length) return {products:[]};const rows=await ctx.db.query(`SELECT DISTINCT p.* FROM products p LEFT JOIN product_categories pc ON pc.productId=p.id WHERE ((p.mode='global' AND p.storeId IS NULL) OR (p.mode='store' AND p.storeId=?)) AND p.status='active' AND (p.categoryId IN (${categoryIds.map(()=>'?').join(',')}) OR pc.categoryId IN (${categoryIds.map(()=>'?').join(',')})) ORDER BY p.updatedAt DESC LIMIT 10`,[ctx.storeId!,...categoryIds,...categoryIds]);return {products:rows.filter((r: Product)=>r.id!==p.productId)};}
+export async function recoGetCartUpsell(ctx:ActionContext){const v=await cartView(ctx);const ids=v.items.map((i: CartItem)=>i.productId);if(!ids.length) return {products:[]};const rows=await ctx.db.query(`SELECT * FROM products WHERE ((mode='global' AND storeId IS NULL) OR (mode='store' AND storeId=?)) AND status='active' AND id NOT IN (${ids.map(()=>'?').join(',')}) ORDER BY updatedAt DESC LIMIT 10`,[ctx.storeId!,...ids]);return {products:rows};}
 export async function postPurchaseGetNudges(ctx:ActionContext){const flows=await ctx.db.getRepository(PostPurchaseFlow).find({where:{storeId:ctx.storeId!,status:'active'}});return {nudges:flows.slice(0,5)};}
 
 export async function supportCreateTicket(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(SupportTicket).save(tx.getRepository(SupportTicket).create({id,uid:ctx.uid!,storeId:ctx.storeId??null,subject:p.subject,status:'open'}));await tx.getRepository(SupportMessage).save(tx.getRepository(SupportMessage).create({id:uuidv4(),ticketId:id,senderUid:ctx.uid!,message:p.message,mediaAssetId:p.mediaAssetId??null}));});return supportGetTicket(ctx,{ticketId:id});}
@@ -84,6 +178,6 @@ export async function settingsUpdate(ctx:ActionContext,p:any){const config=(p.co
 export async function legalGetDocs(ctx:ActionContext,p:any){const docs=await ctx.db.getRepository(LegalDoc).find({where:{storeId:ctx.storeId!,status:'active',docType:(typeof p.docType==='string'&&p.docType.trim())?p.docType.trim():undefined}});return {docs};}
 
 
-export async function reviewsCanReview(ctx:ActionContext,p:any){const order=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!,storeId:ctx.storeId!});if(!order) throw new AppError('NOT_FOUND','Order not found');const existing=await ctx.db.getRepository(OrderReview).findOneBy({orderId:order.id,uid:ctx.uid!});const branch=order.branchId?await ctx.db.getRepository(Branch).findOneBy({id:order.branchId,storeId:ctx.storeId!}):null;const settings=branch?await resolveEffectiveDineInSettings(ctx,branch):null;return {canReview:!existing,reason:existing?'alreadyReviewed':null,requiresSession:order.serviceType==='dineIn' ? !!settings?.requireSessionForRating : false,order};}
+export async function reviewsCanReview(ctx:ActionContext,p:any){const order=await ctx.db.getRepository(Order).findOneBy({id:p.orderId,uid:ctx.uid!,storeId:ctx.storeId!});if(!order) throw new AppError('NOT_FOUND','Order not found');const orderItem=await ctx.db.getRepository(OrderItem).findOneBy({orderId:order.id,productId:p.productId});if(!orderItem) throw new AppError('VALIDATION_FAILED','Product is not part of this order');const existing=await ctx.db.getRepository(OrderReview).findOneBy({orderId:order.id,uid:ctx.uid!,productId:p.productId});const branch=order.branchId?await ctx.db.getRepository(Branch).findOneBy({id:order.branchId,storeId:ctx.storeId!}):null;const settings=branch?await resolveEffectiveDineInSettings(ctx,branch):null;return {canReview:!existing,reason:existing?'alreadyReviewed':null,requiresSession:order.serviceType==='dineIn' ? !!settings?.requireSessionForRating : false,order};}
 
-export async function reviewsCreate(ctx:ActionContext,p:any){const gate=await reviewsCanReview(ctx,{orderId:p.orderId});if(!gate.canReview) throw new AppError('VALIDATION_FAILED','Order already reviewed');const order=gate.order as Order;let sessionId:string|null=null;if(order.serviceType==='dineIn'){if(!order.dineInSessionId) throw new AppError('DINE_IN_SESSION_REQUIRED','Dine-in session required');const session=await ctx.db.getRepository(DineInSession).findOneBy({id:order.dineInSessionId,storeId:ctx.storeId!});if(!session) throw new AppError('DINE_IN_SESSION_NOT_FOUND','Dine-in session not found');sessionId=session.id;}const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(OrderReview).insert({id,storeId:ctx.storeId!,orderId:order.id,uid:ctx.uid!,rating:p.rating,comment:p.comment??null,branchId:order.branchId??null,tableId:order.tableId??null,dineInSessionId:sessionId});});return {review:await ctx.db.getRepository(OrderReview).findOneByOrFail({id})};}
+export async function reviewsCreate(ctx:ActionContext,p:any){const gate=await reviewsCanReview(ctx,{orderId:p.orderId,productId:p.productId});if(!gate.canReview) throw new AppError('VALIDATION_FAILED','Product already reviewed for this order');const order=gate.order as Order;let sessionId:string|null=null;if(order.serviceType==='dineIn'){if(!order.dineInSessionId) throw new AppError('DINE_IN_SESSION_REQUIRED','Dine-in session required');const session=await ctx.db.getRepository(DineInSession).findOneBy({id:order.dineInSessionId,storeId:ctx.storeId!});if(!session) throw new AppError('DINE_IN_SESSION_NOT_FOUND','Dine-in session not found');sessionId=session.id;}const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(OrderReview).insert({id,storeId:ctx.storeId!,orderId:order.id,productId:p.productId,uid:ctx.uid!,rating:p.rating,comment:p.comment??null,branchId:order.branchId??null,tableId:order.tableId??null,dineInSessionId:sessionId});await recomputeProductMetrics(tx,p.productId,ctx.storeId!);});return {review:await ctx.db.getRepository(OrderReview).findOneByOrFail({id})};}
