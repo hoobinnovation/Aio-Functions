@@ -14,7 +14,9 @@ const requestSchema = Joi.object({
 
 function toPublicEnvelopeError(error: any) {
   const hasStoreIdIssue = (error.details || []).some((detail: any) => detail.path.join('.') === 'storeId');
-  const hasMissingStoreId = (error.details || []).some((detail: any) => detail.path.join('.') === 'storeId' && detail.type === 'any.required');
+  const hasMissingStoreId = (error.details || []).some(
+      (detail: any) => detail.path.join('.') === 'storeId' && detail.type === 'any.required'
+  );
 
   if (hasStoreIdIssue) {
     return {
@@ -31,17 +33,48 @@ function toPublicEnvelopeError(error: any) {
   };
 }
 
-export const publicGateway = onCall({timeoutSeconds:3600 },async (request: any) => {
-  const incoming = request?.data && typeof request.data === 'object' && request.data !== null
-    ? { ...request.data, storeId: request.data.storeId ?(
-              typeof request.data.storeId === 'string' ? request.data.storeId.trim() : request.data.storeId
-          ) : request.data.payload.storeId }
-    : request?.data;
+export const publicGateway = onCall({ timeoutSeconds: 3600 }, async (request: any) => {
+  const rawData =
+      request?.data && typeof request.data === 'object' && request.data !== null
+          ? request.data
+          : {};
 
-  const envelope = requestSchema.validate(incoming, { abortEarly: false, allowUnknown: false, stripUnknown: true });
+  if (rawData?.action === 'publicDevSeedDummyData') {
+    return {
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_ACTION',
+        message: 'Use publicDev gateway for publicDevSeedDummyData',
+      },
+      meta: {
+        requestId: null,
+        serverTime: new Date().toISOString(),
+      },
+    };
+  }
+
+  const incoming =
+      rawData && typeof rawData === 'object'
+          ? {
+            ...rawData,
+            storeId: rawData.storeId
+                ? typeof rawData.storeId === 'string'
+                    ? rawData.storeId.trim()
+                    : rawData.storeId
+                : rawData?.payload?.storeId,
+          }
+          : rawData;
+
+  const envelope = requestSchema.validate(incoming, {
+    abortEarly: false,
+    allowUnknown: false,
+    stripUnknown: true,
+  });
+
   const req = envelope.value as UnifiedRequest;
+
   // @ts-ignore
-    const ctx = await buildCloudContext('public', request, req?.storeId || req.payload?.storeId, req?.meta);
+  const ctx = await buildCloudContext('public', request, req?.storeId || req?.payload?.storeId, req?.meta);
 
   if (envelope.error) {
     return {

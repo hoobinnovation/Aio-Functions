@@ -13,10 +13,7 @@ import { UserStoreContext } from '../../entities/UserStoreContext';
 import { ensureUserProfileForUid, requireAccountIdentity, requireSessionIdentity } from '../../core/identity';
 import { buildProviderStateSnapshot } from '../../core/auth/providerState';
 import { presentUserProfile, resolveDisplayNameInput } from '../../core/auth/profileShape';
-
-function extSafe(ext: string) {
-  return ext.replace(/^\./, '').toLowerCase();
-}
+import { createMediaUploadSpec } from '../../utils/mediaUploadSpec';
 
 async function requireProfile(ctx: ActionContext): Promise<UserProfile> {
   const uid = requireSessionIdentity(ctx);
@@ -182,51 +179,20 @@ export async function storeContextSetMyStore(ctx: ActionContext, payload: any) {
 }
 
 export async function mediaCreateUploadSpec(ctx: ActionContext, payload: any) {
-  const assetId = uuidv4();
-  const ext = extSafe(payload.fileExt);
-  const originalPath = ctx.storeId
-    ? `stores/${ctx.storeId}/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`
-    : `global/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`;
-  const bucketName = getBucketName();
-  if (!bucketName) throw new AppError('CONFIG_ERROR', 'Storage bucket is not configured');
-
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    const asset = tx.getRepository(MediaAsset).create({
-      id: assetId,
+  return ctx.db.transaction(async (tx: EntityManager) => {
+    return createMediaUploadSpec({
+      tx,
       storeId: ctx.storeId ?? null,
       ownerType: payload.ownerType,
       ownerId: payload.ownerId,
       kind: payload.kind,
-      originalPath,
-      thumbnailPath: null,
+      fileExt: payload.fileExt,
       contentType: payload.contentType,
-      sizeBytes: String(payload.sizeBytes),
-      status: 'created',
+      sizeBytes: payload.sizeBytes,
       createdByUid: ctx.uid!,
+      finalizeAction: 'mediaFinalizeUpload',
     });
-    await tx.getRepository(MediaAsset).save(asset);
   });
-
-  const [url] = await getStorage().bucket(bucketName).file(originalPath).getSignedUrl({
-    version: 'v4',
-    action: 'write',
-    expires: Date.now() + 15 * 60 * 1000,
-    contentType: payload.contentType,
-  });
-
-  return {
-    assetId,
-    bucket: bucketName,
-    originalPath,
-    upload: {
-      method: 'PUT',
-      url,
-      headers: {
-        'Content-Type': payload.contentType,
-      },
-    },
-    finalizeHint: { action: 'mediaFinalizeUpload', assetId },
-  };
 }
 
 export async function mediaFinalizeUpload(ctx: ActionContext, payload: any) {

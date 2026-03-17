@@ -3,6 +3,27 @@ import { EntityManager } from 'typeorm';
 export type SeedMode = 'reset' | 'upsert';
 export type SeedScenario = 'baseline' | 'full';
 
+export type SeedDomain =
+    | 'core'
+    | 'rbac'
+    | 'catalog'
+    | 'delivery'
+    | 'promotions'
+    | 'orders'
+    | 'loyalty'
+    | 'support'
+    | 'insurance'
+    | 'home'
+    | 'accounting'
+    | 'warehouse'
+    | 'procurement'
+    | 'inventoryAdvanced'
+    | 'pos'
+    | 'prescription'
+    | 'imports'
+    | 'auth'
+    | 'edge';
+
 export interface SeedSizes {
   stores?: number;
   branchesPerStore?: number;
@@ -11,7 +32,7 @@ export interface SeedSizes {
   customers?: number;
   ordersPerStore?: number;
   insuranceOrdersPerStore?: number;
-  // legacy knobs
+
   products?: number;
   variantsPerProduct?: number;
   orders?: number;
@@ -23,6 +44,8 @@ export interface SeedPayload {
   mode?: SeedMode;
   scenario?: SeedScenario;
   storeCode?: string;
+  storeId?: string;
+  domains?: SeedDomain[];
   sizes?: SeedSizes;
 }
 
@@ -49,7 +72,6 @@ export interface SeedContext {
     clientUid?: string;
     adminCatalogUid?: string;
   };
-  // backward-compatible fields for legacy seed modules
   storeId?: string;
 }
 

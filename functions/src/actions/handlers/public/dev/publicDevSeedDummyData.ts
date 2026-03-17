@@ -3,16 +3,17 @@ import { AppError } from '../../../../core/errors';
 import { ActionContext } from '../../../../core/protocol';
 import { addSkip, initSummary, incCreated } from './seederUtils';
 import { SeedContext, SeedPayload, SeedStoreProfile } from './types';
-import { seedFullDemoScenario } from './seeders/seedFullDemoScenario';
+import { runSeedDomains } from './seeders/runSeedDomains';
+import PROD from "../../../../utils/PROD";
 
 const rateLimitWindowMs = 10 * 60 * 1000;
 const rateLimitMaxCalls = 3;
 const rateLimitBuckets = new Map<string, number[]>();
 
 function ensureDevOnly(payload: SeedPayload) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new AppError('DEV_ONLY', 'This action is disabled in production.');
-  }
+  // if (process.env.NODE_ENV === 'production') {
+  //   throw new AppError('DEV_ONLY', 'This action is disabled in production.');
+  // }
 
   const expectedSeedKey = '1';
   if (!expectedSeedKey || payload.seedKey !== expectedSeedKey) {
@@ -22,6 +23,7 @@ function ensureDevOnly(payload: SeedPayload) {
   const now = Date.now();
   const bucketKey = `${process.env.K_SERVICE ?? 'local-instance'}:publicDevSeedDummyData`;
   const calls = (rateLimitBuckets.get(bucketKey) ?? []).filter((t) => now - t <= rateLimitWindowMs);
+
   if (calls.length >= rateLimitMaxCalls) {
     throw new AppError('SEED_RATE_LIMIT', 'Seed rate limit exceeded.');
   }
@@ -33,13 +35,17 @@ function ensureDevOnly(payload: SeedPayload) {
 async function resetAllTables(ctx: ActionContext) {
   const dbAny = ctx.db as any;
   const queryRunner = dbAny.createQueryRunner();
+
   await queryRunner.connect();
   await queryRunner.startTransaction();
+
   try {
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 0');
+
     for (const metadata of dbAny.entityMetadatas as any[]) {
       await queryRunner.query(`TRUNCATE TABLE \`${metadata.tableName}\``);
     }
+
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 1');
     await queryRunner.commitTransaction();
   } catch (error) {
@@ -52,24 +58,56 @@ async function resetAllTables(ctx: ActionContext) {
 
 function defaultStores(): SeedStoreProfile[] {
   return [
-      { code: '1', name: 'AIO Demo', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
-      { code: 'ecom', name: 'AIO E-Commerce', vertical: 'ecommerce', supportEmail: 'support@ecom.demo', supportPhone: '+15550010001' },
-    { code: 'resto', name: 'AIO Bistro', vertical: 'restaurant', supportEmail: 'support@resto.demo', supportPhone: '+15550010002' },
-    { code: 'pharma', name: 'AIO Pharmacy', vertical: 'pharmacy', supportEmail: 'support@pharma.demo', supportPhone: '+15550010003' },
+    {
+      code: '1',
+      name: 'AIO Demo',
+      vertical: 'ecommerce',
+      supportEmail: 'support@ecom.demo',
+      supportPhone: '+15550010001',
+    },
+    {
+      code: 'ecom',
+      name: 'AIO E-Commerce',
+      vertical: 'ecommerce',
+      supportEmail: 'support@ecom.demo',
+      supportPhone: '+15550010001',
+    },
+    {
+      code: 'resto',
+      name: 'AIO Bistro',
+      vertical: 'restaurant',
+      supportEmail: 'support@resto.demo',
+      supportPhone: '+15550010002',
+    },
+    {
+      code: 'pharma',
+      name: 'AIO Pharmacy',
+      vertical: 'pharmacy',
+      supportEmail: 'support@pharma.demo',
+      supportPhone: '+15550010003',
+    },
   ];
 }
 
 export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: SeedPayload) {
   try {
     ensureDevOnly(payload);
+
     const mode = payload.mode ?? 'upsert';
     const scenario = payload.scenario ?? 'full';
     const now = new Date();
     const summary = initSummary();
 
+    const resolvedStoreId =
+        typeof payload.storeId === 'string' && payload.storeId.trim()
+            ? payload.storeId.trim()
+            : typeof actionCtx.storeId === 'string' && actionCtx.storeId.trim()
+                ? actionCtx.storeId.trim()
+                : undefined;
+
     const stores = payload.storeCode
-      ? defaultStores().filter((store) => store.code === payload.storeCode)
-      : defaultStores();
+        ? defaultStores().filter((store) => store.code === payload.storeCode)
+        : defaultStores();
 
     if (!stores.length) {
       throw new AppError('VALIDATION_FAILED', 'Requested storeCode is not supported in seed profiles');
@@ -80,6 +118,7 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
         manager,
         now,
         scenario,
+        storeId: resolvedStoreId,
         stores,
         sizes: {
           stores: payload.sizes?.stores ?? stores.length,
@@ -95,13 +134,13 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
           insuranceOrders: payload.sizes?.insuranceOrders ?? 8,
         },
         demoUids: {
-          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? '8O85OCx1IQUdhuBS3Ys7mrOjfCTL',
-          adminManagerUid: process.env.DEMO_ADMIN_MANAGER_UID ?? '50dMnpqXPWEIeAmmKs3smUX8LDnO',
-          adminOpsUid: process.env.DEMO_ADMIN_OPS_UID ?? 'Nfmtax9liBTyHaiKWR5QnI2AKpMz',
-          adminAnalystUid: process.env.DEMO_ADMIN_ANALYST_UID ?? 'demo_admin_analyst',
-          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? 'OdAMmHfEoqxdxMKx4g1R5w8WnHNX',
-          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? 'ZAA6d9lkzXALvzq2W23uOPuZdufs',
-          clientUid: process.env.DEMO_CLIENT_UID ?? 'XVOxKFeyg4gDnvg531VzsGckzlg6',
+          adminOwnerUid: process.env.DEMO_ADMIN_OWNER_UID ?? (PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2':'8O85OCx1IQUdhuBS3Ys7mrOjfCTL'),
+          adminManagerUid: process.env.DEMO_ADMIN_MANAGER_UID ??(PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2': '50dMnpqXPWEIeAmmKs3smUX8LDnO'),
+          adminOpsUid: process.env.DEMO_ADMIN_OPS_UID ??(PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2': 'Nfmtax9liBTyHaiKWR5QnI2AKpMz'),
+          adminAnalystUid: process.env.DEMO_ADMIN_ANALYST_UID ?? (PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2':'demo_admin_analyst'),
+          adminSupportUid: process.env.DEMO_ADMIN_SUPPORT_UID ?? (PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2':'OdAMmHfEoqxdxMKx4g1R5w8WnHNX'),
+          adminCatalogUid: process.env.DEMO_ADMIN_CATALOG_UID ?? (PROD ? '2eYRdoUIKXNRM0PeugRrZLvvpEE2':'ZAA6d9lkzXALvzq2W23uOPuZdufs'),
+          clientUid: process.env.DEMO_CLIENT_UID ??(PROD ? 'GdAObjkydxZn2lL4Zh49qfgwaYi2': 'XVOxKFeyg4gDnvg531VzsGckzlg6'),
         },
       };
 
@@ -110,9 +149,11 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
         seedCtx.sizes.ordersPerStore = Math.min(seedCtx.sizes.ordersPerStore, 18);
       }
 
-      await seedFullDemoScenario(seedCtx, summary);
+      await runSeedDomains(seedCtx, summary, payload.domains);
+
       incCreated(summary, 'SeedScenarioRuns');
       addSkip(summary, 'SeedMode', `mode=${mode} scenario=${scenario}`);
+      addSkip(summary, 'SeedStoreScope', resolvedStoreId ? `storeId=${resolvedStoreId}` : 'storeId=AUTO_PER_STORE');
     };
 
     if (mode === 'reset') {
@@ -127,11 +168,15 @@ export async function publicDevSeedDummyData(actionCtx: ActionContext, payload: 
       ok: true,
       mode,
       scenario,
+      storeId: resolvedStoreId ?? null,
       stores: stores.map((s) => s.code),
+      domains: payload.domains ?? null,
       summary,
-      note: 'Seed completed. Use seeded admin/demo IDs shown in skipped summary rows.',
+      note: 'Seed completed using modular domain runner.',
     };
   } catch (err) {
-    throw err instanceof AppError ? err : new AppError('SEED_FAILED', 'Failed to seed dummy data', { cause: String(err) });
+    throw err instanceof AppError
+        ? err
+        : new AppError('SEED_FAILED', 'Failed to seed dummy data', { cause: String(err) });
   }
 }

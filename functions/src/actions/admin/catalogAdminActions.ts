@@ -9,6 +9,7 @@ import { ProductImage } from '../../entities/ProductImage';
 import { ProductBaseMedia } from '../../entities/ProductBaseMedia';
 import { StoreProductMediaOverride } from '../../entities/StoreProductMediaOverride';
 import { ProductAlias } from '../../entities/ProductAlias';
+import { MediaAsset } from '../../entities/MediaAsset';
 import { ProductSpec } from '../../entities/ProductSpec';
 import { ProductVariant } from '../../entities/ProductVariant';
 import { InventoryAdjustment } from '../../entities/InventoryAdjustment';
@@ -47,33 +48,125 @@ async function byIdOrThrow(ctx: ActionContext, repo: any, id: string, msg: strin
   return row;
 }
 
+async function categoryByScope(ctx: ActionContext, storeId: string, id: string) {
+  const row = await ctx.db.getRepository(Category).findOne({
+    where: [
+      { id, mode: 'global', storeId: null },
+      { id, mode: 'store', storeId },
+    ] as any,
+  });
+  if (!row) throw new AppError('NOT_FOUND', 'Category not found');
+  return row;
+}
+
+async function bannerByStore(ctx: ActionContext, storeId: string, id: string) {
+  const row = await ctx.db.getRepository(Banner).findOneBy({ id, storeId });
+  if (!row) throw new AppError('NOT_FOUND', 'Banner not found');
+  return row;
+}
+
+async function homeSectionByStore(ctx: ActionContext, storeId: string, id: string) {
+  const row = await ctx.db.getRepository(HomeSection).findOneBy({ id, storeId });
+  if (!row) throw new AppError('NOT_FOUND', 'Home section not found');
+  return row;
+}
+
+async function landingPageByStore(ctx: ActionContext, storeId: string, id: string) {
+  const row = await ctx.db.getRepository(LandingPage).findOneBy({ id, storeId });
+  if (!row) throw new AppError('NOT_FOUND', 'Landing page not found');
+  return row;
+}
+
+async function enrichCategoryMedia(ctx: ActionContext, category: any) {
+  if (!category) {
+    return null;
+  }
+
+  if (!category.mediaAssetId) {
+    return {
+      ...category,
+      imageOriginalPath: null,
+      imageThumbnailPath: null,
+    };
+  }
+
+  const asset = await ctx.db.getRepository(MediaAsset).findOneBy({ id: category.mediaAssetId });
+  return {
+    ...category,
+    imageOriginalPath: asset?.originalPath ?? null,
+    imageThumbnailPath: asset?.thumbnailPath ?? null,
+  };
+}
+
 export async function adminCategoriesList(ctx: ActionContext, payload: any = {}) {
   const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
   const rows = await ctx.db.query("SELECT * FROM categories WHERE (mode='global' AND storeId IS NULL) OR (mode='store' AND storeId=?) ORDER BY sortOrder ASC LIMIT ? OFFSET ?", [storeId, q.limit, q.offset]);
-  return { categories: rows };
+  const mediaIds = rows.map((row: any) => row.mediaAssetId).filter(Boolean);
+  const mediaAssets = mediaIds.length
+    ? await ctx.db.query(
+        `SELECT id, originalPath, thumbnailPath FROM media_assets WHERE id IN (${mediaIds.map(() => '?').join(',')})`,
+        mediaIds,
+      )
+    : [];
+  const mediaMap = new Map(mediaAssets.map((asset: any) => [asset.id, asset]));
+  return {
+    categories: rows.map((row: any) => ({
+      ...row,
+      imageOriginalPath: row.mediaAssetId ? ((mediaMap.get(row.mediaAssetId) as any)?.originalPath ?? null) : null,
+      imageThumbnailPath: row.mediaAssetId ? ((mediaMap.get(row.mediaAssetId) as any)?.thumbnailPath ?? null) : null,
+    })),
+  };
 }
-export async function adminCategoriesGet(ctx: ActionContext, payload: any) { return { category: await byIdOrThrow(ctx, Category, payload.id, 'Category not found') }; }
+export async function adminCategoriesGet(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  return { category: await enrichCategoryMedia(ctx, await categoryByScope(ctx, storeId, payload.id)) };
+}
 export async function adminCategoriesCreate(ctx: ActionContext, payload: any) {
   const id = uuidv4();
   await ctx.db.transaction(async (tx: EntityManager) => {
     const mode = payload.mode === 'global' ? 'global' : 'store';
-    const storeId = mode === 'global' ? null : payload.storeId;
+    const storeId = mode === 'global' ? null : resolveStoreScopedId(ctx.storeId, payload.storeId);
     await tx.getRepository(Category).save(tx.getRepository(Category).create({ id, ...payload, mode, storeId }));
   });
-  return { category: await ctx.db.getRepository(Category).findOneByOrFail({ id }) };
+  return adminCategoriesGet(ctx, { id, storeId: payload.storeId });
 }
 export async function adminCategoriesUpdate(ctx: ActionContext, payload: any) {
-  await ctx.db.transaction(async (tx: EntityManager) => { const r=await tx.getRepository(Category).update({ id: payload.id }, payload); if(!r.affected) throw new AppError('NOT_FOUND','Category not found'); });
-  return adminCategoriesGet(ctx, { id: payload.id });
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const existing = await categoryByScope(ctx, storeId, payload.id);
+  await ctx.db.transaction(async (tx: EntityManager) => {
+    const nextMode = payload.mode === undefined ? existing.mode : (payload.mode === 'global' ? 'global' : 'store');
+    const nextStoreId = nextMode === 'global' ? null : storeId;
+    const r = await tx.getRepository(Category).update({ id: payload.id }, { ...payload, mode: nextMode, storeId: nextStoreId });
+    if(!r.affected) throw new AppError('NOT_FOUND','Category not found');
+  });
+  return adminCategoriesGet(ctx, { id: payload.id, storeId });
 }
-export async function adminCategoriesDisable(ctx: ActionContext, payload: any) { return adminCategoriesUpdate(ctx, { id: payload.id, status: 'disabled' }); }
+export async function adminCategoriesDisable(ctx: ActionContext, payload: any) { return adminCategoriesUpdate(ctx, { id: payload.id, storeId: payload.storeId, status: 'disabled' }); }
 
 export async function adminBannersList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { banners: await ctx.db.getRepository(Banner).find({ where: { storeId }, order: { sortOrder: 'ASC' as any }, take: q.limit, skip: q.offset }) }; }
-export async function adminBannersGet(ctx: ActionContext, payload: any) { return { banner: await byIdOrThrow(ctx, Banner, payload.id, 'Banner not found') }; }
-export async function adminBannersCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(Banner).save(tx.getRepository(Banner).create({ id, ...payload }));}); return adminBannersGet(ctx,{id}); }
-export async function adminBannersUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ const r=await tx.getRepository(Banner).update({id:payload.id},payload); if(!r.affected) throw new AppError('NOT_FOUND','Banner not found');}); return adminBannersGet(ctx,{id:payload.id}); }
-export async function adminBannersDisable(ctx: ActionContext, payload: any) { return adminBannersUpdate(ctx,{id:payload.id,status:'disabled'}); }
+export async function adminBannersGet(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  return { banner: await bannerByStore(ctx, storeId, payload.id) };
+}
+export async function adminBannersCreate(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const id=uuidv4();
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    await tx.getRepository(Banner).save(tx.getRepository(Banner).create({ id, ...payload, storeId }));
+  });
+  return adminBannersGet(ctx,{id, storeId});
+}
+export async function adminBannersUpdate(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  await bannerByStore(ctx, storeId, payload.id);
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    const r=await tx.getRepository(Banner).update({id:payload.id, storeId},{...payload, storeId});
+    if(!r.affected) throw new AppError('NOT_FOUND','Banner not found');
+  });
+  return adminBannersGet(ctx,{id:payload.id, storeId});
+}
+export async function adminBannersDisable(ctx: ActionContext, payload: any) { return adminBannersUpdate(ctx,{id:payload.id,storeId:payload.storeId,status:'disabled'}); }
 
 export async function adminFeaturedList(ctx: ActionContext, payload: any) {
   const items = await ctx.db.getRepository(FeaturedItem).find({ where: { storeId: payload.storeId }, order: { sortOrder: 'ASC' as any } });
@@ -170,26 +263,100 @@ export async function adminInventoryAdjust(ctx: ActionContext, payload: any) {
   });
   return { adjusted: true };
 }
-export async function adminInventoryHistory(ctx: ActionContext, payload: any) { return { rows: await ctx.db.getRepository(InventoryAdjustment).find({ where: { variantId: payload.variantId }, order: { createdAt: 'DESC' as any } }) }; }
-export async function adminInventoryLowStockReport(ctx: ActionContext, payload: any) { const t=payload.threshold ?? 5; const rows=await ctx.db.query("SELECT * FROM product_variants pv JOIN products p ON p.id=pv.productId WHERE ((p.mode='global' AND p.storeId IS NULL) OR (p.mode='store' AND p.storeId=?)) AND pv.stockQty <= ? ORDER BY pv.stockQty ASC", [payload.storeId, t]); return { threshold:t, rows }; }
+export async function adminInventoryHistory(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200, defaultSort: { by: 'createdAt', dir: 'desc' } });
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const filters = payload.filters && typeof payload.filters === 'object' ? payload.filters : {};
+  const variantId = payload.variantId ?? filters.variantId ?? null;
+  const reason = payload.reason ?? filters.reason ?? null;
+  const rows = await ctx.db.query(
+    `SELECT
+      sm.id AS id,
+      sm.createdAt AS createdAt,
+      sm.variantId AS variantId,
+      pv.productId AS productId,
+      p.name AS productName,
+      pv.sku AS sku,
+      sm.qtyDelta AS deltaQty,
+      sm.qtyDelta AS delta,
+      COALESCE(JSON_UNQUOTE(JSON_EXTRACT(sm.metadata, '$.reason')), sm.movementType) AS reason,
+      sm.createdByUid AS employeeId
+    FROM stock_movements sm
+    INNER JOIN product_variants pv ON pv.id = sm.variantId
+    INNER JOIN products p ON p.id = pv.productId
+    WHERE sm.storeId = ?
+      AND (? IS NULL OR sm.variantId = ?)
+      AND (? IS NULL OR COALESCE(JSON_UNQUOTE(JSON_EXTRACT(sm.metadata, '$.reason')), sm.movementType) = ?)
+    ORDER BY sm.createdAt DESC
+    LIMIT ? OFFSET ?`,
+    [storeId, variantId, variantId, reason, reason, q.limit, q.offset]
+  );
+  return {
+    items: rows,
+    pageInfo: {
+      page: q.page,
+      pageSize: q.limit,
+      total: rows.length,
+      hasMore: rows.length === q.limit,
+    },
+  };
+}
+export async function adminInventoryLowStockReport(ctx: ActionContext, payload: any = {}) {
+  const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200, defaultSort: { by: 'stock', dir: 'asc' } });
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const threshold = Number(payload.threshold ?? payload.filters?.threshold ?? 5);
+  const query = String(payload.filters?.query ?? '').trim();
+  const rows = await ctx.db.query(
+    `SELECT
+      pv.id AS variantId,
+      pv.productId AS productId,
+      p.name AS productName,
+      pv.sku AS sku,
+      CAST(pv.stockQty AS DECIMAL(12,3)) AS stock,
+      ? AS threshold
+    FROM product_variants pv
+    INNER JOIN products p ON p.id = pv.productId
+    WHERE ((p.mode='global' AND p.storeId IS NULL) OR (p.mode='store' AND p.storeId=?))
+      AND CAST(pv.stockQty AS DECIMAL(12,3)) <= ?
+      AND (? = '' OR p.name LIKE ? OR pv.sku LIKE ?)
+    ORDER BY CAST(pv.stockQty AS DECIMAL(12,3)) ASC, p.name ASC
+    LIMIT ? OFFSET ?`,
+    [threshold, storeId, threshold, query, `%${query}%`, `%${query}%`, q.limit, q.offset]
+  );
+  return {
+    items: rows,
+    pageInfo: {
+      page: q.page,
+      pageSize: q.limit,
+      total: rows.length,
+      hasMore: rows.length === q.limit,
+    },
+    aggregates: {
+      threshold,
+      lowStockRows: rows.length,
+    },
+  };
+}
 
-export async function adminHomeSectionsList(ctx: ActionContext, payload: any) { return { sections: await ctx.db.getRepository(HomeSection).find({ where: { storeId: payload.storeId }, order: { sortOrder: 'ASC' as any } }) }; }
-export async function adminHomeSectionsGet(ctx: ActionContext, payload: any) { return { section: await byIdOrThrow(ctx, HomeSection, payload.id, 'Home section not found') }; }
+export async function adminHomeSectionsList(ctx: ActionContext, payload: any) { const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { sections: await ctx.db.getRepository(HomeSection).find({ where: { storeId }, order: { sortOrder: 'ASC' as any } }) }; }
+export async function adminHomeSectionsGet(ctx: ActionContext, payload: any) { const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { section: await homeSectionByStore(ctx, storeId, payload.id) }; }
 export async function adminHomeSectionsCreate(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
   const normalized = normalizeSectionForWrite(payload);
   const id=uuidv4();
   await ctx.db.transaction(async (tx: EntityManager)=>{
-    await tx.getRepository(HomeSection).save(tx.getRepository(HomeSection).create({ id, ...payload, ...normalized }));
+    await tx.getRepository(HomeSection).save(tx.getRepository(HomeSection).create({ id, ...payload, storeId, ...normalized }));
   });
   try {
-    await publishHomeLayoutForStore(ctx, payload.storeId, 'live');
+    await publishHomeLayoutForStore(ctx, storeId, 'live');
   } catch (error: any) {
-    ctx.logger.error('home publish failed after section create', { storeId: payload.storeId, error: error?.message ?? String(error) });
+    ctx.logger.error('home publish failed after section create', { storeId, error: error?.message ?? String(error) });
   }
-  return adminHomeSectionsGet(ctx,{id});
+  return adminHomeSectionsGet(ctx,{storeId,id});
 }
 export async function adminHomeSectionsUpdate(ctx: ActionContext, payload: any) {
-  const existing = await byIdOrThrow(ctx, HomeSection, payload.id, 'Home section not found');
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const existing = await homeSectionByStore(ctx, storeId, payload.id);
   const next = {
     ...existing,
     ...payload,
@@ -198,36 +365,57 @@ export async function adminHomeSectionsUpdate(ctx: ActionContext, payload: any) 
   };
   const normalized = normalizeSectionForWrite(next);
   await ctx.db.transaction(async (tx: EntityManager)=>{
-    await tx.getRepository(HomeSection).update({id:payload.id},{ ...payload, ...normalized });
+    await tx.getRepository(HomeSection).update({id:payload.id, storeId},{ ...payload, storeId, ...normalized });
   });
   try {
-    await publishHomeLayoutForStore(ctx, existing.storeId, 'live');
+    await publishHomeLayoutForStore(ctx, storeId, 'live');
   } catch (error: any) {
-    ctx.logger.error('home publish failed after section update', { storeId: existing.storeId, error: error?.message ?? String(error) });
+    ctx.logger.error('home publish failed after section update', { storeId, error: error?.message ?? String(error) });
   }
-  return adminHomeSectionsGet(ctx,{id:payload.id});
+  return adminHomeSectionsGet(ctx,{storeId,id:payload.id});
 }
-export async function adminHomeSectionsDisable(ctx: ActionContext, payload: any) { return adminHomeSectionsUpdate(ctx,{id:payload.id,enabled:false}); }
+export async function adminHomeSectionsDisable(ctx: ActionContext, payload: any) { return adminHomeSectionsUpdate(ctx,{storeId:payload.storeId,id:payload.id,enabled:false}); }
 export async function adminHomeSectionsReorder(ctx: ActionContext, payload: any) {
-  await ctx.db.transaction(async (tx: EntityManager)=>{ for (let i=0;i<payload.items.length;i+=1){ await tx.getRepository(HomeSection).update({id:payload.items[i]}, { sortOrder:i }); }});
-  try {
-    await publishHomeLayoutForStore(ctx, payload.storeId, 'live');
-  } catch (error: any) {
-    ctx.logger.error('home publish failed after section reorder', { storeId: payload.storeId, error: error?.message ?? String(error) });
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  for (const itemId of payload.items) {
+    await homeSectionByStore(ctx, storeId, itemId);
   }
-  return adminHomeSectionsList(ctx,{storeId:payload.storeId});
+  await ctx.db.transaction(async (tx: EntityManager)=>{ for (let i=0;i<payload.items.length;i+=1){ await tx.getRepository(HomeSection).update({id:payload.items[i], storeId}, { sortOrder:i }); }});
+  try {
+    await publishHomeLayoutForStore(ctx, storeId, 'live');
+  } catch (error: any) {
+    ctx.logger.error('home publish failed after section reorder', { storeId, error: error?.message ?? String(error) });
+  }
+  return adminHomeSectionsList(ctx,{storeId});
 }
 
 export async function adminSeoGet(ctx: ActionContext, payload: any) { const row=await ctx.db.getRepository(SeoSetting).findOneBy({ storeId: payload.storeId, pageType: payload.pageType, pageKey: payload.pageKey }); return { seo: row }; }
 export async function adminSeoUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(SeoSetting).upsert({ id: payload.id || uuidv4(), ...payload }, ['id']);}); return adminSeoGet(ctx,payload); }
 
 export async function adminLandingPagesList(ctx: ActionContext, payload: any = {}) { const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 }); const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId); return { pages: await ctx.db.getRepository(LandingPage).find({ where: { storeId }, order: { updatedAt: 'DESC' as any }, take: q.limit, skip: q.offset }) }; }
-export async function adminLandingPagesGet(ctx: ActionContext, payload: any) { return { page: await byIdOrThrow(ctx, LandingPage, payload.id, 'Landing page not found') }; }
-export async function adminLandingPagesCreate(ctx: ActionContext, payload: any) { const id=uuidv4(); await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(LandingPage).save(tx.getRepository(LandingPage).create({ id, ...payload, status: 'draft' }));}); return adminLandingPagesGet(ctx,{id}); }
-export async function adminLandingPagesUpdate(ctx: ActionContext, payload: any) { await ctx.db.transaction(async (tx: EntityManager)=>{ await tx.getRepository(LandingPage).update({id:payload.id},payload);}); return adminLandingPagesGet(ctx,{id:payload.id}); }
-export async function adminLandingPagesPublish(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,status:'published'}); }
-export async function adminLandingPagesUnpublish(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,status:'draft'}); }
-export async function adminLandingPagesDisable(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,status:'disabled'}); }
+export async function adminLandingPagesGet(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  return { page: await landingPageByStore(ctx, storeId, payload.id) };
+}
+export async function adminLandingPagesCreate(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const id=uuidv4();
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    await tx.getRepository(LandingPage).save(tx.getRepository(LandingPage).create({ id, ...payload, storeId, status: 'draft' }));
+  });
+  return adminLandingPagesGet(ctx,{id, storeId});
+}
+export async function adminLandingPagesUpdate(ctx: ActionContext, payload: any) {
+  const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  await landingPageByStore(ctx, storeId, payload.id);
+  await ctx.db.transaction(async (tx: EntityManager)=>{
+    await tx.getRepository(LandingPage).update({id:payload.id, storeId},{...payload, storeId});
+  });
+  return adminLandingPagesGet(ctx,{id:payload.id, storeId});
+}
+export async function adminLandingPagesPublish(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,storeId:payload.storeId,status:'published'}); }
+export async function adminLandingPagesUnpublish(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,storeId:payload.storeId,status:'draft'}); }
+export async function adminLandingPagesDisable(ctx: ActionContext, payload: any) { return adminLandingPagesUpdate(ctx,{id:payload.id,storeId:payload.storeId,status:'disabled'}); }
 
 export async function adminSitemapGet(ctx: ActionContext, payload: any = {}) {
   const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);

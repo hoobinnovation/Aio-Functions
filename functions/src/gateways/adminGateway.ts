@@ -28,8 +28,8 @@ export const adminGateway = onCall(async (request) => {
   const envelope = requestSchema.validate(request.data, { abortEarly: false, allowUnknown: false, stripUnknown: false });
   const req = envelope.value as UnifiedRequest;
   const storeIdFromClaims = resolveStoreIdFromClaims(request as any);
+  const requestedStoreId = typeof req?.storeId === 'string' && req.storeId.trim() ? req.storeId.trim() : undefined;
   const resolvedStoreId = storeIdFromClaims ?? req?.storeId;
-  if (resolvedStoreId) req.storeId = resolvedStoreId;
   const ctx = await buildCloudContext('admin', request, resolvedStoreId, req?.meta);
 
   if (envelope.error) {
@@ -39,6 +39,20 @@ export const adminGateway = onCall(async (request) => {
       meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
     };
   }
+
+  if (storeIdFromClaims && requestedStoreId && requestedStoreId !== storeIdFromClaims) {
+    return {
+      ok: false,
+      error: {
+        code: 'STORE_SCOPE_CONFLICT',
+        message: 'Authenticated admin session is bound to a different store',
+        details: { claimStoreId: storeIdFromClaims, requestedStoreId },
+      },
+      meta: { requestId: ctx.requestId, serverTime: ctx.serverTime },
+    };
+  }
+
+  if (resolvedStoreId) req.storeId = resolvedStoreId;
 
   ctx.auth.admin = await resolveAdminAuth(ctx);
   return dispatchAction('admin', req, ctx);

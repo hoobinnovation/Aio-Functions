@@ -60,6 +60,11 @@ import { OrderItem } from '../entities/OrderItem';
 import { OrderStatusEvent } from '../entities/OrderStatusEvent';
 import { Shipment } from '../entities/Shipment';
 import { TrackingEvent } from '../entities/TrackingEvent';
+import { DeliveryRider } from '../entities/DeliveryRider';
+import { DeliveryTrip } from '../entities/DeliveryTrip';
+import { DeliveryAssignment } from '../entities/DeliveryAssignment';
+import { DeliveryOrderEvent } from '../entities/DeliveryOrderEvent';
+import { DeliveryActionRequest } from '../entities/DeliveryActionRequest';
 import { PaymentSession } from '../entities/PaymentSession';
 import { StorePaymentSetting } from '../entities/StorePaymentSetting';
 import { InsuranceOrder } from '../entities/InsuranceOrder';
@@ -144,6 +149,8 @@ import { ProductImportMapping } from '../entities/ProductImportMapping';
 import { PriceImportSession } from '../entities/PriceImportSession';
 import { PriceImportRow } from '../entities/PriceImportRow';
 import { ProductAliasAndPriceImportFoundation1729500000000 } from '../migrations/1729500000000-ProductAliasAndPriceImportFoundation';
+import { DeliveryBackendFoundation1729700000000 } from '../migrations/1729700000000-DeliveryBackendFoundation';
+import { DeliveryTrackingReadModel1729800000000 } from '../migrations/1729800000000-DeliveryTrackingReadModel';
 import PROD from "../utils/PROD";
 
 let db: DataSource | null = null;
@@ -226,6 +233,11 @@ export function getDataSource(sync=false): DataSource {
       OrderStatusEvent,
       Shipment,
       TrackingEvent,
+      DeliveryRider,
+      DeliveryTrip,
+      DeliveryAssignment,
+      DeliveryOrderEvent,
+      DeliveryActionRequest,
       PaymentSession,
       StorePaymentSetting,
       InsuranceOrder,
@@ -282,7 +294,7 @@ export function getDataSource(sync=false): DataSource {
       PrescriptionRequestStatusEvent,
       PrescriptionRequestItemDraft,
     ],
-    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000, ExplicitDeliveryZoneContract1728200000000, FawaterkPaymentSessionFields1728300000000, ProductImportReferences1728400000000, StoreFeatureVisibility1728500000000, ProductMetricsAndProductReviews1728600000000, PhonePasswordAuthFoundation1728700000000, HybridCatalogFoundation1728800000000, HybridCatalogIntegrity1728900000000, AccountingFoundation1729000000000, AccountingPostingEvents1729100000000, ProcurementInventoryFoundation1729200000000, POSCashierFoundation1729300000000, PrescriptionRequestFoundation1729400000000, ProductAliasAndPriceImportFoundation1729500000000],
+    migrations: [InitSchema1720000000000, Phase2AccountsStores1723000000000, Phase3CatalogHomeSeo1724000000000, Phase4CommerceMarketing1725000000000, Phase5OrdersInsuranceAccounting1726000000000, Phase6InventoryImport1727000000000, ReportsBasicIndexes1727100000000, ReportsMarketingIndexes1727200000000, AccountingLedgerIndexes1727400000000, EdgeSyncIngest1728000000000, DineInSecureTableSession1728100000000, ExplicitDeliveryZoneContract1728200000000, FawaterkPaymentSessionFields1728300000000, ProductImportReferences1728400000000, StoreFeatureVisibility1728500000000, ProductMetricsAndProductReviews1728600000000, PhonePasswordAuthFoundation1728700000000, HybridCatalogFoundation1728800000000, HybridCatalogIntegrity1728900000000, AccountingFoundation1729000000000, AccountingPostingEvents1729100000000, ProcurementInventoryFoundation1729200000000, POSCashierFoundation1729300000000, PrescriptionRequestFoundation1729400000000, ProductAliasAndPriceImportFoundation1729500000000, DeliveryBackendFoundation1729700000000, DeliveryTrackingReadModel1729800000000],
   });
 
   return db;

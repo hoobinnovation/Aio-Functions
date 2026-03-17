@@ -20,6 +20,15 @@ export const clientGateway = onCall(async (request) => {
     });
 
     const req = envelope.value as UnifiedRequest;
+    const payloadStoreId =
+        typeof req?.payload === 'object' &&
+        req?.payload !== null &&
+        typeof (req.payload as Record<string, unknown>).storeId === 'string'
+            ? String((req.payload as Record<string, unknown>).storeId).trim()
+            : '';
+    if (!req?.storeId && payloadStoreId) {
+        req.storeId = payloadStoreId;
+    }
     const ctx = await buildCloudContext(
         'client',
         request,

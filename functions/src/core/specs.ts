@@ -121,9 +121,9 @@ ACTION_SPECS.adminStoresDisable = { schema: Joi.object({ storeId: Joi.string().r
 ACTION_SPECS.adminStoreSettingsGet = { schema: Joi.object({ storeId: Joi.string().required() }).required(), notes: 'Get store settings', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
 ACTION_SPECS.adminStoreSettingsUpdate = { schema: Joi.object({ storeId: Joi.string().required(), currency: Joi.string().max(8).required(), taxMode: Joi.string().max(24).required(), supportWhatsApp: Joi.string().max(32).allow(null, ''), supportEmail: Joi.string().max(255).allow(null, ''), pickupEnabled: Joi.boolean().required(), deliveryEnabled: Joi.boolean().required(), featureVisibility: Joi.any().custom((value: unknown, helpers: any) => { if (value === undefined) return value; if (Array.isArray(value)) { return value.every((item) => typeof item === 'string') ? value : helpers.error('any.invalid'); } if (value && typeof value === 'object') { return Object.values(value as Record<string, unknown>).every((item) => typeof item === 'boolean') ? value : helpers.error('any.invalid'); } return helpers.error('any.invalid'); }).optional() }).required(), notes: 'Update store settings', errorCodes: ['VALIDATION_ERROR'] };
 ACTION_SPECS.adminCustomersList = { schema: Joi.object({ limit: Joi.number().integer().min(1).max(100).optional(), offset: Joi.number().integer().min(0).optional() }).optional(), notes: 'List customers', errorCodes: ['VALIDATION_ERROR'] };
-ACTION_SPECS.adminCustomersGet = { schema: Joi.object({ uid: Joi.string().required() }).required(), notes: 'Get customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
-ACTION_SPECS.adminCustomersUpdate = { schema: Joi.object({ uid: Joi.string().required(), phone: Joi.string().max(32).allow(null, ''), email: Joi.string().max(255).allow(null, ''), displayName: Joi.string().max(80).allow(null, ''), locale: Joi.string().max(10).allow(null, ''), marketingOptIn: Joi.boolean().optional(), status: Joi.string().max(24).optional() }).required(), notes: 'Update customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
-ACTION_SPECS.adminCustomersDisable = { schema: Joi.object({ uid: Joi.string().required(), reason: Joi.string().max(300).allow(null, '') }).required(), notes: 'Disable customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminCustomersGet = { schema: Joi.object({ uid: Joi.string().required(), id: Joi.string().optional() }).required(), notes: 'Get customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminCustomersUpdate = { schema: Joi.object({ uid: Joi.string().required(), id: Joi.string().optional(), phone: Joi.string().max(32).allow(null, ''), email: Joi.string().max(255).allow(null, ''), displayName: Joi.string().max(80).allow(null, ''), name: Joi.string().max(80).allow(null, ''), locale: Joi.string().max(10).allow(null, ''), marketingOptIn: Joi.boolean().optional(), status: Joi.string().max(24).optional() }).required(), notes: 'Update customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
+ACTION_SPECS.adminCustomersDisable = { schema: Joi.object({ uid: Joi.string().required(), id: Joi.string().optional(), reason: Joi.string().max(300).allow(null, '') }).required(), notes: 'Disable customer', errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND'] };
 ACTION_SPECS.adminCustomersSearch = { schema: Joi.object({ query: Joi.string().allow('', null), limit: Joi.number().integer().min(1).max(100).optional() }).optional(), notes: 'Search customers', errorCodes: ['VALIDATION_ERROR'] };
 
 ACTION_SPECS.mediaCreateUploadSpec = { schema: uploadPayload, notes: 'Client media upload spec creation', errorCodes: ['VALIDATION_ERROR', 'CONFIG_ERROR'] };
@@ -152,8 +152,8 @@ ACTION_SPECS.storeFavoritesToggle={schema:Joi.object({storeId:Joi.string().requi
 
 ['adminCategoriesList','adminBannersList','adminFeaturedList','adminProductsList','adminHomeSectionsList','adminLandingPagesList','adminInventoryLowStockReport'].forEach((n)=>{ACTION_SPECS[n]={schema:storeScoped,notes:'Store scoped list',errorCodes:['VALIDATION_ERROR']};});
 ['adminCategoriesGet','adminCategoriesDisable','adminBannersGet','adminBannersDisable','adminProductsGet','adminProductsDisable','adminHomeSectionsGet','adminHomeSectionsDisable','adminLandingPagesGet','adminLandingPagesPublish','adminLandingPagesUnpublish','adminLandingPagesDisable'].forEach((n)=>{ACTION_SPECS[n]={schema:idSchema,notes:'By id',errorCodes:['VALIDATION_ERROR']};});
-ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminCategoriesUpdate={schema:Joi.object({id:Joi.string().required(),name:Joi.string().optional(),slug:Joi.string().optional(),parentId:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update category',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminCategoriesCreate={schema:Joi.object({mode:Joi.string().valid('global','store').optional(),storeId:Joi.string().optional(),name:Joi.string().required(),slug:Joi.string().required(),parentId:Joi.string().allow(null,''),mediaAssetId:Joi.string().allow(null,'').optional(),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create category',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminCategoriesUpdate={schema:Joi.object({id:Joi.string().required(),name:Joi.string().optional(),slug:Joi.string().optional(),parentId:Joi.string().allow(null,''),mediaAssetId:Joi.string().allow(null,'').optional(),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update category',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersCreate={schema:Joi.object({storeId:Joi.string().required(),title:Joi.string().required(),mediaAssetId:Joi.string().required(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Create banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminBannersUpdate={schema:Joi.object({id:Joi.string().required(),title:Joi.string().optional(),mediaAssetId:Joi.string().optional(),linkUrl:Joi.string().allow(null,''),sortOrder:Joi.number().integer().optional(),status:Joi.string().optional()}).required(),notes:'Update banner',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminFeaturedSearchProducts={schema:Joi.object({storeId:Joi.string().required(),query:Joi.string().allow('',null),limit:Joi.number().integer().min(1).max(100).optional()}).required(),notes:'Search products for featured',errorCodes:['VALIDATION_ERROR']};
@@ -178,7 +178,7 @@ ACTION_SPECS.adminProductVariantsUpdate={schema:Joi.object({id:Joi.string().requ
 ACTION_SPECS.adminProductVariantsDelete={schema:idSchema,notes:'delete variant',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminProductVariantsBulkStockUpdate={schema:Joi.object({items:Joi.any().required()}).required(),notes:'bulk stock',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminInventoryAdjust={schema:Joi.object({variantId:Joi.string().required(),deltaQty:Joi.number().integer().required(),reason:Joi.string().allow(null,'')}).required(),notes:'adjust inventory',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.adminInventoryHistory={schema:Joi.object({variantId:Joi.string().required()}).required(),notes:'inventory history',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.adminInventoryHistory={schema:Joi.object({ storeId: Joi.string().required(), filters: Joi.object({ variantId: Joi.string().optional(), reason: Joi.string().allow('', null).optional() }).optional(), sort: Joi.object({ by: Joi.string().optional(), dir: Joi.string().valid('asc', 'desc').optional(), direction: Joi.string().valid('asc', 'desc').optional() }).optional(), page: Joi.number().integer().min(1).optional(), pageSize: Joi.number().integer().min(1).max(200).optional(), fetchAll: Joi.boolean().optional(), groupBy: Joi.array().items(Joi.string()).optional(), columns: Joi.array().items(Joi.string()).optional(), flags: Joi.object().optional(), variantId:Joi.string().optional(), reason: Joi.string().allow('', null).optional() }).required(),notes:'inventory history',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminHomeSectionsGet={schema:idSchema,notes:'get section',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminHomeSectionsCreate={schema:Joi.object({storeId:Joi.string().required(),type:Joi.string().valid('heroCarousel','categoryGrid','productRail','promoStrip','infoTiles').required(),config:Joi.any().optional(),sortOrder:Joi.number().integer().optional(),enabled:Joi.boolean().optional()}).required(),notes:'create section',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.adminHomeSectionsUpdate={schema:Joi.object({id:Joi.string().required(),type:Joi.string().valid('heroCarousel','categoryGrid','productRail','promoStrip','infoTiles').optional(),config:Joi.any().optional(),sortOrder:Joi.number().integer().optional(),enabled:Joi.boolean().optional()}).required(),notes:'update section',errorCodes:['VALIDATION_ERROR']};
@@ -265,10 +265,10 @@ ACTION_SPECS.ordersGet={schema:Joi.any().optional(),notes:'phase5',errorCodes:['
 ACTION_SPECS.ordersTracking={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.ordersInvoiceUrl={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.ordersReorder={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.insuranceCreateDraft={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.insuranceAttachFiles={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.insuranceSubmit={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
-ACTION_SPECS.insuranceGet={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
+ACTION_SPECS.insuranceCreateDraft={schema:Joi.object({storeId:Joi.string().optional()}).optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR','STORE_CONTEXT_REQUIRED']};
+ACTION_SPECS.insuranceAttachFiles={schema:Joi.object({storeId:Joi.string().optional(),insuranceOrderId:Joi.string().required(),files:Joi.array().items(Joi.object({type:Joi.string().max(64).required(),mediaAssetId:Joi.string().required()}).required()).min(1).required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR','STORE_CONTEXT_REQUIRED']};
+ACTION_SPECS.insuranceSubmit={schema:Joi.object({storeId:Joi.string().optional(),insuranceOrderId:Joi.string().required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR','STORE_CONTEXT_REQUIRED']};
+ACTION_SPECS.insuranceGet={schema:Joi.object({storeId:Joi.string().optional(),insuranceOrderId:Joi.string().required()}).required(),notes:'phase5',errorCodes:['VALIDATION_ERROR','STORE_CONTEXT_REQUIRED']};
 ACTION_SPECS.insuranceApproveQuote={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.insuranceRejectQuote={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
 ACTION_SPECS.insuranceListMyOrders={schema:Joi.any().optional(),notes:'phase5',errorCodes:['VALIDATION_ERROR']};
@@ -341,7 +341,33 @@ ACTION_SPECS.publicDevSeedDummyData = {
     seedKey: Joi.string().required(),
     mode: Joi.string().valid('reset', 'upsert').optional(),
     scenario: Joi.string().valid('baseline', 'full').optional(),
-    storeCode: Joi.string().valid('ecom', 'resto', 'pharma').optional(),
+    storeCode: Joi.string().valid('1', 'ecom', 'resto', 'pharma').optional(),
+    storeId: Joi.string().min(1).optional(),
+    domains: Joi.array()
+        .items(
+            Joi.string().valid(
+                'core',
+                'rbac',
+                'catalog',
+                'delivery',
+                'promotions',
+                'orders',
+                'loyalty',
+                'support',
+                'insurance',
+                'home',
+                'accounting',
+                'warehouse',
+                'procurement',
+                'inventoryAdvanced',
+                'pos',
+                'prescription',
+                'imports',
+                'auth',
+                'edge',
+            ),
+        )
+        .optional(),
     sizes: Joi.object({
       stores: Joi.number().integer().min(1).max(3).optional(),
       branchesPerStore: Joi.number().integer().min(1).max(5).optional(),
@@ -356,10 +382,9 @@ ACTION_SPECS.publicDevSeedDummyData = {
       insuranceOrders: Joi.number().integer().min(1).max(300).optional(),
     }).optional(),
   }).required(),
-  notes: 'Dev-only scenario-based seed action for local/staging',
+  notes: 'Dev-only modular scenario/domain seed action for local/staging',
   errorCodes: ['VALIDATION_ERROR', 'DEV_ONLY', 'SEED_KEY_INVALID', 'SEED_RATE_LIMIT', 'SEED_FAILED'],
 };
-
 const insuranceStoreScoped = Joi.object({ storeId: Joi.string().required() }).required();
 ACTION_SPECS.adminInsuranceList = { schema: insuranceStoreScoped, notes: 'insurance list', errorCodes: ['VALIDATION_FAILED', 'STORE_ACCESS_REQUIRED'] };
 ACTION_SPECS.adminInsuranceGet = { schema: insuranceStoreScoped.keys({ insuranceOrderId: Joi.string().required() }), notes: 'insurance get', errorCodes: ['VALIDATION_FAILED', 'NOT_FOUND'] };
@@ -414,9 +439,11 @@ ACTION_SPECS.adminPriceImportDeleteMapping = {
   errorCodes: ['VALIDATION_FAILED']
 };
 
+const reportDateString = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}(?:T.*)?$/);
+
 const baseReportPayload = Joi.object({
   storeId: Joi.string().required(),
-  range: Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).required(), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).required() }).required(),
+  range: Joi.object({ from: reportDateString.required(), to: reportDateString.required() }).required(),
   filters: Joi.object().required(),
   sort: Joi.object({ by: Joi.string().required(), dir: Joi.string().valid('asc', 'desc').required() }).required(),
   page: Joi.number().integer().min(1),
@@ -439,7 +466,7 @@ ACTION_SPECS.reportsCashbackSummary = { schema: baseReportPayload.keys({ filters
 
 const marketingReportPayload = Joi.object({
   storeId: Joi.string().required(),
-  range: Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).required(), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).required() }).required(),
+  range: Joi.object({ from: reportDateString.required(), to: reportDateString.required() }).required(),
   filters: Joi.object({
     channel: Joi.string().valid('app', 'web', 'branch', 'POS').optional(),
     source: Joi.string().max(120).optional(),
@@ -563,12 +590,17 @@ ACTION_SPECS.reportsReturnsSummary = ACTION_SPECS.reportsReturnsSummary && {
   }),
 };
 
-const allowedStringArray = (_allowed: string[]) => Joi.array().items(Joi.string()).optional();
+const allowedStringArray = (allowed: string[]) => {
+  if (!allowed.length) {
+    return Joi.array().max(0).optional();
+  }
+  return Joi.array().items(Joi.string().valid(...allowed)).optional();
+};
 const reportPayloadBaseStrict = Joi.object({
   storeId: Joi.string().required(),
-  range: requiredInStrictProd(Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional() })),
-  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
-  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(),
+  range: requiredInStrictProd(Joi.object({ from: reportDateString.optional(), to: reportDateString.optional() })),
+  from: reportDateString.optional(),
+  to: reportDateString.optional(),
   filters: Joi.object().optional(),
   sort: requiredInStrictProd(Joi.object({ by: Joi.string().required(), dir: Joi.string().valid('asc', 'desc').optional() })),
   page: Joi.number().integer().min(1).optional(),
@@ -580,16 +612,16 @@ const reportPayloadBaseStrict = Joi.object({
 }).required();
 
 ACTION_SPECS.reportsOverview = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('date', 'netRevenueCents', 'ordersCount').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'channel', 'status']), columns: allowedStringArray(['date', 'ordersCount', 'netRevenueCents']), flags: Joi.object({ includeProfessional: Joi.boolean().optional() }).optional() }), notes: 'reports overview strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsOrdersByStatus = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('ordersCount', 'netRevenueCents', 'status').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['status', 'day', 'channel', 'branchId']), columns: allowedStringArray(['status', 'ordersCount', 'grossRevenueCents', 'netRevenueCents', 'avgOrderValueCents']), flags: Joi.object({ includeAging: Joi.boolean().optional() }).optional() }), notes: 'reports orders by status strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsTopProducts = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('qtySold', 'netRevenueCents').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['categoryId', 'brand']), columns: allowedStringArray(['productId', 'name', 'sku', 'qtySold', 'grossRevenueCents', 'netRevenueCents']) }), notes: 'reports top products strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsInventorySummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ lowStockOnly: Joi.boolean().optional(), deadStockDays: Joi.number().integer().min(1).max(3650).optional(), categoryId: Joi.string().optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('onHandQty', 'availableQty', 'name').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['categoryId', 'lowStock']), columns: allowedStringArray(['productId', 'name', 'onHandQty', 'reservedQty', 'availableQty', 'lowStock', 'lastMovementAt']), flags: Joi.object({ includeValuation: Joi.boolean().optional(), includeMovements: Joi.boolean().optional() }).optional() }), notes: 'reports inventory strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsCustomersSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('netRevenueCents', 'ordersCount', 'lastOrderAt').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['newVsReturning', 'month']), columns: allowedStringArray(['customerId', 'name', 'ordersCount', 'netRevenueCents', 'lastOrderAt']), flags: Joi.object({ includeCohorts: Joi.boolean().optional(), includeLtv: Joi.boolean().optional() }).optional() }), notes: 'reports customers strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsReturnsSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('returnsCount', 'refundCents').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['reason', 'day']), columns: allowedStringArray(['reason', 'returnsCount', 'refundCents', 'topProducts']), flags: Joi.object({ includeRefundCosts: Joi.boolean().optional() }).optional() }), notes: 'reports returns strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsLoyaltySummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['tier', 'day']), columns: allowedStringArray(['tier', 'day', 'pointsDelta']) }), notes: 'reports loyalty strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.reportsCashbackSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'campaignId']), columns: allowedStringArray(['day', 'campaignId', 'cashbackIssuedCents', 'cashbackRedeemedCents']) }), notes: 'reports cashback strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsOrdersByStatus = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('ordersCount', 'netRevenueCents', 'status').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['status', 'day', 'channel']), columns: allowedStringArray(['status', 'ordersCount', 'grossRevenueCents', 'netRevenueCents', 'avgOrderValueCents']), flags: Joi.object({ includeAging: Joi.boolean().optional() }).optional() }), notes: 'reports orders by status strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsTopProducts = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('qtySold', 'netRevenueCents').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['productId', 'name', 'sku', 'qtySold', 'grossRevenueCents', 'netRevenueCents']) }), notes: 'reports top products strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsInventorySummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ lowStockOnly: Joi.boolean().optional(), deadStockDays: Joi.number().integer().min(1).max(3650).optional(), categoryId: Joi.string().optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('onHandQty', 'availableQty', 'name').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['productId', 'name', 'onHandQty', 'reservedQty', 'availableQty', 'lowStock', 'lastMovementAt']), flags: Joi.object({ includeMovements: Joi.boolean().optional() }).optional() }), notes: 'reports inventory strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsCustomersSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('netRevenueCents', 'ordersCount', 'lastOrderAt').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['customerId', 'name', 'ordersCount', 'netRevenueCents', 'lastOrderAt']), flags: Joi.object({ includeCohorts: Joi.boolean().optional(), includeLtv: Joi.boolean().optional() }).optional() }), notes: 'reports customers strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsReturnsSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('returnsCount', 'refundCents').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['reason', 'returnsCount', 'refundCents']), flags: Joi.object({ includeRefundCosts: Joi.boolean().optional() }).optional() }), notes: 'reports returns strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsLoyaltySummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['day', 'tier', 'pointsDelta']) }), notes: 'reports loyalty strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.reportsCashbackSummary = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['day', 'campaignId', 'cashbackIssuedCents', 'cashbackRedeemedCents']) }), notes: 'reports cashback strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
 
 ACTION_SPECS.adminReportsAttributionOverview = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ channel: Joi.string().valid('app', 'web', 'branch', 'POS').optional(), source: Joi.string().max(120).optional(), medium: Joi.string().max(120).optional(), campaign: Joi.string().max(120).optional(), term: Joi.string().max(120).optional(), content: Joi.string().max(120).optional(), platform: Joi.string().valid('facebook', 'instagram', 'whatsapp', 'google', 'other').optional(), branchId: Joi.string().max(64).optional(), deviceId: Joi.string().max(64).optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('ordersCount', 'revenueCents', 'avgOrderValueCents', 'key').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'source', 'medium', 'campaign']), columns: allowedStringArray(['key', 'ordersCount', 'revenueCents', 'avgOrderValueCents']), flags: Joi.object({ includeRoas: Joi.boolean().optional(), includeMargin: Joi.boolean().optional() }).optional() }), notes: 'reports attribution strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
-ACTION_SPECS.adminReportsTopCampaigns = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ channel: Joi.string().valid('app', 'web', 'branch', 'POS').optional(), source: Joi.string().max(120).optional(), medium: Joi.string().max(120).optional(), campaign: Joi.string().max(120).optional(), term: Joi.string().max(120).optional(), content: Joi.string().max(120).optional(), platform: Joi.string().valid('facebook', 'instagram', 'whatsapp', 'google', 'other').optional(), branchId: Joi.string().max(64).optional(), deviceId: Joi.string().max(64).optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('ordersCount', 'revenueCents', 'campaign').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'source', 'medium', 'campaign']), columns: allowedStringArray(['campaign', 'source', 'medium', 'ordersCount', 'revenueCents', 'roas', 'contributionCents']), flags: Joi.object({ includeRoas: Joi.boolean().optional(), includeMargin: Joi.boolean().optional() }).optional() }), notes: 'reports top campaigns strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
+ACTION_SPECS.adminReportsTopCampaigns = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ channel: Joi.string().valid('app', 'web', 'branch', 'POS').optional(), source: Joi.string().max(120).optional(), medium: Joi.string().max(120).optional(), campaign: Joi.string().max(120).optional(), term: Joi.string().max(120).optional(), content: Joi.string().max(120).optional(), platform: Joi.string().valid('facebook', 'instagram', 'whatsapp', 'google', 'other').optional(), branchId: Joi.string().max(64).optional(), deviceId: Joi.string().max(64).optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('ordersCount', 'revenueCents', 'campaign').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray([]), columns: allowedStringArray(['campaign', 'source', 'medium', 'ordersCount', 'revenueCents']), flags: Joi.object().max(0).optional() }), notes: 'reports top campaigns strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
 
 ACTION_SPECS.adminAccountingKpis = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object().max(0).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('day').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']), columns: allowedStringArray(['groupKey', 'cashInCents', 'cashOutCents', 'netCashFlowCents']) }), notes: 'accounting kpis strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
 ACTION_SPECS.adminAccountingLedger = { schema: reportPayloadBaseStrict.keys({ filters: Joi.object({ channel: Joi.string().max(24).optional(), branchId: Joi.string().max(36).optional(), deviceId: Joi.string().max(36).optional(), employeeId: Joi.string().max(36).optional(), type: Joi.string().max(40).optional(), referenceId: Joi.string().max(64).optional() }).optional(), sort: requiredInStrictProd(Joi.object({ by: Joi.string().valid('createdAt', 'debitCents', 'creditCents', 'netCents', 'type', 'channel').required(), dir: Joi.string().valid('asc', 'desc').required() })), groupBy: allowedStringArray(['day', 'week', 'month', 'channel', 'branchId', 'employeeId', 'type']), columns: allowedStringArray(['id', 'createdAt', 'type', 'referenceType', 'referenceId', 'debitCents', 'creditCents', 'netCents', 'channel', 'branchId', 'deviceId', 'employeeId', 'notes']) }), notes: 'accounting ledger strict', errorCodes: ['VALIDATION_FAILED', 'FETCH_ALL_LIMIT_EXCEEDED'] };
@@ -901,6 +933,7 @@ ACTION_SPECS.paymentsStatus = {
 
 ACTION_SPECS.paymentsConfirm = {
   schema: Joi.object({
+    paymentSessionId: Joi.string().optional(),
     providerSessionId: Joi.string().optional(),
     invoiceKey: Joi.string().optional(),
   }).required(),
@@ -1113,3 +1146,14 @@ ACTION_SPECS.adminPrescriptionLinkExistingOrder = {
   notes: 'link an existing order to prescription request',
   errorCodes: ['VALIDATION_ERROR', 'NOT_FOUND', 'STORE_ACCESS_REQUIRED'],
 };
+
+ACTION_SPECS.adminInventoryLowStockReport = {
+  schema: listQueryPayload.keys({
+    storeId: Joi.string().required(),
+    threshold: Joi.number().integer().min(0).optional(),
+  }).required(),
+  notes: 'admin low stock report query',
+  errorCodes: ['VALIDATION_ERROR'],
+};
+
+

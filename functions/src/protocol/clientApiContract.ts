@@ -105,8 +105,10 @@ function applyNormalizedListPayload(payload: Record<string, unknown>, q: ReturnT
   payload.filters = q.filters;
   payload.sort = q.sort;
   payload.flags = q.flags;
-  payload.groupBy = q.groupBy;
-  payload.columns = q.columns;
+  if (Array.isArray(q.groupBy) && q.groupBy.length) payload.groupBy = q.groupBy;
+  else delete payload.groupBy;
+  if (Array.isArray(q.columns) && q.columns.length) payload.columns = q.columns;
+  else delete payload.columns;
   payload.range = q.range;
   payload.from = q.range.from;
   payload.to = q.range.to;
@@ -147,7 +149,7 @@ function normalizeWalletLoyaltyPayload(payload: Record<string, unknown>) {
 }
 
 export function normalizeActionPayload(gateway: Gateway, action: string, inputPayload: unknown): unknown {
-  if (gateway === 'admin') {
+  if (gateway === 'admin' || gateway === 'delivery') {
     return inputPayload;
   }
 
@@ -207,8 +209,16 @@ export function normalizeActionPayload(gateway: Gateway, action: string, inputPa
     payload.slugs = payload.slugs.split(',').map((part) => part.trim()).filter(Boolean);
   }
 
-  if ('groupBy' in payload) payload.groupBy = normalizeGroupBy(payload.groupBy);
-  if ('columns' in payload) payload.columns = normalizeColumns(payload.columns);
+  if ('groupBy' in payload) {
+    const groupBy = normalizeGroupBy(payload.groupBy);
+    if (Array.isArray(groupBy) && groupBy.length) payload.groupBy = groupBy;
+    else delete payload.groupBy;
+  }
+  if ('columns' in payload) {
+    const columns = normalizeColumns(payload.columns);
+    if (Array.isArray(columns) && columns.length) payload.columns = columns;
+    else delete payload.columns;
+  }
   if ('flags' in payload) payload.flags = normalizeFlags(payload.flags);
   if ('sort' in payload) payload.sort = normalizeSort(payload, { by: 'createdAt', dir: 'desc' });
 
@@ -241,7 +251,6 @@ export function mapErrorForContract(err: AppError): AppError {
     case 'SPEC_MISSING':
       return new AppError('UNSUPPORTED_ACTION', err.message, err.details);
     case 'ACCOUNT_DISABLED':
-    case 'OUT_OF_STOCK':
     case 'COUPON_INVALID':
     case 'COUPON_LIMIT':
     case 'DINE_IN_SESSION_CLOSE_NOT_ALLOWED':

@@ -125,11 +125,10 @@ null
 2. Validate envelope/action/spec.
 3. Generate `assetId` (uuid) + deterministic `originalPath`.
 4. DB transaction: insert `media_assets` row with status `created`, requested size/content type, createdByUid.
-5. Generate Storage v4 signed PUT URL with required content type.
-6. Return upload spec and finalize hint.
+5. Return Firebase Storage SDK upload metadata and finalize hint.
 6) Success response JSON:
 ```json
-{ "ok": true, "data": { "assetId": "uuid", "bucket": "bucket", "originalPath": "path", "upload": { "method": "PUT", "url": "https://...", "headers": { "Content-Type": "..." } }, "finalizeHint": { "action": "mediaFinalizeUpload", "assetId": "uuid" } }, "meta": { "requestId": "uuid", "serverTime": "iso" } }
+{ "ok": true, "data": { "assetId": "uuid", "bucket": "bucket", "originalPath": "path", "upload": { "strategy": "firebase-storage", "method": "SDK", "path": "path", "contentType": "image/jpeg" }, "finalizeHint": { "action": "mediaFinalizeUpload", "assetId": "uuid" } }, "meta": { "requestId": "uuid", "serverTime": "iso" } }
 ```
 7) Error cases:
 - `UNAUTHENTICATED`
@@ -275,7 +274,7 @@ null
 1. Require auth + RBAC pass.
 2. Validate payload fields.
 3. DB transaction insert into `media_assets` with status `created`.
-4. Generate v4 signed PUT URL.
+4. Return Firebase Storage SDK upload metadata.
 5. Return upload spec.
 6) Success response JSON: same shape as client create, finalize hint action `adminMediaFinalizeUpload`.
 7) Error cases: `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `CONFIG_ERROR`, `INTERNAL`.

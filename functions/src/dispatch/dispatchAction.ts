@@ -9,7 +9,33 @@ import { enforceAdminRbac } from '../rbac/adminRbac';
 import { ACTION_SPECS } from '../specs/actionSpecs';
 import { mapErrorForContract, normalizeActionPayload, toValidationDetails } from '../protocol/clientApiContract';
 
-function toErrorResponse(err: unknown, requestId: string, serverTime: string): UnifiedResponse {
+function serializeForUnifiedResponse(value: unknown): unknown {
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item) => serializeForUnifiedResponse(item));
+    }
+
+    if (value && typeof value === 'object') {
+        const asAny = value as Record<string, unknown>;
+        if (typeof (asAny as { toDate?: () => Date }).toDate === 'function') {
+            const dateValue = (asAny as { toDate: () => Date }).toDate();
+            return dateValue instanceof Date ? dateValue.toISOString() : value;
+        }
+
+        const output: Record<string, unknown> = {};
+        Object.keys(asAny).forEach((key) => {
+            output[key] = serializeForUnifiedResponse(asAny[key]);
+        });
+        return output;
+    }
+
+    return value;
+}
+
+export function toUnifiedErrorResponse(err: unknown, requestId: string, serverTime: string): UnifiedResponse {
     const rawCode =
         typeof err === 'object' && err !== null && 'code' in err
             ? String((err as { code: unknown }).code)
@@ -61,6 +87,12 @@ function mapErrorCode(code: string): string {
         case 'DELIVERY_ZONE_INVALID':
             return 'DELIVERY_ZONE_INVALID';
 
+        case 'STORE_CONTEXT_REQUIRED':
+            return 'STORE_CONTEXT_REQUIRED';
+
+        case 'ADDRESS_REQUIRED':
+            return 'ADDRESS_REQUIRED';
+
         case 'DELIVERY_ZONE_UNAVAILABLE':
             return 'DELIVERY_ZONE_UNAVAILABLE';
 
@@ -100,6 +132,9 @@ function mapErrorCode(code: string): string {
         case 'PAYMENT_STATUS_UNKNOWN':
             return 'PAYMENT_STATUS_UNKNOWN';
 
+        case 'NOT_ENOUGH_STOCK':
+            return 'NOT_ENOUGH_STOCK';
+
         case 'PRODUCT_IMPORT_ROW_INVALID':
             return 'PRODUCT_IMPORT_ROW_INVALID';
 
@@ -111,6 +146,41 @@ function mapErrorCode(code: string): string {
 
         case 'STORE_ACCESS_REQUIRED':
             return STABLE_ERROR_CODES.STORE_ACCESS_REQUIRED;
+
+        case 'RIDER_AUTH_REQUIRED':
+            return STABLE_ERROR_CODES.RIDER_AUTH_REQUIRED;
+
+        case 'RIDER_NOT_FOUND':
+            return STABLE_ERROR_CODES.RIDER_NOT_FOUND;
+
+        case 'RIDER_INACTIVE':
+            return STABLE_ERROR_CODES.RIDER_INACTIVE;
+
+        case 'DELIVERY_STORE_MISMATCH':
+            return STABLE_ERROR_CODES.DELIVERY_STORE_MISMATCH;
+
+        case 'DELIVERY_ORDER_NOT_ASSIGNED':
+            return STABLE_ERROR_CODES.DELIVERY_ORDER_NOT_ASSIGNED;
+
+        case 'ORDER_NOT_FOUND':
+            return STABLE_ERROR_CODES.NOT_FOUND;
+
+        case 'DELIVERY_ORDER_ALREADY_ASSIGNED':
+        case 'DELIVERY_ORDER_INVALID':
+        case 'DELIVERY_STATUS_INVALID':
+            return 'INVALID_STATE';
+
+        case 'DELIVERY_ILLEGAL_TRANSITION':
+            return STABLE_ERROR_CODES.DELIVERY_ILLEGAL_TRANSITION;
+
+        case 'DELIVERY_REASON_REQUIRED':
+            return STABLE_ERROR_CODES.DELIVERY_REASON_REQUIRED;
+
+        case 'DELIVERY_LOCATION_INVALID':
+            return STABLE_ERROR_CODES.DELIVERY_LOCATION_INVALID;
+
+        case 'IDEMPOTENCY_KEY_REUSED':
+            return STABLE_ERROR_CODES.IDEMPOTENCY_KEY_REUSED;
 
         case 'VALIDATION_FAILED':
         case 'VALIDATION_ERROR':
@@ -268,7 +338,7 @@ export async function dispatchAction(
             enforceAdminRbac(ctx, request.action, rbacStoreId);
         }
 
-        const data = await handler(ctx as any, payload as any);
+        const data = serializeForUnifiedResponse(await handler(ctx as any, payload as any));
 
         return {
             ok: true,
@@ -277,6 +347,6 @@ export async function dispatchAction(
         };
     } catch (err) {
         console.error(err)
-        return toErrorResponse(err, ctx.requestId, ctx.serverTime);
+        return toUnifiedErrorResponse(err, ctx.requestId, ctx.serverTime);
     }
 }

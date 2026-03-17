@@ -46,10 +46,12 @@ export async function catalogListProducts(ctx: ActionContext, payload: any = {})
         defaultSort: { by: 'updatedAt', dir: 'desc' },
         contract: CLIENT_PRODUCT_QUERY_CONTRACT,
     });
+    const inStock = typeof payload?.inStock === 'boolean' ? payload.inStock : true;
 
     const { rows: products, total } = await resolveStoreVisibleProducts(ctx.db, ctx.storeId!, {
         includeDisabled: false,
         categoryId: typeof payload.categoryId === 'string' && payload.categoryId.trim() ? payload.categoryId : undefined,
+        inStock,
         sortBy: q.sort.by,
         sortDirection: q.sort.direction === 'asc' ? 'ASC' : 'DESC',
         limit: q.limit,

@@ -6,7 +6,6 @@ import { AdminStoreAccess } from '../../entities/AdminStoreAccess';
 import { MediaAsset } from '../../entities/MediaAsset';
 import { AppError } from '../../core/errors';
 import { getBucketName, getStorage } from '../../utils/storage';
-import { v4 as uuidv4 } from 'uuid';
 import { Store } from '../../entities/Store';
 import { StoreSettings } from '../../entities/StoreSettings';
 import { UserProfile } from '../../entities/UserProfile';
@@ -15,6 +14,7 @@ import { ACTION_ROLE_MAP } from '../../rbac/adminRbac';
 import { normalizeListQueryInput } from '../../utils/queryNormalization';
 import { buildFeatureVisibilityResponse, serializeFeatureVisibility } from './storeFeatureVisibility';
 import PROD from "../../utils/PROD";
+import { createMediaUploadSpec } from '../../utils/mediaUploadSpec';
 
 
 type AdminModuleDescriptor = {
@@ -40,6 +40,7 @@ const ADMIN_MODULES: readonly AdminModuleDescriptor[] = [
   { key: 'priceImport', label: 'Price Import', icon: 'price_change', actionNames: ['adminPriceImportCreateSession','adminPriceImportUploadSheet','adminPriceImportParsePreview','adminPriceImportResolveMatch','adminPriceImportApply','adminPriceImportListMappings','adminPriceImportUpsertMapping','adminPriceImportDeleteMapping'] },
   { key: 'posCashier', label: 'POS & Cashier', icon: 'point_of_sale', actionNames: ['adminPosSessionsOpen','adminPosSessionsClose','adminPosSessionsList','adminPosSalesCreate','adminPosSalesGet','adminPosSalesList','adminPosReturnsCreate','adminPosReturnsGet','adminPosReturnsList','adminAccountingCreatePOSSale','adminDrawersList','adminDrawerSessionsOpen','adminDrawerSessionsClose'] },
   { key: 'orders', label: 'Orders', icon: 'shopping_bag', actionNames: ['adminOrdersList','adminOrdersGet','adminOrdersUpdateStatus','adminOrdersSetTracking','adminOrdersAddInternalNote','adminOrdersInvoiceUrl','adminOrdersTrackingGet','adminOrdersTrackingAddEvent','adminOrdersTrackingDeleteEvent','adminOrdersTrackingUpdateShipment'] },
+  { key: 'delivery', label: 'Delivery', icon: 'delivery_dining', actionNames: ['adminAssignOrderToRider','adminReassignOrderToRider','adminUnassignOrderFromRider','adminGetRiderPresence','adminGetRiderTracking','adminListRidersForStore','adminListDeliveryAssignments'] },
   { key: 'shippingMethods', label: 'Shipping Methods', icon: 'local_shipping', actionNames: ['adminShippingMethodsList','adminShippingMethodsGet','adminShippingMethodsCreate','adminShippingMethodsUpdate','adminShippingMethodsDisable'] },
   { key: 'deliveryZones', label: 'Delivery Zones', icon: 'map', actionNames: ['adminDeliveryZonesList','adminDeliveryZonesGet','adminDeliveryZonesCreate','adminDeliveryZonesUpdate','adminDeliveryZonesDisable'] },
   { key: 'coupons', label: 'Coupons', icon: 'confirmation_number', actionNames: ['adminCouponsList','adminCouponsGet','adminCouponsCreate','adminCouponsUpdate','adminCouponsDisable'] },
@@ -93,7 +94,7 @@ export async function adminHealthActionsCoverage() {
   const coverage = adminHealthActionsCoverageCore();
   return {
     ...coverage,
-    hasErrors: [coverage.public, coverage.client, coverage.admin].some((g) => g.extraHandlers.length > 0),
+    hasErrors: [coverage.public, coverage.client, coverage.admin, coverage.delivery].some((g) => g.extraHandlers.length > 0),
   };
 }
 
@@ -276,38 +277,67 @@ export async function adminStoreSettingsUpdate(ctx: ActionContext, payload: any)
   return adminStoreSettingsGet(ctx, { storeId: payload.storeId });
 }
 
+function normalizeCustomerDto(customer: any) {
+  if (!customer) {
+    return null;
+  }
+
+  return {
+    id: customer.uid ?? customer.id ?? null,
+    uid: customer.uid ?? customer.id ?? null,
+    name: customer.name ?? customer.displayName ?? customer.email ?? customer.phone ?? 'Unnamed Customer',
+    displayName: customer.displayName ?? customer.name ?? null,
+    email: customer.email ?? null,
+    phone: customer.phone ?? null,
+    status: customer.status ?? 'active',
+    disabled: (customer.status ?? '') === 'disabled',
+    disabledReason: customer.disabledReason ?? null,
+    disabledAt: customer.disabledAt ?? null,
+    disabledByUid: customer.disabledByUid ?? null,
+    locale: customer.locale ?? null,
+    marketingOptIn: Boolean(customer.marketingOptIn),
+    createdAt: customer.createdAt ?? null,
+    updatedAt: customer.updatedAt ?? null,
+    addresses: Array.isArray(customer.addresses) ? customer.addresses : [],
+    deleteRequests: Array.isArray(customer.deleteRequests) ? customer.deleteRequests : [],
+  };
+}
+
 export async function adminCustomersList(ctx: ActionContext, payload: any = {}) {
   const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 100 });
   const limit = q.limit;
   const offset = q.offset;
   const rows = await ctx.db.getRepository(UserProfile).find({ order: { updatedAt: 'DESC' as any }, take: limit, skip: offset });
-  return { customers: rows, limit, offset };
+  return { customers: rows.map((row: UserProfile) => normalizeCustomerDto(row)), limit, offset };
 }
 
 export async function adminCustomersGet(ctx: ActionContext, payload: any) {
-  const customer = await ctx.db.getRepository(UserProfile).findOneBy({ uid: payload.uid });
+  const customerUid = payload.uid ?? payload.id;
+  const customer = await ctx.db.getRepository(UserProfile).findOneBy({ uid: customerUid });
   if (!customer) throw new AppError('NOT_FOUND', 'Customer not found');
-  return { customer };
+  return { customer: normalizeCustomerDto(customer) };
 }
 
 export async function adminCustomersUpdate(ctx: ActionContext, payload: any) {
+  const customerUid = payload.uid ?? payload.id;
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(UserProfile).update({ uid: payload.uid }, {
+    const res = await tx.getRepository(UserProfile).update({ uid: customerUid }, {
       phone: payload.phone ?? null,
       email: payload.email ?? null,
-      displayName: payload.displayName ?? null,
+      displayName: payload.displayName ?? payload.name ?? null,
       locale: payload.locale ?? null,
       marketingOptIn: payload.marketingOptIn ?? false,
       status: payload.status ?? undefined,
     });
     if (!res.affected) throw new AppError('NOT_FOUND', 'Customer not found');
   });
-  return adminCustomersGet(ctx, { uid: payload.uid });
+  return adminCustomersGet(ctx, { uid: customerUid });
 }
 
 export async function adminCustomersDisable(ctx: ActionContext, payload: any) {
+  const customerUid = payload.uid ?? payload.id;
   await ctx.db.transaction(async (tx: EntityManager) => {
-    const res = await tx.getRepository(UserProfile).update({ uid: payload.uid }, {
+    const res = await tx.getRepository(UserProfile).update({ uid: customerUid }, {
       status: 'disabled',
       disabledReason: payload.reason ?? null,
       disabledAt: new Date(),
@@ -315,7 +345,7 @@ export async function adminCustomersDisable(ctx: ActionContext, payload: any) {
     });
     if (!res.affected) throw new AppError('NOT_FOUND', 'Customer not found');
   });
-  return adminCustomersGet(ctx, { uid: payload.uid });
+  return adminCustomersGet(ctx, { uid: customerUid });
 }
 
 export async function adminCustomersSearch(ctx: ActionContext, payload: any = {}) {
@@ -325,48 +355,24 @@ export async function adminCustomersSearch(ctx: ActionContext, payload: any = {}
     'SELECT * FROM user_profiles WHERE uid LIKE ? OR email LIKE ? OR phone LIKE ? OR displayName LIKE ? ORDER BY updatedAt DESC LIMIT ?',
     [q, q, q, q, nq.limit],
   );
-  return { customers: rows };
+  return { customers: rows.map((row: any) => normalizeCustomerDto(row)) };
 }
 
 export async function adminMediaCreateUploadSpec(ctx: ActionContext, payload: any) {
-  const assetId = uuidv4();
-  const ext = String(payload.fileExt).replace(/^\./, '').toLowerCase();
-  const originalPath = ctx.storeId
-    ? `stores/${ctx.storeId}/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`
-    : `global/${payload.ownerType}/${payload.ownerId}/${assetId}.${ext}`;
-  const bucketName = getBucketName();
-
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    const asset = tx.getRepository(MediaAsset).create({
-      id: assetId,
+  return ctx.db.transaction(async (tx: EntityManager) => {
+    return createMediaUploadSpec({
+      tx,
       storeId: ctx.storeId ?? null,
       ownerType: payload.ownerType,
       ownerId: payload.ownerId,
       kind: payload.kind,
-      originalPath,
-      thumbnailPath: null,
+      fileExt: payload.fileExt,
       contentType: payload.contentType,
-      sizeBytes: String(payload.sizeBytes),
-      status: 'created',
+      sizeBytes: payload.sizeBytes,
       createdByUid: ctx.uid!,
+      finalizeAction: 'adminMediaFinalizeUpload',
     });
-    await tx.getRepository(MediaAsset).save(asset);
   });
-
-  const [url] = await getStorage().bucket(bucketName).file(originalPath).getSignedUrl({
-    version: 'v4',
-    action: 'write',
-    expires: Date.now() + 15 * 60 * 1000,
-    contentType: payload.contentType,
-  });
-
-  return {
-    assetId,
-    bucket: bucketName,
-    originalPath,
-    upload: { method: 'PUT', url, headers: { 'Content-Type': payload.contentType } },
-    finalizeHint: { action: 'adminMediaFinalizeUpload', assetId },
-  };
 }
 
 export async function adminMediaFinalizeUpload(ctx: ActionContext, payload: any) {

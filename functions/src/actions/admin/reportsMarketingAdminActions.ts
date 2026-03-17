@@ -1,6 +1,6 @@
 import { ActionContext } from '../../core/protocol';
 import { AppError } from '../../core/errors';
-import { normalizeTableQuery, pickColumns } from './reporting/tableQuery';
+import { normalizeTableQuery, pickColumns, serializeReportRows } from './reporting/tableQuery';
 
 type MarketingFilters = {
   channel?: 'app' | 'web' | 'branch' | 'POS';
@@ -161,7 +161,7 @@ export async function adminReportsAttributionOverview(ctx: ActionContext, payloa
   if (includeMargin) aggregates.contributionCents = null;
 
   return {
-    items: pickColumns(items, ['key', 'ordersCount', 'revenueCents', 'avgOrderValueCents'], q.columns),
+    items: pickColumns(serializeReportRows(items), ['key', 'ordersCount', 'revenueCents', 'avgOrderValueCents'], q.columns),
     pageInfo: { page: q.fetchAll ? 1 : q.page, pageSize: q.fetchAll ? total : q.pageSize, total },
     grouped: { by: [keyLabel], groups: items.map((r: any) => ({ key: r.key, count: Number(r.ordersCount) })) },
     aggregates,
@@ -246,9 +246,10 @@ export async function adminReportsTopCampaigns(ctx: ActionContext, payload: any)
   );
 
   return {
-    items: pickColumns(items, ['campaign', 'source', 'medium', 'ordersCount', 'revenueCents', 'roas', 'contributionCents'], q.columns),
+    items: pickColumns(serializeReportRows(items), ['campaign', 'source', 'medium', 'ordersCount', 'revenueCents'], q.columns),
     pageInfo: { page: q.fetchAll ? 1 : q.page, pageSize: q.fetchAll ? total : q.pageSize, total },
     aggregates: { ...aggregatesRows[0], roasAvailable: false, marginAvailable: false },
     capabilities: { canEdit: false, canDelete: false },
   };
 }
+

@@ -24,6 +24,7 @@ import { normalizeListQueryInput, resolveStoreScopedId } from '../../utils/query
 import { recomputeProductMetrics } from '../productMetrics';
 import { tryPostBusinessEvent } from '../../core/accounting/postingIntegration';
 import { normalizeTableQuery, sanitizeSort, buildGroupedSummary } from './reporting/tableQuery';
+import { buildCanonicalOrderStatusSql, buildOperationalOrderWhereSql, canonicalOrderStatus, toOrderReadModel } from '../../core/orderStatus';
 
 async function byId(ctx:ActionContext,e:any,id:string,m:string){const r=await ctx.db.getRepository(e).findOneBy({id}); if(!r) throw new AppError('NOT_FOUND',m); return r;}
 const crud=(e:any,m:string)=>({list:async(ctx:ActionContext,p:any)=>({items:await ctx.db.getRepository(e).find({where:{storeId:p.storeId}})}),get:async(ctx:ActionContext,p:any)=>({item:await byId(ctx,e,p.id,m)}),create:async(ctx:ActionContext,p:any)=>{const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(e).save(tx.getRepository(e).create({id,...p}));});return {item:await ctx.db.getRepository(e).findOneByOrFail({id})};},update:async(ctx:ActionContext,p:any)=>{await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(e).update({id:p.id},p);if(!r.affected) throw new AppError('NOT_FOUND',m);});return {item:await ctx.db.getRepository(e).findOneByOrFail({id:p.id})};},disable:async(ctx:ActionContext,p:any)=>{await ctx.db.transaction(async(tx:EntityManager)=>{const r=await tx.getRepository(e).update({id:p.id},{status:'disabled'});if(!r.affected) throw new AppError('NOT_FOUND',m);});return {disabled:true};}});
@@ -46,6 +47,10 @@ function toCents(value: any) {
   return Math.round(parsed * 100);
 }
 
+function normalizeAdminOrderStatus(status: any, paymentStatus?: any) {
+  return canonicalOrderStatus(String(status || 'pending'), paymentStatus);
+}
+
 function orderListSortSql(by: string) {
   const map: Record<string, string> = {
     createdAt: 'o.createdAt',
@@ -64,12 +69,47 @@ async function getOrderByStore(ctx: ActionContext, storeId: string, orderId: str
   return order;
 }
 
+async function getShipmentByStore(ctx: ActionContext, storeId: string, shipmentId: string) {
+  const rows = await ctx.db.query(
+    `SELECT s.* FROM shipments s
+     JOIN orders o ON o.id = s.orderId
+     WHERE s.id = ? AND o.storeId = ?
+     LIMIT 1`,
+    [shipmentId, storeId],
+  );
+  const shipment = rows[0] ?? null;
+  if (!shipment) throw new AppError('NOT_FOUND', 'Shipment not found');
+  return shipment;
+}
+
+async function getTrackingEventByStore(ctx: ActionContext, storeId: string, eventId: string) {
+  const rows = await ctx.db.query(
+    `SELECT te.*, s.orderId
+     FROM tracking_events te
+     JOIN shipments s ON s.id = te.shipmentId
+     JOIN orders o ON o.id = s.orderId
+     WHERE te.id = ? AND o.storeId = ?
+     LIMIT 1`,
+    [eventId, storeId],
+  );
+  const event = rows[0] ?? null;
+  if (!event) throw new AppError('NOT_FOUND', 'Tracking event not found');
+  return event;
+}
+
+async function getReturnByStore(ctx: ActionContext, storeId: string, returnId: string) {
+  const ret = await ctx.db.getRepository(Return).findOneBy({ id: returnId, storeId });
+  if (!ret) throw new AppError('NOT_FOUND', 'Return not found');
+  return ret;
+}
+
 async function buildOrderDetails(ctx: ActionContext, storeId: string, orderId: string) {
   const order = await getOrderByStore(ctx, storeId, orderId);
   const shipment = await ctx.db.getRepository(Shipment).findOneBy({ orderId: order.id });
+  const readModel = toOrderReadModel(order);
   return {
     order: {
-      ...order,
+      ...readModel,
       customerName: order.shippingRecipientName || null,
       customerPhone: order.shippingPhone || null,
       address: order.shippingAddressLine || null,
@@ -90,8 +130,18 @@ export async function adminOrdersList(ctx:ActionContext,p:any={}) {
   const filters = q.filters || {};
   const where = ['o.storeId=?', 'o.createdAt BETWEEN ? AND ?'];
   const params: any[] = [q.storeId, q.range.from, q.range.to];
+  const canonicalStatusSql = buildCanonicalOrderStatusSql('o');
 
-  if (filters.status) { where.push('o.status = ?'); params.push(String(filters.status)); }
+  if (filters.status && String(filters.status).toLowerCase() !== 'all') {
+    where.push(`${canonicalStatusSql} = ?`);
+    params.push(normalizeAdminOrderStatus(filters.status));
+  } else {
+    where.push(buildOperationalOrderWhereSql('o'));
+  }
+  if (filters.paymentStatus && String(filters.paymentStatus).toLowerCase() !== 'all') {
+    where.push('LOWER(COALESCE(o.paymentStatus, \'\')) = ?');
+    params.push(String(filters.paymentStatus).toLowerCase());
+  }
   if (filters.customer) {
     where.push('(LOWER(COALESCE(o.shippingRecipientName,\'\')) LIKE ? OR LOWER(COALESCE(o.shippingPhone,\'\')) LIKE ? OR LOWER(o.id) LIKE ?)');
     const needle = `%${String(filters.customer).toLowerCase()}%`;
@@ -108,6 +158,7 @@ export async function adminOrdersList(ctx:ActionContext,p:any={}) {
   const items = await ctx.db.query(
     `SELECT
        o.*,
+       ${canonicalStatusSql} AS canonicalStatus,
        o.shippingRecipientName customerName,
        o.shippingPhone customerPhone,
        o.shippingAddressLine address,
@@ -122,12 +173,15 @@ export async function adminOrdersList(ctx:ActionContext,p:any={}) {
     ctx.db,
     q,
     ['status', 'serviceType', 'branchId'],
-    { status: 'o.status', serviceType: 'o.serviceType', branchId: 'COALESCE(o.branchId,\'(none)\')' },
+    { status: canonicalStatusSql, serviceType: 'o.serviceType', branchId: 'COALESCE(o.branchId,\'(none)\')' },
     `FROM orders o ${whereSql}`,
     params,
   );
   return {
-    items,
+    items: items.map((item: any) => ({
+      ...toOrderReadModel(item),
+      total: Number(item.total),
+    })),
     pageInfo: { page: q.fetchAll ? 1 : q.page, pageSize: q.fetchAll ? total : q.pageSize, total },
     grouped,
     capabilities: { canEdit: true, canDelete: false },
@@ -148,13 +202,14 @@ export async function adminOrdersCreate(ctx: ActionContext, p: any) {
   const shippingCents = zone ? Number(zone.priceCents || 0) : 0;
   const totalCents = subtotalCents + shippingCents;
 
+  const nextStatus = normalizeAdminOrderStatus(p.status || 'pending', p.paymentStatus || 'pending');
   await ctx.db.transaction(async (tx: EntityManager) => {
     await tx.getRepository(Order).save(tx.getRepository(Order).create({
       id: orderId,
       storeId,
       uid: String(p.uid || `admin_manual:${orderId}`),
       channel: 'admin',
-      status: p.status || 'pending',
+      status: nextStatus,
       serviceType: p.serviceType || 'delivery',
       branchId: p.branchId || null,
       tableId: null,
@@ -177,7 +232,7 @@ export async function adminOrdersCreate(ctx: ActionContext, p: any) {
     await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({
       id: uuidv4(),
       orderId,
-      status: p.status || 'pending',
+      status: nextStatus,
       note: p.note || 'Created from admin dispatch workspace',
       createdByUid: ctx.uid!,
     }));
@@ -198,10 +253,11 @@ export async function adminOrdersCreate(ctx: ActionContext, p: any) {
 export async function adminOrdersUpdateStatus(ctx:ActionContext,p:any){
   const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
   const orderId = resolveOrderId(p);
+  const nextStatus = normalizeAdminOrderStatus(p.status);
   await ctx.db.transaction(async(tx:EntityManager)=>{
-    const r=await tx.getRepository(Order).update({id:orderId, storeId},{status:p.status});
+    const r=await tx.getRepository(Order).update({id:orderId, storeId},{status:nextStatus});
     if(!r.affected) throw new AppError('NOT_FOUND','Order not found');
-    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId,status:p.status,note:p.note??null,createdByUid:ctx.uid!}));
+    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({id:uuidv4(),orderId,status:nextStatus,note:p.note??null,createdByUid:ctx.uid!}));
     const rows=await tx.getRepository(Order).query('SELECT DISTINCT productId FROM order_items WHERE orderId=?',[orderId]);
     for(const row of rows){if(typeof row?.productId==='string'&&row.productId) await recomputeProductMetrics(tx,row.productId,storeId);}
   });
@@ -276,23 +332,34 @@ export async function adminOrdersTrackingAddEvent(ctx:ActionContext,p:any){
 }
 
 export async function adminOrdersTrackingDeleteEvent(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
   const eventId = resolveTrackingEventId(p);
+  const event = await getTrackingEventByStore(ctx, storeId, eventId);
   await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(TrackingEvent).delete({id:eventId});});
-  if (p.orderId || p.id) return adminOrdersTrackingGet(ctx,{storeId:p.storeId,orderId:p.orderId ?? p.id});
-  return {deleted:true};
+  if (p.orderId || p.id) return adminOrdersTrackingGet(ctx,{storeId,orderId:p.orderId ?? p.id});
+  return adminOrdersTrackingGet(ctx, { storeId, orderId: event.orderId });
 }
 
 export async function adminOrdersTrackingUpdateShipment(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId, p.storeId);
   const orderId = p.orderId || p.id || null;
   let shipmentId = p.shipmentId || null;
+  let resolvedOrderId = orderId ? String(orderId) : null;
+  if (resolvedOrderId) {
+    await getOrderByStore(ctx, storeId, resolvedOrderId);
+  }
   if (!shipmentId && orderId) {
     const shipment = await ctx.db.getRepository(Shipment).findOneBy({ orderId: String(orderId) });
     shipmentId = shipment?.id || null;
   }
   if (!shipmentId) throw new AppError('VALIDATION_FAILED', 'shipmentId is required');
+  const shipment = await getShipmentByStore(ctx, storeId, String(shipmentId));
+  if (resolvedOrderId && shipment.orderId !== resolvedOrderId) {
+    throw new AppError('NOT_FOUND', 'Shipment not found');
+  }
+  resolvedOrderId = resolvedOrderId || String(shipment.orderId);
   await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Shipment).update({id:shipmentId},{status:p.status,carrier:p.carrier ?? p.courierId,trackingNumber:p.trackingNumber});});
-  if (orderId) return adminOrdersTrackingGet(ctx,{storeId:p.storeId,orderId});
-  return {updated:true};
+  return adminOrdersTrackingGet(ctx,{storeId,orderId:resolvedOrderId});
 }
 
 export async function adminInsuranceList(ctx:ActionContext,p:any){return {orders:await ctx.db.getRepository(InsuranceOrder).find({where:{storeId:p.storeId},order:{createdAt:'DESC' as any}})};}
@@ -334,9 +401,75 @@ export async function reportsLoyaltySummary(ctx:ActionContext,p:any){const r=awa
 export async function reportsCashbackSummary(ctx:ActionContext,p:any){const r=await ctx.db.query('SELECT COUNT(*) offers FROM cashback_offers WHERE storeId=?',[p.storeId]);return {summary:r[0]};}
 
 export async function adminReturnsList(ctx:ActionContext,p:any={}){const q=normalizeListQueryInput(p,{defaultPageSize:50,maxPageSize:200});const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);return {returns:await ctx.db.getRepository(Return).find({where:{storeId},order:{requestedAt:'DESC' as any},take:q.limit,skip:q.offset})};}
-export async function adminReturnsGet(ctx:ActionContext,p:any){return {return:await byId(ctx,Return,p.returnId,'Return not found')};}
-export async function adminReturnsApprove(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:'approved',approvedAt:new Date()});});return adminReturnsGet(ctx,{returnId:p.returnId});}
-export async function adminReturnsReject(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:'rejected',rejectedAt:new Date()});});return adminReturnsGet(ctx,{returnId:p.returnId});}
-export async function adminReturnsRefundPartial(ctx:ActionContext,p:any){const id=uuidv4();await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Refund).save(tx.getRepository(Refund).create({id,returnId:p.returnId,amountCents:String(p.amountCents),method:p.method,status:'completed'}));});const refund=await ctx.db.getRepository(Refund).findOneByOrFail({id});const ret=await ctx.db.getRepository(Return).findOneBy({id:refund.returnId});await tryPostBusinessEvent(ctx.db,{storeId:ret?.storeId??null,sourceDocumentType:'refund',sourceDocumentId:refund.id,sourceEventType:'refund_completed',amountCents:Number(refund.amountCents),createdByUid:ctx.uid??null,metadata:{returnId:refund.returnId,method:refund.method,status:refund.status}});return {refund};}
-export async function adminReturnsRefundFull(ctx:ActionContext,p:any){const ret=await byId(ctx,Return,p.returnId,'Return not found'); const order=await byId(ctx,Order,ret.orderId,'Order not found'); return adminReturnsRefundPartial(ctx,{returnId:p.returnId,amountCents:Number(order.totalCents),method:p.method||'original'});}
-export async function adminReturnsUpdateStatus(ctx:ActionContext,p:any){await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId},{status:p.status});});return adminReturnsGet(ctx,{returnId:p.returnId});}
+export async function adminReturnsGet(ctx:ActionContext,p:any){const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);return {return:await getReturnByStore(ctx,storeId,p.returnId)};}
+export async function adminReturnsApprove(ctx:ActionContext,p:any){const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);await getReturnByStore(ctx,storeId,p.returnId);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId,storeId},{status:'approved',approvedAt:new Date()});});return adminReturnsGet(ctx,{storeId,returnId:p.returnId});}
+export async function adminReturnsReject(ctx:ActionContext,p:any){const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);await getReturnByStore(ctx,storeId,p.returnId);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId,storeId},{status:'rejected',rejectedAt:new Date()});});return adminReturnsGet(ctx,{storeId,returnId:p.returnId});}
+export async function adminReturnsRefundPartial(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId,p.storeId);
+  const requestedAmountCents = Number(p.amountCents);
+  if (!Number.isFinite(requestedAmountCents) || requestedAmountCents <= 0) {
+    throw new AppError('VALIDATION_FAILED', 'Refund amount must be a positive amount in cents');
+  }
+
+  let refundId = '';
+  let returnStoreId = storeId;
+
+  await ctx.db.transaction(async(tx:EntityManager)=>{
+    const lockedReturns = await tx.getRepository(Return).query('SELECT id, orderId, storeId FROM returns WHERE id = ? AND storeId = ? FOR UPDATE', [p.returnId, storeId]);
+    const lockedReturn = lockedReturns[0] ?? null;
+    if (!lockedReturn) throw new AppError('NOT_FOUND', 'Return not found');
+
+    const lockedOrders = await tx.getRepository(Order).query('SELECT id, totalCents FROM orders WHERE id = ? AND storeId = ? FOR UPDATE', [lockedReturn.orderId, storeId]);
+    const lockedOrder = lockedOrders[0] ?? null;
+    if (!lockedOrder) throw new AppError('NOT_FOUND', 'Order not found');
+
+    const refunds = await tx.getRepository(Refund).query(
+      "SELECT COALESCE(SUM(amountCents),0) AS refundedCents FROM refunds WHERE returnId = ? AND status IN ('pending', 'processing', 'completed')",
+      [p.returnId],
+    );
+    const refundedSoFar = Number(refunds[0]?.refundedCents ?? 0);
+    const maxRefundable = Number(lockedOrder.totalCents ?? 0);
+    if (refundedSoFar + requestedAmountCents > maxRefundable) {
+      throw new AppError('REFUND_LIMIT_EXCEEDED', 'Refund exceeds remaining refundable amount', {
+        maxRefundable,
+        refundedSoFar,
+        requestedAmountCents,
+        remainingRefundableCents: Math.max(maxRefundable - refundedSoFar, 0),
+      });
+    }
+
+    refundId = uuidv4();
+    returnStoreId = String(lockedReturn.storeId);
+    await tx.getRepository(Refund).save(tx.getRepository(Refund).create({
+      id: refundId,
+      returnId: p.returnId,
+      amountCents: String(Math.round(requestedAmountCents)),
+      method: p.method || 'original',
+      status: 'completed'
+    }));
+  });
+
+  const refund = await ctx.db.getRepository(Refund).findOneByOrFail({id: refundId});
+  await tryPostBusinessEvent(ctx.db,{
+    storeId: returnStoreId,
+    sourceDocumentType:'refund',
+    sourceDocumentId:refund.id,
+    sourceEventType:'refund_completed',
+    amountCents:Number(refund.amountCents),
+    createdByUid:ctx.uid??null,
+    metadata:{returnId:refund.returnId,method:refund.method,status:refund.status}
+  });
+  return {refund};
+}
+export async function adminReturnsRefundFull(ctx:ActionContext,p:any){
+  const storeId = resolveStoreScopedId(ctx.storeId,p.storeId);
+  const ret = await getReturnByStore(ctx,storeId,p.returnId);
+  const order = await getOrderByStore(ctx,storeId,ret.orderId);
+  return adminReturnsRefundPartial(ctx,{
+    storeId,
+    returnId:p.returnId,
+    amountCents:Number(order.totalCents),
+    method:p.method||'original'
+  });
+}
+export async function adminReturnsUpdateStatus(ctx:ActionContext,p:any){const storeId=resolveStoreScopedId(ctx.storeId,p.storeId);await getReturnByStore(ctx,storeId,p.returnId);await ctx.db.transaction(async(tx:EntityManager)=>{await tx.getRepository(Return).update({id:p.returnId,storeId},{status:p.status});});return adminReturnsGet(ctx,{storeId,returnId:p.returnId});}

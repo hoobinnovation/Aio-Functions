@@ -114,7 +114,6 @@ export function applySort(
     qb.orderBy(allowedSortFields[sort.by], direction);
 }
 
-
 export async function applyGroupBySummary(qbBase: any, query: TableQuery, allowedGroupFields: Record<string, string>) {
   const groups = sanitizeGroupBy(query.groupBy, Object.keys(allowedGroupFields));
   if (!groups.length) return undefined;
@@ -127,13 +126,54 @@ export function buildPageInfo(page: number, pageSize: number, total: number) {
   return { page, pageSize, total };
 }
 
+function serializeReportValue(key: string, value: unknown): unknown {
+  if (value == null) return value;
+  if (value instanceof Date) return value.toISOString();
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => serializeReportValue(key, entry));
+  }
+
+  if (value && typeof value === 'object') {
+    const input = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    Object.keys(input).forEach((childKey) => {
+      output[childKey] = serializeReportValue(childKey, input[childKey]);
+    });
+    return output;
+  }
+
+  if (typeof value === 'string') {
+    if (key === 'date' || key === 'day') {
+      return value.slice(0, 10);
+    }
+
+    if (/At$/i.test(key)) {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+    }
+  }
+
+  return value;
+}
+
+export function serializeReportRows<T extends Record<string, unknown>>(items: T[]): T[] {
+  return items.map((item) => {
+    const output: Record<string, unknown> = {};
+    Object.keys(item || {}).forEach((key) => {
+      output[key] = serializeReportValue(key, item[key]);
+    });
+    return output as T;
+  });
+}
+
 export function pickColumns<T extends Record<string, unknown>>(items: T[], columnsWhitelist: string[], requestedColumns: string[] | null) {
   const cols = sanitizeColumns(requestedColumns, columnsWhitelist);
   if (!cols) return items;
   return items.map((item) => {
     const out: Record<string, unknown> = {};
     for (const c of cols) out[c] = item[c];
-    return out;
+    return out as T;
   });
 }
 

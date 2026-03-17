@@ -1,7 +1,7 @@
 import { ACTION_CATALOGS } from '../actions/catalogs';
 import { ACTION_REGISTRIES } from '../registries/actionRegistries';
 
-function coverage(gateway: 'public' | 'client' | 'admin') {
+function coverage(gateway: 'public' | 'client' | 'admin' | 'delivery') {
   const sot = new Set(ACTION_CATALOGS[gateway]);
   const implemented = new Set(Object.keys(ACTION_REGISTRIES[gateway]));
   return {
@@ -17,9 +17,10 @@ export function adminHealthActionsCoverage() {
     public: coverage('public'),
     client: coverage('client'),
     admin: coverage('admin'),
+    delivery: coverage('delivery'),
   };
 }
 
-export function actionsListForGateway(gateway: 'public' | 'client' | 'admin') {
+export function actionsListForGateway(gateway: 'public' | 'client' | 'admin' | 'delivery') {
   return Object.keys(ACTION_REGISTRIES[gateway]).sort();
 }

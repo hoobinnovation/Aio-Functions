@@ -1,5 +1,21 @@
 import { DataSource } from 'typeorm';
 
+export interface RiderAuthScope {
+  riderId: string;
+  uid: string;
+  role: 'rider';
+  storeId: string;
+  branchId?: string | null;
+  displayName?: string | null;
+  phone?: string | null;
+  vehicleType?: string | null;
+  status: string;
+  presenceStatus: string;
+  activeOrderId?: string | null;
+  activeTripId?: string | null;
+  lastSeenAt?: string | null;
+}
+
 export interface EnvelopeRequest {
   action: string;
   storeId?: string;
@@ -38,16 +54,18 @@ export interface ActionContext {
   uid?: string;
   storeId?: string;
   meta?: Record<string, unknown>;
-  gateway: 'public' | 'client' | 'admin';
+  gateway: 'public' | 'client' | 'admin' | 'delivery';
   runtime?: 'cloud';
   auth?: {
     uid?: string;
     isAnonymous?: boolean;
+    token?: Record<string, unknown>;
     admin?: {
       roles: string[];
       status: string;
       storeAccess: string[];
     };
+    rider?: RiderAuthScope;
   };
   ip?: string;
   userAgent?: string;

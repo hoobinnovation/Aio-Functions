@@ -9,6 +9,7 @@ export class Category {
   @Column({ type: 'varchar', length: 120 }) name!: string;
   @Column({ type: 'varchar', length: 140 }) slug!: string;
   @Column({ type: 'char', length: 36, nullable: true }) parentId!: string | null;
+  @Column({ type: 'char', length: 36, nullable: true }) mediaAssetId!: string | null;
   @Column({ type: 'int', default: 0 }) sortOrder!: number;
   @Column({ type: 'varchar', length: 24, default: 'active' }) status!: string;
   @CreateDateColumn({ type: 'datetime' }) createdAt!: Date;

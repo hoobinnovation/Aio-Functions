@@ -24,9 +24,16 @@ import { UserAddress } from '../../entities/UserAddress';
 import { resolveDeliveryQuote } from '../../utils/deliveryQuote';
 import { createFawaterkInvoice } from '../../utils/fawaterk';
 import { UserProfile } from '../../entities/UserProfile';
-import { StockMovement } from '../../entities/StockMovement';
-import { recomputeProductMetrics } from '../productMetrics';
 import { tryPostBusinessEvent } from '../../core/accounting/postingIntegration';
+import { buildCanonicalOrderStatusSql, buildOperationalOrderWhereSql, canonicalOrderStatus, toOrderReadModel } from '../../core/orderStatus';
+import { syncCustomerOrderTrackingSnapshot } from '../../core/delivery/customerTracking';
+import {
+  attachCheckoutAttemptMeta,
+  buildCheckoutAttemptKey,
+  buildCheckoutCartFingerprint,
+  finalizePaidOrder,
+  readCheckoutAttemptMeta,
+} from './orderPaymentSupport';
 
 async function getCart(ctx: ActionContext) {
   const uid = requireSessionIdentity(ctx);
@@ -110,8 +117,8 @@ async function upsertCheckoutProfileAndAddress(tx: EntityManager, uid: string, p
     floor: shippingAddress.floor ?? null,
     apartment: shippingAddress.apartment ?? null,
     landmark: shippingAddress.landmark ?? null,
-    lat: String(shippingAddress.lat),
-    lng: String(shippingAddress.lng),
+    lat: shippingAddress.lat == null || shippingAddress.lat === '' ? null : String(shippingAddress.lat),
+    lng: shippingAddress.lng == null || shippingAddress.lng === '' ? null : String(shippingAddress.lng),
     notes: shippingAddress.notes ?? null,
     isDefault: true,
   };
@@ -133,12 +140,71 @@ function validateDeliveryPayload(payload: any, shippingAddress: any) {
     throw new AppError('DELIVERY_ZONE_REQUIRED', 'zoneId is required for delivery checkout');
   }
 
-  const requiredAddressFields = ['governorate', 'city', 'street', 'lat', 'lng'];
+  const requiredAddressFields = ['governorate', 'city', 'street'];
   for (const field of requiredAddressFields) {
     if (shippingAddress[field] == null || shippingAddress[field] === '') {
       throw new AppError('CHECKOUT_CONTACT_REQUIRED', `shippingAddress.${field} is required for delivery checkout`);
     }
   }
+}
+
+function resolveRequiredStoreId(ctx: ActionContext, payload: any = {}) {
+  const storeId = typeof ctx.storeId === 'string' && ctx.storeId.trim()
+    ? ctx.storeId.trim()
+    : typeof payload?.storeId === 'string' && payload.storeId.trim()
+      ? payload.storeId.trim()
+      : '';
+
+  if (!storeId) {
+    throw new AppError('STORE_CONTEXT_REQUIRED', 'Store context is required for this action');
+  }
+
+  return storeId;
+}
+
+async function getOwnedOrderByStore(ctx: ActionContext, uid: string, orderId: string, payload: any = {}) {
+  const storeId = resolveRequiredStoreId(ctx, payload);
+  const order = await ctx.db.getRepository(Order).findOneBy({ id: orderId, uid, storeId });
+  if (!order) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
+  return order;
+}
+
+async function getOperationalOwnedOrderByStore(ctx: ActionContext, uid: string, orderId: string, payload: any = {}) {
+  const order = await getOwnedOrderByStore(ctx, uid, orderId, payload);
+  if (canonicalOrderStatus(order.status, order.paymentStatus) === 'pending_payment') {
+    throw new AppError('ORDER_NOT_READY', 'Order is still waiting for payment confirmation');
+  }
+  return order;
+}
+
+function paymentSessionIsReusable(session: any) {
+  const status = String(session?.status || '').toLowerCase();
+  return ['initiated', 'processing', 'pending', 'paid', 'confirmed'].includes(status);
+}
+
+async function findExistingCheckoutAttempt(tx: EntityManager, storeId: string, uid: string, attemptKey: string) {
+  const orders = await tx.getRepository(Order).find({
+    where: { storeId, uid, status: 'pending_payment' },
+    order: { createdAt: 'DESC' as any },
+    take: 10,
+  });
+
+  for (const order of orders) {
+    const sessions = await tx.getRepository(PaymentSession).find({
+      where: { orderId: order.id },
+      order: { createdAt: 'DESC' as any },
+      take: 5,
+    });
+    const latest = sessions[0] ?? null;
+    if (!latest) continue;
+
+    const meta = readCheckoutAttemptMeta(latest.rawProviderPayload);
+    if (meta?.attemptKey !== attemptKey) continue;
+
+    return { order, latestSession: latest };
+  }
+
+  return null;
 }
 
 export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: any = {}) {
@@ -151,9 +217,10 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
   if (!items.length) throw new AppError('VALIDATION_ERROR', 'Cart is empty');
 
   const subtotal = items.reduce((a: number, i: CartItem) => a + Number(i.unitPriceCents) * i.qty, 0);
-  const orderId = uuidv4();
 
-  await ctx.db.transaction(async (tx: EntityManager) => {
+  const { orderId } = await ctx.db.transaction(async (tx: EntityManager) => {
+    await tx.getRepository(Cart).query('SELECT id FROM carts WHERE id = ? FOR UPDATE', [cart.id]);
+
     const serviceType = payload.serviceType ?? 'standard';
     const shippingAddress = await resolveCheckoutAddress(tx, ctx, uid, payload);
     validateDeliveryPayload(payload, shippingAddress);
@@ -170,34 +237,6 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
     }
 
     await upsertCheckoutProfileAndAddress(tx, uid, payload, shippingAddress);
-
-    for (const i of items) {
-      if (i.variantId) {
-        const v = await tx.getRepository(ProductVariant).findOneBy({ id: i.variantId });
-        if (!v || v.stockQty < i.qty) throw new AppError('OUT_OF_STOCK', 'Variant stock insufficient');
-        const beforeQty = Number(v.stockQty);
-        const afterQty = beforeQty - i.qty;
-        await tx.getRepository(ProductVariant).update({ id: i.variantId }, { stockQty: Math.round(afterQty) });
-        await tx.getRepository(StockMovement).save(tx.getRepository(StockMovement).create({
-          id: uuidv4(),
-          storeId: ctx.storeId!,
-          variantId: i.variantId,
-          warehouseId: null,
-          warehouseLocationId: null,
-          lotId: null,
-          movementType: 'sale_issue',
-          qtyDelta: (-i.qty).toFixed(3),
-          beforeQty: beforeQty.toFixed(3),
-          afterQty: afterQty.toFixed(3),
-          unitCostCents: null,
-          sourceDocumentType: 'order',
-          sourceDocumentId: orderId,
-          sourceEventType: 'checkout_create_payment_session',
-          metadata: { productId: i.productId },
-          createdByUid: uid,
-        }));
-      }
-    }
 
     let branchId: string | null = payload.branchId ?? null;
     let tableId: string | null = null;
@@ -223,51 +262,109 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
     const taxCents = 0;
     const shippingCents = quote.deliveryFeeCents;
     const totalCents = subtotal - discountCents + taxCents + shippingCents;
+    const attemptKey = buildCheckoutAttemptKey({
+      storeId: ctx.storeId!,
+      uid,
+      serviceType,
+      shippingMethodId: quote.shippingMethodId,
+      zoneId: quote.zoneId || shippingAddress?.zoneId || null,
+      branchId,
+      tableId,
+      dineInSessionId,
+      displayName: payload.displayName ?? null,
+      phone: payload.phone ?? null,
+      shippingAddress,
+      subtotalCents: subtotal,
+      shippingCents,
+      taxCents,
+      discountCents,
+      totalCents,
+      items,
+    });
+    const attemptMeta = {
+      version: 2 as const,
+      attemptKey,
+      cartFingerprint: buildCheckoutCartFingerprint(items),
+      serviceType,
+      subtotalCents: subtotal,
+      totalCents,
+    };
+    const existingAttempt = await findExistingCheckoutAttempt(tx, ctx.storeId!, uid, attemptKey);
 
-    await tx.getRepository(Order).save(
-      tx.getRepository(Order).create({
-        id: orderId,
-        storeId: ctx.storeId!,
-        uid,
-        channel: 'app',
-        status: 'pending_payment',
-        serviceType,
-        branchId,
-        tableId,
-        dineInSessionId,
-        deliveryZoneId: quote.zoneId || null,
-        deliveryZoneName: quote.zoneName || null,
-        shippingMethodId: quote.shippingMethodId,
-        shippingAddressLabel: shippingAddress?.label ?? null,
-        shippingAddressLine: serviceType === 'delivery' ? `${shippingAddress.governorate} ${shippingAddress.city} ${shippingAddress.street}` : null,
-        shippingRecipientName: payload.displayName ?? null,
-        shippingPhone: payload.phone ?? null,
-        subtotalCents: String(subtotal),
-        discountCents: String(discountCents),
-        shippingCents: String(shippingCents),
-        taxCents: String(taxCents),
-        totalCents: String(totalCents),
-        paymentStatus: 'pending',
-        riskStatus: 'clear',
-      })
-    );
-
-    for (const i of items) {
-      await tx.getRepository(OrderItem).save(
-        tx.getRepository(OrderItem).create({
-          id: uuidv4(),
-          orderId,
-          productId: i.productId,
-          variantId: i.variantId,
-          nameSnapshot: 'item',
-          priceCents: i.unitPriceCents,
-          qty: i.qty,
-        })
-      );
+    if (existingAttempt?.latestSession && paymentSessionIsReusable(existingAttempt.latestSession)) {
+      return { orderId: existingAttempt.order.id };
     }
 
-    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({ id: uuidv4(), orderId, status: 'pending_payment', note: null, createdByUid: uid }));
-    await tx.getRepository(Shipment).save(tx.getRepository(Shipment).create({ id: uuidv4(), orderId, carrier: null, trackingNumber: null, status: 'pending' }));
+    const orderId = existingAttempt?.order?.id || uuidv4();
+    if (!existingAttempt?.order) {
+      for (const i of items) {
+        if (!i.variantId) continue;
+        const variant = await tx.getRepository(ProductVariant).findOneBy({ id: i.variantId });
+        if (!variant || Number(variant.stockQty) < Number(i.qty)) throw new AppError('OUT_OF_STOCK', 'Variant stock insufficient');
+      }
+
+      await tx.getRepository(Order).save(
+        tx.getRepository(Order).create({
+          id: orderId,
+          storeId: ctx.storeId!,
+          uid,
+          channel: 'app',
+          status: 'pending_payment',
+          serviceType,
+          branchId,
+          tableId,
+          dineInSessionId,
+          deliveryZoneId: quote.zoneId || null,
+          deliveryZoneName: quote.zoneName || null,
+          shippingMethodId: quote.shippingMethodId,
+          shippingAddressLabel: shippingAddress?.label ?? null,
+          shippingAddressLine: serviceType === 'delivery' ? `${shippingAddress.governorate} ${shippingAddress.city} ${shippingAddress.street}` : null,
+          shippingLat: serviceType === 'delivery' && shippingAddress?.lat != null ? String(shippingAddress.lat) : null,
+          shippingLng: serviceType === 'delivery' && shippingAddress?.lng != null ? String(shippingAddress.lng) : null,
+          shippingRecipientName: payload.displayName ?? null,
+          shippingPhone: payload.phone ?? null,
+          subtotalCents: String(subtotal),
+          discountCents: String(discountCents),
+          shippingCents: String(shippingCents),
+          taxCents: String(taxCents),
+          totalCents: String(totalCents),
+          paymentStatus: 'pending',
+          riskStatus: 'clear',
+        })
+      );
+
+      for (const i of items) {
+        await tx.getRepository(OrderItem).save(
+          tx.getRepository(OrderItem).create({
+            id: uuidv4(),
+            orderId,
+            productId: i.productId,
+            variantId: i.variantId,
+            nameSnapshot: 'item',
+            priceCents: i.unitPriceCents,
+            qty: i.qty,
+          })
+        );
+      }
+
+      await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({
+        id: uuidv4(),
+        orderId,
+        status: 'pending_payment',
+        note: 'awaiting payment confirmation',
+        createdByUid: uid,
+      }));
+    } else {
+      await tx.getRepository(Order).update({ id: orderId }, { paymentStatus: 'pending', status: 'pending_payment' });
+      await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({
+        id: uuidv4(),
+        orderId,
+        status: 'pending_payment',
+        note: 'payment retry initiated',
+        createdByUid: uid,
+      }));
+    }
+
     let providerSessionPayload = {
       id: uuidv4(),
       orderId,
@@ -277,7 +374,7 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
       paymentUrl: null as string | null,
       invoiceKey: null as string | null,
       externalReference: null as string | null,
-      rawProviderPayload: null as any,
+      rawProviderPayload: attachCheckoutAttemptMeta(null, attemptMeta),
     };
 
     if (setting.provider === 'fawaterk') {
@@ -301,12 +398,12 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
         paymentUrl: createdInvoice.paymentUrl,
         invoiceKey: createdInvoice.invoiceKey,
         externalReference: createdInvoice.externalReference,
-        rawProviderPayload: createdInvoice.raw,
+        rawProviderPayload: attachCheckoutAttemptMeta(createdInvoice.raw, attemptMeta),
       };
     }
 
     await tx.getRepository(PaymentSession).save(tx.getRepository(PaymentSession).create(providerSessionPayload));
-    await tx.getRepository(CartItem).delete({ cartId: cart.id });
+    return { orderId };
   });
 
   const status = await paymentsStatus(ctx, { orderId });
@@ -326,9 +423,14 @@ export async function checkoutCreatePaymentSession(ctx: ActionContext, payload: 
 
 export async function paymentsStatus(ctx: ActionContext, payload: any) {
   const uid = requireSessionIdentity(ctx);
-  const rows = await ctx.db.query('SELECT ps.* FROM payment_sessions ps JOIN orders o ON o.id=ps.orderId WHERE o.uid=? AND ps.orderId=? ORDER BY ps.createdAt DESC', [uid, payload.orderId]);
+  const order = await getOwnedOrderByStore(ctx, uid, String(payload.orderId), payload);
+  const rows = await ctx.db.query('SELECT ps.* FROM payment_sessions ps WHERE ps.orderId=? ORDER BY ps.createdAt DESC', [order.id]);
   const latest = rows[0] ?? null;
   return {
+    orderId: order.id,
+    orderStatus: canonicalOrderStatus(order.status, order.paymentStatus),
+    paymentStatus: order.paymentStatus,
+    status: latest?.status ?? order.paymentStatus,
     sessions: rows,
     latest: latest ? {
       provider: latest.provider,
@@ -344,81 +446,115 @@ export async function paymentsStatus(ctx: ActionContext, payload: any) {
 
 export async function paymentsConfirm(ctx: ActionContext, payload: any) {
   const uid = requireSessionIdentity(ctx);
-  if (!payload?.providerSessionId && !payload?.invoiceKey) {
-    throw new AppError('PAYMENT_TRANSACTION_NOT_FOUND', 'providerSessionId or invoiceKey is required');
+  const storeId = resolveRequiredStoreId(ctx, payload);
+  if (!payload?.paymentSessionId && !payload?.providerSessionId && !payload?.invoiceKey) {
+    throw new AppError('PAYMENT_TRANSACTION_NOT_FOUND', 'paymentSessionId, providerSessionId or invoiceKey is required');
   }
-  const session = payload.providerSessionId
-    ? await ctx.db.getRepository(PaymentSession).findOneBy({ providerSessionId: payload.providerSessionId })
-    : payload.invoiceKey
-      ? await ctx.db.getRepository(PaymentSession).findOneBy({ invoiceKey: payload.invoiceKey })
-      : null;
+  const session = payload.paymentSessionId
+    ? await ctx.db.getRepository(PaymentSession).findOneBy({ id: payload.paymentSessionId })
+    : payload.providerSessionId
+      ? await ctx.db.getRepository(PaymentSession).findOneBy({ providerSessionId: payload.providerSessionId })
+      : payload.invoiceKey
+        ? await ctx.db.getRepository(PaymentSession).findOneBy({ invoiceKey: payload.invoiceKey })
+        : null;
   if (!session) throw new AppError('PAYMENT_TRANSACTION_NOT_FOUND', 'Payment session not found');
-  const order = await ctx.db.getRepository(Order).findOneBy({ id: session.orderId, uid });
+  const order = await ctx.db.getRepository(Order).findOneBy({ id: session.orderId, uid, storeId });
   if (!order) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
-  if (order.paymentStatus === 'paid') return { order, idempotent: true };
-
   if (session.status !== 'paid' && session.status !== 'confirmed') {
     throw new AppError('PAYMENT_CONFIRMATION_FAILED', 'Payment session is not paid yet');
   }
 
-  await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(PaymentSession).update({ id: session.id }, { status: 'paid' });
-    await tx.getRepository(Order).update({ id: order.id }, { paymentStatus: 'paid', status: 'placed' });
-    await tx.getRepository(OrderStatusEvent).save(tx.getRepository(OrderStatusEvent).create({ id: uuidv4(), orderId: order.id, status: 'placed', note: 'payment confirmed', createdByUid: uid }));
-    const rows = await tx.getRepository(Order).query('SELECT DISTINCT productId FROM order_items WHERE orderId=?', [order.id]);
-    for (const row of rows) {
-      if (typeof row?.productId === 'string' && row.productId) await recomputeProductMetrics(tx, row.productId, ctx.storeId!);
-    }
-  });
+  const finalized = await ctx.db.transaction(async (tx: EntityManager) => finalizePaidOrder(tx, {
+    orderId: order.id,
+    paymentSessionId: session.id,
+    actorUid: uid,
+  }));
 
-  await tryPostBusinessEvent(ctx.db, {
-    storeId: order.storeId,
-    sourceDocumentType: 'order',
-    sourceDocumentId: order.id,
-    sourceEventType: 'payment_confirmed',
-    amountCents: Number(order.totalCents),
-    createdByUid: uid,
-    metadata: { paymentSessionId: session.id, provider: session.provider ?? null },
-  });
+  if (finalized.finalizedNow) {
+    await tryPostBusinessEvent(ctx.db, {
+      storeId: order.storeId,
+      sourceDocumentType: 'order',
+      sourceDocumentId: order.id,
+      sourceEventType: 'payment_confirmed',
+      amountCents: Number(order.totalCents),
+      createdByUid: uid,
+      metadata: { paymentSessionId: session.id, provider: session.provider ?? null, cartCleared: finalized.cartCleared },
+    });
+  }
 
-  return { order: await ctx.db.getRepository(Order).findOneByOrFail({ id: order.id }), idempotent: false };
+  return { order: toOrderReadModel(finalized.order), idempotent: !finalized.finalizedNow };
 }
 
 export async function ordersList(ctx: ActionContext, payload: any = {}) {
   const uid = requireSessionIdentity(ctx);
+  const storeId = resolveRequiredStoreId(ctx, payload);
   const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
-  return { orders: await ctx.db.getRepository(Order).find({ where: { uid }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
+  const repo = ctx.db.getRepository(Order);
+  const buildBaseQuery = () => repo
+    .createQueryBuilder('o')
+    .where('o.uid = :uid AND o.storeId = :storeId', { uid, storeId })
+    .andWhere(buildOperationalOrderWhereSql('o'));
+
+  const qb = buildBaseQuery();
+  if (payload?.status) {
+    qb.andWhere(`${buildCanonicalOrderStatusSql('o')} = :status`, {
+      status: canonicalOrderStatus(payload.status),
+    });
+  }
+
+  const countQb = buildBaseQuery();
+  if (payload?.status) {
+    countQb.andWhere(`${buildCanonicalOrderStatusSql('o')} = :status`, {
+      status: canonicalOrderStatus(payload.status),
+    });
+  }
+
+  qb.orderBy('o.createdAt', 'DESC').take(q.limit).skip(q.offset);
+  const [orders, total] = await Promise.all([
+    qb.getMany(),
+    countQb.getCount(),
+  ]);
+  return {
+    orders: orders.map((order: Order) => toOrderReadModel(order)),
+    total,
+    page: q.page,
+    pageSize: q.pageSize,
+    pagination: {
+      page: q.page,
+      pageSize: q.pageSize,
+      total,
+      hasMore: q.offset + orders.length < total,
+    },
+  };
 }
 
 export async function ordersGet(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(Order).findOneBy({ id: p.orderId, uid });
-  if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
+  const o = await getOwnedOrderByStore(ctx, uid, String(p.orderId), p);
   const items = await ctx.db.getRepository(OrderItem).find({ where: { orderId: o.id } });
-  return { order: o, items, riskStatus: o.riskStatus };
+  return { order: toOrderReadModel(o), items, riskStatus: o.riskStatus };
 }
 
 export async function ordersTracking(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(Order).findOneBy({ id: p.orderId, uid });
-  if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
+  const o = await getOwnedOrderByStore(ctx, uid, String(p.orderId), p);
   const sh = await ctx.db.getRepository(Shipment).findOneBy({ orderId: o.id });
-  if (!sh) return { shipment: null, events: [] };
-  const ev = await ctx.db.getRepository(TrackingEvent).find({ where: { shipmentId: sh.id }, order: { createdAt: 'ASC' as any } });
-  return { shipment: sh, events: ev };
+  const ev = sh
+    ? await ctx.db.getRepository(TrackingEvent).find({ where: { shipmentId: sh.id }, order: { createdAt: 'ASC' as any } })
+    : [];
+  const tracking = await syncCustomerOrderTrackingSnapshot(ctx.db, o);
+  return { shipment: sh, events: ev, tracking };
 }
 
 export async function ordersInvoiceUrl(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(Order).findOneBy({ id: p.orderId, uid });
-  if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
+  const o = await getOperationalOwnedOrderByStore(ctx, uid, String(p.orderId), p);
   return { invoiceUrl: `gs://invoices/${o.storeId}/${o.id}.pdf` };
 }
 
 export async function ordersReorder(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(Order).findOneBy({ id: p.orderId, uid });
-  if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Order does not belong to current identity');
+  const o = await getOperationalOwnedOrderByStore(ctx, uid, String(p.orderId), p);
   const items = await ctx.db.getRepository(OrderItem).find({ where: { orderId: o.id } });
   const cart = await getCart(ctx);
 
@@ -431,18 +567,20 @@ export async function ordersReorder(ctx: ActionContext, p: any) {
   return { reordered: items.length };
 }
 
-export async function insuranceCreateDraft(ctx: ActionContext) {
+export async function insuranceCreateDraft(ctx: ActionContext, payload: any = {}) {
   const uid = requireSessionIdentity(ctx);
+  const storeId = resolveRequiredStoreId(ctx, payload);
   const id = uuidv4();
   await ctx.db.transaction(async (tx: EntityManager) => {
-    await tx.getRepository(InsuranceOrder).save(tx.getRepository(InsuranceOrder).create({ id, storeId: ctx.storeId!, uid, status: 'draft', quoteLocked: false, deliveryCentsX2Applied: false }));
+    await tx.getRepository(InsuranceOrder).save(tx.getRepository(InsuranceOrder).create({ id, storeId, uid, status: 'draft', quoteLocked: false, deliveryCentsX2Applied: false }));
   });
   return { insuranceOrder: await ctx.db.getRepository(InsuranceOrder).findOneByOrFail({ id }) };
 }
 
 export async function insuranceAttachFiles(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid });
+  const storeId = resolveRequiredStoreId(ctx, p);
+  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid, storeId });
   if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Insurance order does not belong to current identity');
   await ctx.db.transaction(async (tx: EntityManager) => {
     for (const f of p.files) {
@@ -454,7 +592,8 @@ export async function insuranceAttachFiles(ctx: ActionContext, p: any) {
 
 export async function insuranceSubmit(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid });
+  const storeId = resolveRequiredStoreId(ctx, p);
+  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid, storeId });
   if (!o || o.status !== 'draft') throw new AppError('VALIDATION_ERROR', 'Invalid state');
   await ctx.db.transaction(async (tx: EntityManager) => {
     await tx.getRepository(InsuranceOrder).update({ id: o.id }, { status: 'submitted' });
@@ -465,7 +604,8 @@ export async function insuranceSubmit(ctx: ActionContext, p: any) {
 
 export async function insuranceGet(ctx: ActionContext, p: any) {
   const uid = requireSessionIdentity(ctx);
-  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid });
+  const storeId = resolveRequiredStoreId(ctx, p);
+  const o = await ctx.db.getRepository(InsuranceOrder).findOneBy({ id: p.insuranceOrderId, uid, storeId });
   if (!o) throw new AppError('ORDER_ACCESS_FORBIDDEN', 'Insurance order does not belong to current identity');
   const files = await ctx.db.getRepository(InsuranceFile).find({ where: { insuranceOrderId: o.id } });
   return { insuranceOrder: o, files };
@@ -493,6 +633,7 @@ export async function insuranceRejectQuote(ctx: ActionContext, p: any) {
 
 export async function insuranceListMyOrders(ctx: ActionContext, payload: any = {}) {
   const uid = requireSessionIdentity(ctx);
+  const storeId = resolveRequiredStoreId(ctx, payload);
   const q = normalizeListQueryInput(payload, { defaultPageSize: 20, maxPageSize: 200 });
-  return { orders: await ctx.db.getRepository(InsuranceOrder).find({ where: { uid }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
+  return { orders: await ctx.db.getRepository(InsuranceOrder).find({ where: { uid, storeId }, order: { createdAt: 'DESC' as any }, take: q.limit, skip: q.offset }) };
 }

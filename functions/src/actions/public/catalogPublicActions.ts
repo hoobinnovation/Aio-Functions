@@ -50,11 +50,13 @@ function buildPagination(total: number, page: number, pageSize: number) {
 
 export async function publicCatalogGetHome(ctx: ActionContext, payload: any = {}) {
     const q = listQuery(payload);
+    const booleanFilters = resolveCatalogBooleanFilters(q.filters);
     const { rows: products, total } = await resolveStoreVisibleProducts(ctx.db, ctx.storeId!, {
         includeDisabled: false,
         minPrice: Number.isFinite(Number(q.filters.minPrice)) ? Number(q.filters.minPrice) : undefined,
         maxPrice: Number.isFinite(Number(q.filters.maxPrice)) ? Number(q.filters.maxPrice) : undefined,
-        ...resolveCatalogBooleanFilters(q.filters),
+        ...booleanFilters,
+        inStock: booleanFilters.inStock ?? true,
         sortBy: q.sort.by,
         sortDirection: q.sort.direction === 'asc' ? 'ASC' : 'DESC',
         limit: q.limit,
@@ -150,13 +152,15 @@ function resolveCatalogBooleanFilters(filters: Record<string, any> = {}) {
 export async function publicCatalogListProducts(ctx: ActionContext, payload: any = {}) {
     const q = listQuery(payload);
     const categoryId = payload?.categoryId ?? q.filters.categoryId;
+    const booleanFilters = resolveCatalogBooleanFilters(q.filters);
 
     const { rows: products, total } = await resolveStoreVisibleProducts(ctx.db, ctx.storeId!, {
         includeDisabled: false,
         categoryId: typeof categoryId === 'string' && categoryId.trim() ? categoryId.trim() : undefined,
         minPrice: Number.isFinite(Number(q.filters.minPrice)) ? Number(q.filters.minPrice) : undefined,
         maxPrice: Number.isFinite(Number(q.filters.maxPrice)) ? Number(q.filters.maxPrice) : undefined,
-        ...resolveCatalogBooleanFilters(q.filters),
+        ...booleanFilters,
+        inStock: booleanFilters.inStock ?? true,
         sortBy: q.sort.by,
         sortDirection: q.sort.direction === 'asc' ? 'ASC' : 'DESC',
         limit: q.limit,
@@ -176,13 +180,15 @@ export async function publicCatalogListProducts(ctx: ActionContext, payload: any
 export async function publicCatalogSearchProducts(ctx: ActionContext, payload: any = {}) {
     const q = listQuery(payload);
     const queryTerm = String(q.search.term || '').trim();
+    const booleanFilters = resolveCatalogBooleanFilters(q.filters);
 
     const { rows: products, total } = await resolveStoreVisibleProducts(ctx.db, ctx.storeId!, {
         includeDisabled: false,
         searchTerm: queryTerm || undefined,
         minPrice: Number.isFinite(Number(q.filters.minPrice)) ? Number(q.filters.minPrice) : undefined,
         maxPrice: Number.isFinite(Number(q.filters.maxPrice)) ? Number(q.filters.maxPrice) : undefined,
-        ...resolveCatalogBooleanFilters(q.filters),
+        ...booleanFilters,
+        inStock: booleanFilters.inStock ?? true,
         sortBy: q.sort.by,
         sortDirection: q.sort.direction === 'asc' ? 'ASC' : 'DESC',
         limit: q.limit,

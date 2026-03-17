@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 @Entity({ name: 'orders' })
 export class Order {
   @PrimaryColumn('char', { length: 36 }) id!: string;
@@ -8,6 +8,16 @@ export class Order {
   @Column({ type: 'varchar', length: 24 }) status!: string;
   @Column({ type: 'varchar', length: 24, default: 'standard' }) serviceType!: string;
   @Column({ type: 'char', length: 36, nullable: true }) branchId!: string | null;
+  @Column({ type: 'char', length: 36, nullable: true }) riderId!: string | null;
+  @Column({ type: 'char', length: 36, nullable: true }) tripId!: string | null;
+  @Column({ type: 'varchar', length: 24, nullable: true }) deliveryStatus!: string | null;
+  @Column({ type: 'varchar', length: 300, nullable: true }) statusReason!: string | null;
+  @Column({ type: 'datetime', nullable: true }) assignedAt!: Date | null;
+  @Column({ type: 'datetime', nullable: true }) acceptedAt!: Date | null;
+  @Column({ type: 'datetime', nullable: true }) pickedUpAt!: Date | null;
+  @Column({ type: 'datetime', nullable: true }) deliveredAt!: Date | null;
+  @Column({ type: 'datetime', nullable: true }) failedAt!: Date | null;
+  @Column({ type: 'json', nullable: true }) latestRiderLocationSnapshotJson!: Record<string, unknown> | null;
   @Column({ type: 'varchar', length: 64, nullable: true }) tableId!: string | null;
   @Column({ type: 'varchar', length: 64, nullable: true }) dineInSessionId!: string | null;
   @Column({ type: 'char', length: 36, nullable: true }) deliveryZoneId!: string | null;
@@ -17,6 +27,8 @@ export class Order {
   @Column({ type: 'varchar', length: 32, nullable: true }) shippingPhone!: string | null;
   @Column({ type: 'varchar', length: 80, nullable: true }) shippingAddressLabel!: string | null;
   @Column({ type: 'varchar', length: 300, nullable: true }) shippingAddressLine!: string | null;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true }) shippingLat!: string | null;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true }) shippingLng!: string | null;
   @Column({ type: 'bigint' }) subtotalCents!: string;
   @Column({ type: 'bigint' }) discountCents!: string;
   @Column({ type: 'bigint' }) shippingCents!: string;
@@ -25,4 +37,5 @@ export class Order {
   @Column({ type: 'varchar', length: 24 }) paymentStatus!: string;
   @Column({ type: 'varchar', length: 24, default: 'clear' }) riskStatus!: string;
   @CreateDateColumn({ type: 'datetime' }) createdAt!: Date;
+  @UpdateDateColumn({ type: 'datetime' }) updatedAt!: Date;
 }

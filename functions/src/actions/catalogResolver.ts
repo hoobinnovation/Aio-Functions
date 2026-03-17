@@ -57,6 +57,8 @@ export interface CatalogResolvedProduct {
     compareAtPrice: number | null;
     currency: string;
     stockQty: number;
+    inStock: boolean;
+    isOutOfStock: boolean;
     isOnSale: boolean;
     discountPercent: number;
     imageUrl: string;
@@ -307,7 +309,9 @@ export async function hydrateCatalogProducts(db: DataSource, baseRows: any[], op
             };
         });
 
-        const defaultVariant = rowVariants[0] || null;
+        const inStockVariant = rowVariants.find((variant) => Number(variant.stockQty || 0) > 0) || null;
+        const defaultVariant = inStockVariant || rowVariants[0] || null;
+        const totalStockQty = rowVariants.reduce((sum, variant) => sum + Number(variant.stockQty || 0), 0);
         const imageMeta = imagesByProductId.get(row.id) || {
             originalPath: '',
             thumbnailPath: '',
@@ -366,7 +370,9 @@ export async function hydrateCatalogProducts(db: DataSource, baseRows: any[], op
             price: defaultVariant?.price || 0,
             compareAtPrice,
             currency: 'EGP',
-            stockQty: defaultVariant?.stockQty || 0,
+            stockQty: totalStockQty,
+            inStock: totalStockQty > 0,
+            isOutOfStock: totalStockQty <= 0,
             isOnSale: discountPercent > 0,
             discountPercent,
 

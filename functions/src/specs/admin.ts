@@ -61,6 +61,8 @@ export const ADMIN_ACTION_SPECS: Record<string, ActionSpec> = {
 const sessionStatusSchema = Joi.string().valid('active','closed','expired');
 const relaxedQueryValidation = isDevRelaxedValidationEnabled();
 const requiredInStrictProd = (schema: any) => (relaxedQueryValidation ? schema.optional() : schema.required());
+const stringSchema = () => Joi.string() as any;
+const trimmedString = () => stringSchema().trim();
 
 ADMIN_ACTION_SPECS.adminDineInSettingsGet = { schema: Joi.any().optional(), notes: 'dine-in settings get', errorCodes: ['VALIDATION_FAILED'] };
 ADMIN_ACTION_SPECS.adminDineInSettingsUpdate = { schema: Joi.object({ enabled: Joi.boolean().required(), secureTableModeEnabled: Joi.boolean().required(), verificationMethod: Joi.string().valid('qrOnly','qrPlusGeo').required(), sessionTtlMinutes: Joi.number().integer().min(1).required(), requireSessionForOrder: Joi.boolean().required(), requireSessionForWaiterCall: Joi.boolean().required(), requireSessionForRating: Joi.boolean().required(), requireSessionForBillRequest: Joi.boolean().required(), allowCustomerSessionClose: Joi.boolean().required() }).required(), notes: 'dine-in settings update', errorCodes: ['VALIDATION_FAILED'] };
@@ -89,5 +91,135 @@ ADMIN_ACTION_SPECS.adminDineInDashboardStats = {
     range: requiredInStrictProd(Joi.object({ from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional(), to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}T/).optional() })),
   }).required(),
   notes: 'dine-in stats',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+
+ADMIN_ACTION_SPECS.adminAssignOrderToRider = {
+  schema: Joi.object({
+    orderId: Joi.string().required(),
+    riderId: Joi.string().required(),
+    reason: trimmedString().max(300).allow('', null).optional(),
+    note: trimmedString().max(300).allow('', null).optional(),
+    idempotencyKey: trimmedString().max(120).optional(),
+  }).required(),
+  notes: 'assign order to rider',
+  errorCodes: ['VALIDATION_FAILED', 'DELIVERY_ORDER_ALREADY_ASSIGNED', 'DELIVERY_ILLEGAL_TRANSITION', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminListRiders = {
+  schema: Joi.object({
+    status: trimmedString().max(24).optional(),
+  }).optional(),
+  notes: 'list delivery riders for store',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+ADMIN_ACTION_SPECS.adminGetRider = {
+  schema: Joi.object({
+    riderId: Joi.string().required(),
+  }).required(),
+  notes: 'get delivery rider details',
+  errorCodes: ['VALIDATION_FAILED', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminCreateRider = {
+  schema: Joi.object({
+    uid: Joi.string().required(),
+    riderId: Joi.string().optional(),
+    displayName: trimmedString().max(80).required(),
+    phone: trimmedString().max(32).allow('', null).optional(),
+    branchId: Joi.string().allow('', null).optional(),
+    vehicleType: trimmedString().max(48).allow('', null).optional(),
+    status: trimmedString().max(24).allow('', null).optional(),
+  }).required(),
+  notes: 'create delivery rider',
+  errorCodes: ['VALIDATION_FAILED', 'DELIVERY_STORE_MISMATCH'],
+};
+ADMIN_ACTION_SPECS.adminUpdateRider = {
+  schema: Joi.object({
+    riderId: Joi.string().required(),
+    displayName: trimmedString().max(80).allow('', null).optional(),
+    phone: trimmedString().max(32).allow('', null).optional(),
+    branchId: Joi.string().allow('', null).optional(),
+    vehicleType: trimmedString().max(48).allow('', null).optional(),
+    status: trimmedString().max(24).allow('', null).optional(),
+  }).required(),
+  notes: 'update delivery rider',
+  errorCodes: ['VALIDATION_FAILED', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminDisableRider = {
+  schema: Joi.object({
+    riderId: Joi.string().required(),
+  }).required(),
+  notes: 'disable delivery rider',
+  errorCodes: ['VALIDATION_FAILED', 'RIDER_NOT_FOUND', 'DELIVERY_ILLEGAL_TRANSITION'],
+};
+ADMIN_ACTION_SPECS.adminReassignOrderToRider = {
+  schema: Joi.object({
+    orderId: Joi.string().required(),
+    riderId: Joi.string().required(),
+    reason: trimmedString().max(300).allow('', null).optional(),
+    note: trimmedString().max(300).allow('', null).optional(),
+    idempotencyKey: trimmedString().max(120).optional(),
+  }).required(),
+  notes: 'reassign order to rider',
+  errorCodes: ['VALIDATION_FAILED', 'DELIVERY_ILLEGAL_TRANSITION', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminUnassignOrderFromRider = {
+  schema: Joi.object({
+    orderId: Joi.string().required(),
+    reason: trimmedString().max(300).allow('', null).optional(),
+    note: trimmedString().max(300).allow('', null).optional(),
+    idempotencyKey: trimmedString().max(120).optional(),
+  }).required(),
+  notes: 'unassign order from rider',
+  errorCodes: ['VALIDATION_FAILED', 'DELIVERY_ILLEGAL_TRANSITION'],
+};
+ADMIN_ACTION_SPECS.adminGetRiderPresence = {
+  schema: Joi.object({
+    riderId: Joi.string().required(),
+  }).required(),
+  notes: 'get rider presence',
+  errorCodes: ['VALIDATION_FAILED', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminGetRiderTracking = {
+  schema: Joi.object({
+    riderId: Joi.string().required(),
+  }).required(),
+  notes: 'get rider tracking',
+  errorCodes: ['VALIDATION_FAILED', 'RIDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminListRidersForStore = {
+  schema: Joi.object({
+    status: trimmedString().max(24).optional(),
+  }).optional(),
+  notes: 'list delivery riders for store',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+ADMIN_ACTION_SPECS.adminGetDeliveryLiveBoard = {
+  schema: Joi.object({
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    pageSize: Joi.number().integer().min(1).max(100).optional(),
+  }).optional(),
+  notes: 'get delivery live board',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+ADMIN_ACTION_SPECS.adminGetDeliveryOrderTimeline = {
+  schema: Joi.object({
+    orderId: Joi.string().required(),
+  }).required(),
+  notes: 'get delivery order timeline',
+  errorCodes: ['VALIDATION_FAILED', 'ORDER_NOT_FOUND'],
+};
+ADMIN_ACTION_SPECS.adminListDeliveryAssignments = {
+  schema: Joi.object({
+    riderId: Joi.string().optional(),
+    status: trimmedString().max(24).optional(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    pageSize: Joi.number().integer().min(1).max(100).optional(),
+  }).optional(),
+  notes: 'list store delivery assignments',
+  errorCodes: ['VALIDATION_FAILED'],
+};
+ADMIN_ACTION_SPECS.adminGetDeliveryDashboardStats = {
+  schema: Joi.any().optional(),
+  notes: 'get delivery dashboard stats',
   errorCodes: ['VALIDATION_FAILED'],
 };

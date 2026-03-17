@@ -7,11 +7,13 @@ import { PaymentSession } from '../entities/PaymentSession';
 import { StorePaymentSetting } from '../entities/StorePaymentSetting';
 import { assertFawaterkWebhookSignature, parseFawaterkWebhookPayload } from '../utils/fawaterk';
 import { v4 as uuidv4 } from 'uuid';
+import { canonicalOrderStatus, canonicalPaymentStatus } from '../core/orderStatus';
+import { finalizePaidOrder, mergePaymentProviderPayload } from '../actions/client/orderPaymentSupport';
 
 function mapWebhookStatusToOrderStatus(paymentStatus: string): string {
-  if (paymentStatus === 'paid') return 'placed';
-  if (paymentStatus === 'failed' || paymentStatus === 'cancelled' || paymentStatus === 'expired') return 'payment_failed';
-  return 'pending_payment';
+  return canonicalPaymentStatus(paymentStatus) === 'paid'
+    ? 'confirmed'
+    : canonicalOrderStatus('pending_payment', paymentStatus);
 }
 
 export const webhookGateway = (httpsV2 as any).onRequest(async (req: any, res: any) => {
@@ -45,9 +47,9 @@ export const webhookGateway = (httpsV2 as any).onRequest(async (req: any, res: a
     const signature = req.get('x-fawaterk-signature') ?? req.get('x-signature') ?? undefined;
     assertFawaterkWebhookSignature(rawBody, signature, paymentSetting.config?.webhookSecret);
 
-    await ctx.db.transaction(async (tx) => {
+    const finalized = await ctx.db.transaction(async (tx) => {
       if (paymentSession.status === 'paid' && parsed.status === 'paid') {
-        return;
+        return { finalizedNow: false };
       }
 
       await tx.getRepository(PaymentSession).update(
@@ -55,15 +57,24 @@ export const webhookGateway = (httpsV2 as any).onRequest(async (req: any, res: a
         {
           status: parsed.status,
           externalReference: parsed.externalReference,
-          rawProviderPayload: parsed.raw,
+          rawProviderPayload: mergePaymentProviderPayload(paymentSession.rawProviderPayload, parsed.raw),
         }
       );
 
+      if (canonicalPaymentStatus(parsed.status) === 'paid') {
+        return finalizePaidOrder(tx, {
+          orderId: order.id,
+          paymentSessionId: paymentSession.id,
+          actorUid: 'webhook:fawaterk',
+        });
+      }
+
+      const nextOrderStatus = mapWebhookStatusToOrderStatus(parsed.status);
       await tx.getRepository(Order).update(
         { id: order.id },
         {
-          paymentStatus: parsed.status === 'paid' ? 'paid' : parsed.status,
-          status: mapWebhookStatusToOrderStatus(parsed.status),
+          paymentStatus: canonicalPaymentStatus(parsed.status),
+          status: nextOrderStatus,
         }
       );
 
@@ -71,11 +82,13 @@ export const webhookGateway = (httpsV2 as any).onRequest(async (req: any, res: a
         tx.getRepository(OrderStatusEvent).create({
           id: uuidv4(),
           orderId: order.id,
-          status: mapWebhookStatusToOrderStatus(parsed.status),
+          status: nextOrderStatus,
           note: `webhook:${path}:${parsed.status}`,
           createdByUid: 'webhook:fawaterk',
         })
       );
+
+      return { finalizedNow: false };
     });
 
     if (path === 'fawaterk/redirect') {
@@ -83,7 +96,7 @@ export const webhookGateway = (httpsV2 as any).onRequest(async (req: any, res: a
       return;
     }
 
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, finalized: Boolean((finalized as any)?.finalizedNow) });
   } catch (err) {
     const code = err instanceof AppError ? err.code : 'PAYMENT_WEBHOOK_INVALID';
     const message = err instanceof AppError ? err.message : 'Webhook processing failed';

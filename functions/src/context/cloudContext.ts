@@ -16,6 +16,7 @@ export async function buildCloudContext(gateway: CloudGateway, request: any, sto
     auth: {
       uid: request.auth?.uid,
       isAnonymous: request.auth?.token?.firebase?.sign_in_provider === 'anonymous',
+      token: request.auth?.token,
     },
     ip: request.rawRequest?.ip ?? request.ip,
     userAgent: request.rawRequest?.get?.('user-agent') ?? request.get?.('user-agent') ?? undefined,

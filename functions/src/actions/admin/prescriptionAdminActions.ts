@@ -48,15 +48,26 @@ async function updatePrescriptionStatus(
 export async function adminPrescriptionList(ctx: ActionContext, payload: any = {}) {
   const q = normalizeListQueryInput(payload, { defaultPageSize: 50, maxPageSize: 200 });
   const storeId = resolveStoreScopedId(ctx.storeId, payload.storeId);
+  const filters = payload?.filters && typeof payload.filters === 'object' ? payload.filters : {};
+  const status = payload?.status || filters.status || undefined;
   const where: any = { storeId };
-  if (payload?.status) where.status = payload.status;
+  if (status) where.status = status;
   const requests = await ctx.db.getRepository(PrescriptionRequest).find({
     where,
     order: { createdAt: 'DESC' as any },
     take: q.limit,
     skip: q.offset,
   });
-  return { requests };
+  return {
+    items: requests,
+    requests,
+    pageInfo: {
+      page: q.page,
+      pageSize: q.limit,
+      total: requests.length,
+      hasMore: requests.length === q.limit,
+    },
+  };
 }
 
 export async function adminPrescriptionGet(ctx: ActionContext, payload: any) {
